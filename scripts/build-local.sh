@@ -10,7 +10,7 @@ if [[ -z "$PACKAGE_NAME" ]]; then
     echo "Usage: $0 <package-name> [makepkg-flags]"
     echo ""
     echo "Available packages:"
-    find packages/archlinux -name PKGBUILD -exec dirname {} \; | sed 's|packages/archlinux/||' | sort
+    find packages/alpm -name PKGBUILD -exec dirname {} \; | sed 's|packages/alpm/||' | sort
     echo ""
     echo "Common flags:"
     echo "  -f    Force overwrite existing packages"
@@ -22,13 +22,13 @@ if [[ -z "$PACKAGE_NAME" ]]; then
     exit 1
 fi
 
-PACKAGE_DIR="packages/archlinux/$PACKAGE_NAME"
+PACKAGE_DIR="packages/alpm/$PACKAGE_NAME"
 
 if [[ ! -d "$PACKAGE_DIR" ]]; then
     echo "❌ Package directory not found: $PACKAGE_DIR"
     echo ""
     echo "Available packages:"
-    find packages/archlinux -name PKGBUILD -exec dirname {} \; | sed 's|packages/archlinux/||' | sort
+    find packages/alpm -name PKGBUILD -exec dirname {} \; | sed 's|packages/alpm/||' | sort
     exit 1
 fi
 
