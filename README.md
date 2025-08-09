@@ -1,24 +1,6 @@
-# Custom AUR Repository
+# OpenArsenal AUR Repository
 
 Multi-package Arch Linux repository with automated builds and GitHub Pages distribution.
-
-## 🚀 Quick Start
-
-### Add Repository to Pacman
-```bash
-# Add to /etc/pacman.conf
-[custom-aur]
-SigLevel = Optional TrustAll  
-Server = https://ran-dall.github.io/Packages/repo/$arch
-
-# Update package database
-sudo pacman -Sy
-```
-
-### Install Packages
-```bash
-sudo pacman -S package-name
-```
 
 ## 📦 Available Packages
 
@@ -31,26 +13,7 @@ sudo pacman -S package-name
 
 ### Prerequisites
 ```bash
-sudo pacman -S --needed pacman-contrib fzf bat exa
-```
-
-### Add New Package
-```bash
-./scripts/add-package.sh my-package
-# Edit packages/archlinux/my-package/PKGBUILD
-./scripts/build-local.sh my-package
-```
-
-### Update Existing Package
-```bash
-./scripts/update-package.sh 1password 8.11.5
-./scripts/build-local.sh 1password
-```
-
-### Sync from AUR
-```bash
-./scripts/sync-aur.sh some-aur-package
-# Modify as needed, then commit
+sudo pacman -S --needed base-devel git curl gnupg pacman-contrib
 ```
 
 ### Local Testing
@@ -58,12 +21,21 @@ sudo pacman -S --needed pacman-contrib fzf bat exa
 # Build specific package
 ./scripts/build-local.sh package-name
 
-# Build all changed packages (requires Docker)
-docker run --rm -v $(pwd):/src archlinux:latest bash -c "
-  cd /src && 
-  pacman -Syu --noconfirm base-devel && 
-  ./scripts/build-local.sh package-name
-"
+# Build & Install
+./scripts/build-local.sh 1password -sci
+```
+
+### Add New Package
+```bash
+./scripts/add-package.sh my-package
+# Edit packages/alpm/my-package/PKGBUILD
+./scripts/build-local.sh my-package
+```
+
+### Update Existing Package
+```bash
+./scripts/update-package.sh 1password 8.11.5
+./scripts/build-local.sh 1password
 ```
 
 ## 🤖 Automation
@@ -84,7 +56,7 @@ docker run --rm -v $(pwd):/src archlinux:latest bash -c "
 
 ### Repository Structure
 ```
-packages/archlinux/
+packages/alpm/
 ├── 1password/
 │   ├── PKGBUILD
 │   └── 1password.install
@@ -95,11 +67,6 @@ packages/archlinux/
 ```
 
 ## 🔧 Configuration
-
-### Required Secrets (for AUR publishing)
-- `AUR_USERNAME`: Your AUR username
-- `AUR_EMAIL`: Your AUR email  
-- `AUR_SSH_PRIVATE_KEY`: SSH key for AUR
 
 ### Package Guidelines
 - **Dependencies**: Use `depends=()` for runtime, `makedepends=()` for build-time
