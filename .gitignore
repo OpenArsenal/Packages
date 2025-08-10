@@ -103,6 +103,8 @@ src/
 *.tar.bz2
 *.zip
 *.sig
+*.rpm
+*.deb
 
 # Temporary files
 .SRCINFO
