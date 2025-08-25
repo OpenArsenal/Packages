@@ -1,6 +1,6 @@
 # Maintainer: Okiki <hey@okikio.dev>
 
-pkgname=1password-cli
+pkgname=1password-cli-bin
 pkgver=2.31.1
 pkgrel=1
 pkgdesc="1Password command line tool"
