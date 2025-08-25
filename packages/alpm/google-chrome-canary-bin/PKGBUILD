@@ -2,7 +2,7 @@
 
 # Check for new Linux releases using:
 # curl -sSf https://dl.google.com/linux/chrome/deb/dists/stable/main/binary-amd64/Packages | grep -A1 "Package: google-chrome-canary" | awk '/Version/{print $2}' | cut -d '-' -f1
-pkgname=google-chrome-canary
+pkgname=google-chrome-canary-bin
 pkgver=141.0.7347.0
 pkgrel=1
 pkgdesc="The popular web browser by Google (Canary Channel)"

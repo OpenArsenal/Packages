@@ -1,6 +1,6 @@
 # Maintainer: Okiki <hey@okikio.dev>
 
-pkgname=1password
+pkgname=1password-bin
 _tarver=8.11.4
 _tar="1password-${_tarver}.x64.tar.gz"
 pkgver=${_tarver//-/_}
