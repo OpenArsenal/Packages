@@ -28,7 +28,7 @@ sudo pacman -S --needed base-devel git curl gnupg pacman-contrib
 ### Add New Package
 ```bash
 ./scripts/add-package.sh my-package
-# Edit packages/alpm/my-package/PKGBUILD
+# Edit ./my-package/PKGBUILD
 ./scripts/build-local.sh my-package
 ```
 
@@ -56,7 +56,7 @@ sudo pacman -S --needed base-devel git curl gnupg pacman-contrib
 
 ### Repository Structure
 ```
-packages/alpm/
+./
 ├── 1password/
 │   ├── PKGBUILD
 │   └── 1password.install
