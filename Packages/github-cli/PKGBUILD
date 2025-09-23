@@ -4,7 +4,7 @@
 # Contributor: Richard Bradfield <bradfier@fstab.me>
 
 pkgname=github-cli
-pkgver=2.80.0
+pkgver=2.76.2
 pkgrel=1
 pkgdesc="The GitHub CLI"
 arch=("x86_64")
