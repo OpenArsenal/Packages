@@ -18,7 +18,7 @@ on:
   # Auto-trigger on package changes
   push:
     paths:
-      - 'packages/archlinux/**'
+      - './**'
       - '.github/workflows/**'
   
   # Weekly full rebuild
@@ -45,7 +45,7 @@ jobs:
     - name: Detect package changes
       id: changes
       run: |
-        cd packages/archlinux
+        cd ./
         
         # Manual package selection
         if [ "${{ github.event.inputs.packages }}" != "" ]; then
@@ -63,7 +63,7 @@ jobs:
         
         # Detect changes from git
         else
-          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep "^packages/archlinux/" || true)
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep "^./" || true)
           if [ -z "$CHANGED_FILES" ]; then
             echo "No package changes detected"
             PACKAGES=""
@@ -116,7 +116,7 @@ jobs:
     - name: Import GPG keys for package
       run: |
         PACKAGE_DIR="/home/builder/build"
-        cp -r packages/archlinux/${{ matrix.package }}/* "$PACKAGE_DIR/"
+        cp -r ./${{ matrix.package }}/* "$PACKAGE_DIR/"
         chown -R builder:builder "$PACKAGE_DIR"
         
         cd "$PACKAGE_DIR"
@@ -321,7 +321,7 @@ jobs:
       uses: KSXGitHub/github-actions-deploy-aur@v2.7.0
       with:
         pkgname: ${{ matrix.package }}
-        pkgbuild: packages/archlinux/${{ matrix.package }}/PKGBUILD
+        pkgbuild: ./${{ matrix.package }}/PKGBUILD
         commit_username: ${{ secrets.AUR_USERNAME }}
         commit_email: ${{ secrets.AUR_EMAIL }}
         ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
