@@ -12,7 +12,7 @@ if [[ -z "$PACKAGE_NAME" || -z "$NEW_VERSION" ]]; then
     exit 1
 fi
 
-PACKAGE_DIR="packages/alpm/$PACKAGE_NAME"
+PACKAGE_DIR="./$PACKAGE_NAME"
 
 if [[ ! -d "$PACKAGE_DIR" ]]; then
     echo "❌ Package directory not found: $PACKAGE_DIR"
