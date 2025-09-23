@@ -1,8 +1,8 @@
 # Maintainer: Okiki <hey@okikio.dev>
 
 pkgname=1password-bin
-_tarver=8.11.12-26
-_tar="1password-latest.tar.gz" # ${_tarver}.x64
+_tarver=8.11.10
+_tar="1password-${_tarver}.x64.tar.gz"
 pkgver=${_tarver//-/_}
 pkgrel=27
 pkgdesc="Password manager and secure wallet"
@@ -19,7 +19,7 @@ sha256sums=('00aaabd633131573d861826ef300fd3fec57c31a1b49ba635f09814215985618'
             'SKIP')
 validpgpkeys=('3FEF9748469ADBE15DA7CA80AC2D62742012EA22')
 
-# Note: makepkg automatically verifies both checksums (sha256sums) and 
+# Note: makepkg automatically verifies both checksums (sha256sums) and
 # GPG signatures (validpgpkeys + .sig files) - no explicit functions needed
 
 package() {
@@ -33,25 +33,25 @@ package() {
         install -Dm0644 "resources/icons/hicolor/${resolution}/apps/1password.png" \
             "${pkgdir}/usr/share/icons/hicolor/${resolution}/apps/1password.png"
     done
-    
+
     # Install desktop file
     install -Dm0644 resources/1password.desktop -t "${pkgdir}/usr/share/applications/"
 
     # Improved: More robust policy owners detection with fallback
     msg2 "Generating PolKit policy file..."
     local policy_owners
-    
+
     # Try to get human users (UID >= 1000), fallback to current user if none found
     policy_owners="$(awk -F: '$3 >= 1000 && $3 < 65534 { print "unix-user:" $1 }' /etc/passwd | head -n 10 | tr '\n' ' ')"
-    
+
     # Fallback if no users found (e.g., in containers)
     if [[ -z "$policy_owners" ]]; then
         warning "No human users found, using current user as fallback"
         policy_owners="unix-user:$(whoami)"
     fi
-    
+
     export POLICY_OWNERS="$policy_owners"
-    
+
     # Generate the policy file
     eval "cat <<EOF
 $(cat ./com.1password.1Password.policy.tpl)
