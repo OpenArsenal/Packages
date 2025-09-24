@@ -45,8 +45,6 @@ jobs:
     - name: Detect package changes
       id: changes
       run: |
-        cd ./
-        
         # Manual package selection
         if [ "${{ github.event.inputs.packages }}" != "" ]; then
           if [ "${{ github.event.inputs.packages }}" = "all" ]; then
