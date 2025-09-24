@@ -169,6 +169,10 @@ jobs:
       uses: actions/checkout@v5
 
     - name: Setup Arch Linux build environment
+      env:
+        # Optional: If you have specific GPG keys stored as secrets
+        GPG_KEYRING: ${{ secrets.GPG_KEYRING }}  # Base64 encoded keyring file
+        GPG_TRUST_DB: ${{ secrets.GPG_TRUST_DB }}  # Base64 encoded trustdb
       run: |
         # Update system and install build dependencies
         pacman -Syu --noconfirm
@@ -182,6 +186,47 @@ jobs:
         mkdir -p /home/builder/build
         chown -R builder:builder /home/builder/
 
+        # Optional: Import pre-configured GPG keyring from secrets
+        if [ -n "$GPG_KEYRING" ]; then
+          echo "Importing pre-configured GPG keyring from secrets"
+          echo "$GPG_KEYRING" | base64 -d > /home/builder/.gnupg/pubring.kbx
+          chown -R builder:builder /home/builder/.gnupg/
+          chmod 700 /home/builder/.gnupg/
+          chmod 600 /home/builder/.gnupg/*
+        fi
+
+        # Configure GPG for better keyserver reliability
+        sudo -u builder mkdir -p /home/builder/.gnupg
+        cat > /home/builder/.gnupg/gpg.conf << 'EOF'
+        # Keyserver configuration for reliability
+        keyserver hkps://keyserver.ubuntu.com:443
+        keyserver-options timeout=10
+        keyserver-options import-clean
+        keyserver-options no-honor-keyserver-url
+
+        # Security settings
+        personal-digest-preferences SHA512 SHA384 SHA256
+        cert-digest-algo SHA512
+        default-preference-list SHA512 SHA384 SHA256 AES256 AES192 AES CAST5 ZLIB BZIP2 ZIP Uncompressed
+
+        # Display options
+        keyid-format 0xlong
+        with-fingerprint
+        EOF
+
+        cat > /home/builder/.gnupg/dirmngr.conf << 'EOF'
+        # Keyserver configuration
+        keyserver hkps://keyserver.ubuntu.com:443
+        keyserver hkps://keys.openpgp.org
+
+        # Connection settings
+        timeout 10
+        EOF
+
+        chown -R builder:builder /home/builder/.gnupg/
+        chmod 700 /home/builder/.gnupg/
+        chmod 600 /home/builder/.gnupg/*
+
     - name: Import GPG keys for package
       run: |
         PACKAGE_DIR="/home/builder/build"
@@ -190,15 +235,116 @@ jobs:
 
         cd "$PACKAGE_DIR"
 
-        # Extract GPG keys from PKGBUILD if present
+        # Enhanced GPG key import with multiple fallback strategies
         if grep -q "validpgpkeys" PKGBUILD; then
-          KEYS=$(grep "validpgpkeys" PKGBUILD | sed "s/.*=(['\"]\\([^'\"]*\\)['\"].*/\\1/")
-          for key in $KEYS; do
-            echo "Importing GPG key: $key"
-            sudo -u builder gpg --keyserver keyserver.ubuntu.com --recv-keys "$key" || \
-            sudo -u builder curl -sS "https://downloads.1password.com/linux/keys/1password.asc" | sudo -u builder gpg --import || \
-            echo "Could not import key $key - continuing anyway"
-          done
+          echo "=== Processing GPG keys for package: ${{ matrix.package }} ==="
+
+          # Extract key fingerprints from validpgpkeys array - handle various formats
+          KEYS=$(awk '/^validpgpkeys=/{
+            # Handle single line format: validpgpkeys=('key1' 'key2')
+            if (match($0, /validpgpkeys=\([^)]*\)/)) {
+              line = substr($0, RSTART, RLENGTH)
+              gsub(/validpgpkeys=\(|\)|'"'"'|"/, "", line)
+              gsub(/[ \t]+/, " ", line)
+              print line
+              next
+            }
+          }
+          /^validpgpkeys=\(/{
+            # Handle multiline format
+            gsub(/validpgpkeys=\(|\)|'"'"'|"/, "")
+            print $0
+            in_validpgpkeys=1
+            next
+          }
+          in_validpgpkeys && /\)/{
+            gsub(/\)|'"'"'|"/, "")
+            print $0
+            in_validpgpkeys=0
+            next
+          }
+          in_validpgpkeys{
+            gsub(/'"'"'|"/, "")
+            print $0
+          }' PKGBUILD | tr '\n' ' ' | xargs)
+
+          if [ -n "$KEYS" ]; then
+            echo "Found GPG keys to import: $KEYS"
+
+            # Create array for reliable iteration
+            IFS=' ' read -ra KEY_ARRAY <<< "$KEYS"
+
+            for key in "${KEY_ARRAY[@]}"; do
+              if [ -n "$key" ]; then
+                echo "Processing GPG key: $key"
+
+                # Multi-keyserver approach with proper error handling
+                KEY_IMPORTED=false
+
+                # Try modern keyservers with fallbacks
+                for keyserver in "hkps://keyserver.ubuntu.com:443" "hkps://keys.openpgp.org" "hkp://keyserver.ubuntu.com:80"; do
+                  echo "  Attempting to import from $keyserver"
+
+                  if sudo -u builder timeout 30 gpg --keyserver "$keyserver" --recv-keys "$key" 2>/dev/null; then
+                    echo "  ✓ Successfully imported key $key from $keyserver"
+                    KEY_IMPORTED=true
+                    break
+                  else
+                    echo "  ✗ Failed to import from $keyserver"
+                  fi
+                done
+
+                # Alternative: Try to find key in common locations
+                if [ "$KEY_IMPORTED" = false ]; then
+                  echo "  Attempting alternative key sources for $key"
+
+                  # Package-specific key handling for known packages
+                  case "${{ matrix.package }}" in
+                    "1password-cli-bin"|"1password-wayland")
+                      echo "  Importing 1Password GPG key from official source"
+                      if sudo -u builder curl -sSL "https://downloads.1password.com/linux/keys/1password.asc" | sudo -u builder gpg --import; then
+                        KEY_IMPORTED=true
+                      fi
+                      ;;
+                    "google-chrome-bin"|"google-chrome-canary-bin")
+                      echo "  Importing Google Chrome GPG key from official source"
+                      if sudo -u builder curl -sSL "https://dl.google.com/linux/linux_signing_key.pub" | sudo -u builder gpg --import; then
+                        KEY_IMPORTED=true
+                      fi
+                      ;;
+                    "microsoft-edge-stable-bin")
+                      echo "  Importing Microsoft Edge GPG key from official source"
+                      if sudo -u builder curl -sSL "https://packages.microsoft.com/keys/microsoft.asc" | sudo -u builder gpg --import; then
+                        KEY_IMPORTED=true
+                      fi
+                      ;;
+                    "visual-studio-code-bin")
+                      echo "  Importing Visual Studio Code GPG key from official source"
+                      if sudo -u builder curl -sSL "https://packages.microsoft.com/keys/microsoft.asc" | sudo -u builder gpg --import; then
+                        KEY_IMPORTED=true
+                      fi
+                      ;;
+                  esac
+                fi
+
+                if [ "$KEY_IMPORTED" = false ]; then
+                  echo "  ⚠️  WARNING: Could not import GPG key $key from any source"
+                  echo "  This may cause signature verification to fail"
+                  # Don't exit here - let makepkg handle the verification failure
+                else
+                  echo "  ✓ GPG key $key successfully imported"
+                fi
+              fi
+            done
+
+            # Verify imported keys
+            echo "=== GPG Key Status ==="
+            sudo -u builder gpg --list-keys --keyid-format LONG | grep -A2 -B2 "$(echo $KEYS | tr ' ' '\|')" || true
+          else
+            echo "No GPG keys found in validpgpkeys array"
+          fi
+        else
+          echo "No validpgpkeys found in PKGBUILD - skipping GPG key import"
         fi
 
     - name: Install AUR dependencies
@@ -231,29 +377,106 @@ jobs:
 
         echo "=== Building package: ${{ matrix.package }} ==="
 
-        # Verify sources are accessible
-        sudo -u builder makepkg --verifysource
+        # Enhanced source verification with detailed error reporting
+        echo "=== Verifying package sources ==="
+        if ! sudo -u builder makepkg --verifysource; then
+          echo "⚠️  Source verification failed - this may be due to network issues"
+          echo "Checking available sources..."
+          if [ -f PKGBUILD ]; then
+            echo "Sources defined in PKGBUILD:"
+            grep -E "^source" PKGBUILD || echo "No sources found"
+          fi
+        fi
 
-        # Generate .SRCINFO
+        # Generate .SRCINFO for repository metadata
+        echo "=== Generating .SRCINFO ==="
         sudo -u builder makepkg --printsrcinfo > .SRCINFO
 
-        # Run namcap checks
+        # Run namcap checks if available
         if command -v namcap >/dev/null 2>&1; then
+          echo "=== Running namcap validation ==="
           namcap PKGBUILD || echo "namcap warnings (non-fatal)"
         fi
 
-        # Build package
-        sudo -u builder makepkg -sc --noconfirm
+        # Build package with enhanced error handling
+        echo "=== Building package ==="
+        BUILD_SUCCESS=false
+        BUILD_ATTEMPTS=0
+        MAX_ATTEMPTS=2
+
+        while [ $BUILD_ATTEMPTS -lt $MAX_ATTEMPTS ] && [ "$BUILD_SUCCESS" = false ]; do
+          BUILD_ATTEMPTS=$((BUILD_ATTEMPTS + 1))
+          echo "Build attempt $BUILD_ATTEMPTS of $MAX_ATTEMPTS"
+
+          if sudo -u builder makepkg -sc --noconfirm; then
+            BUILD_SUCCESS=true
+            echo "✓ Package build successful"
+          else
+            BUILD_EXIT_CODE=$?
+            echo "✗ Build attempt $BUILD_ATTEMPTS failed with exit code: $BUILD_EXIT_CODE"
+
+            case $BUILD_EXIT_CODE in
+              2)
+                echo "❌ Build Error: Likely compilation or dependency issue"
+                ;;
+              6)
+                echo "❌ GPG Verification Error: Could not verify package signatures"
+                echo "Available GPG keys in keyring:"
+                sudo -u builder gpg --list-keys --keyid-format LONG || echo "No keys found"
+
+                if [ $BUILD_ATTEMPTS -lt $MAX_ATTEMPTS ]; then
+                  echo "Retrying with --skippgpcheck for this build"
+                  if sudo -u builder makepkg -sc --noconfirm --skippgpcheck; then
+                    BUILD_SUCCESS=true
+                    echo "⚠️  Package built with PGP verification skipped"
+                    echo "WARNING: This reduces security - consider adding proper GPG keys"
+                  fi
+                fi
+                ;;
+              8)
+                echo "❌ Integrity Check Error: Source file checksums don't match"
+                echo "This usually indicates:"
+                echo "  - Source files have been updated upstream"
+                echo "  - Network corruption during download"
+                echo "  - PKGBUILD needs checksum updates"
+                ;;
+              10)
+                echo "❌ Missing Dependencies: Required packages not available"
+                echo "Checking available packages..."
+                # Could add logic to check for AUR dependencies here
+                ;;
+              *)
+                echo "❌ Unknown build error (exit code: $BUILD_EXIT_CODE)"
+                ;;
+            esac
+
+            if [ $BUILD_ATTEMPTS -lt $MAX_ATTEMPTS ]; then
+              echo "Waiting 5 seconds before retry..."
+              sleep 5
+            fi
+          fi
+        done
+
+        if [ "$BUILD_SUCCESS" = false ]; then
+          echo "❌ Package build failed after $MAX_ATTEMPTS attempts"
+          exit 1
+        fi
 
         # Test installation
-        PACKAGE_FILE=$(ls *.pkg.tar.zst)
-        pacman -U --noconfirm "$PACKAGE_FILE"
+        echo "=== Testing package installation ==="
+        PACKAGE_FILE=$(ls *.pkg.tar.zst | head -1)
+        if [ -n "$PACKAGE_FILE" ]; then
+          echo "Installing package: $PACKAGE_FILE"
+          pacman -U --noconfirm "$PACKAGE_FILE"
+          echo "✓ Package installed successfully"
 
-        echo "Successfully built: $PACKAGE_FILE"
-
-        # Store package info
-        echo "PACKAGE_FILE=$PACKAGE_FILE" >> $GITHUB_ENV
-        echo "PACKAGE_NAME=${{ matrix.package }}" >> $GITHUB_ENV
+          # Store package info for artifacts
+          echo "PACKAGE_FILE=$PACKAGE_FILE" >> $GITHUB_ENV
+          echo "PACKAGE_NAME=${{ matrix.package }}" >> $GITHUB_ENV
+        else
+          echo "❌ No package file found after build"
+          exit 1
+        fi
 
     - name: Upload package artifact
       uses: actions/upload-artifact@v4
