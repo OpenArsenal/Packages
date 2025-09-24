@@ -30,7 +30,7 @@ env:
   REPO_MAINTAINER: "Randall <me@randall.network>"
 
 jobs:
-  # Detect changed packages with fixed logic and output formatting
+  # Detect changed packages with fixed logic and robust output formatting
   detect-changes:
     runs-on: ubuntu-latest
     outputs:
@@ -45,67 +45,114 @@ jobs:
     - name: Detect package changes
       id: changes
       run: |
-        # Debug: Show current directory and available packages
-        echo "Current directory contents:"
-        ls -la
-        echo "Available PKGBUILD directories:"
-        find . -name "PKGBUILD" -exec dirname {} \; | sed 's|^\./||' | sort
+        set -euo pipefail  # Fail fast on any error
 
-        # Initialize variables
-        PACKAGES=""
+        # Debug: Show current directory and available packages
+        echo "=== DEBUG: Current directory contents ==="
+        ls -la
+        echo ""
+        echo "=== DEBUG: Available PKGBUILD directories ==="
+        find . -name "PKGBUILD" -exec dirname {} \; | sed 's|^\./||' | sort
+        echo ""
+
+        # Initialize packages array for robust processing
+        declare -a PACKAGE_LIST=()
 
         # Logic fix: Properly check event types and inputs
         if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
           # Manual trigger - check inputs
           if [ "${{ github.event.inputs.packages }}" = "all" ] || [ -z "${{ github.event.inputs.packages }}" ]; then
             echo "Manual trigger: building all packages"
-            # Fix: Use tr to convert newlines to spaces for space-separated output
-            PACKAGES=$(find . -name "PKGBUILD" -exec dirname {} \; | sed 's|^\./||' | sort | tr '\n' ' ')
+            # Get all PKGBUILD directories reliably
+            while IFS= read -r pkg; do
+              if [ -n "$pkg" ]; then
+                PACKAGE_LIST+=("$pkg")
+              fi
+            done < <(find . -name "PKGBUILD" -exec dirname {} \; | sed 's|^\./||' | sort)
           else
             echo "Manual trigger: building specified packages"
-            PACKAGES="${{ github.event.inputs.packages }}"
+            # Parse space-separated package names correctly
+            IFS=' ' read -ra PACKAGE_ARRAY <<< "${{ github.event.inputs.packages }}"
+            for pkg in "${PACKAGE_ARRAY[@]}"; do
+              if [ -n "$pkg" ]; then
+                PACKAGE_LIST+=("$pkg")
+              fi
+            done
           fi
 
         elif [ "${{ github.event_name }}" = "schedule" ] || [ "${{ github.event.inputs.force_rebuild }}" = "true" ]; then
           echo "Scheduled or forced rebuild: building all packages"
-          PACKAGES=$(find . -name "PKGBUILD" -exec dirname {} \; | sed 's|^\./||' | sort | tr '\n' ' ')
+          while IFS= read -r pkg; do
+            if [ -n "$pkg" ]; then
+              PACKAGE_LIST+=("$pkg")
+            fi
+          done < <(find . -name "PKGBUILD" -exec dirname {} \; | sed 's|^\./||' | sort)
 
         else
           # Push trigger - detect changes from git
           echo "Push trigger: detecting changes"
-          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep "^./" || true)
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD | grep -E "^[^/]+/" || true)
 
           if [ -z "$CHANGED_FILES" ]; then
             echo "No package changes detected"
-            PACKAGES=""
           else
             echo "Changed files: $CHANGED_FILES"
-            # Extract unique package directory names and convert to space-separated
-            PACKAGES=$(echo "$CHANGED_FILES" | cut -d'/' -f2 | sort -u | grep -v '^$' | tr '\n' ' ')
-            echo "Derived packages from changes: $PACKAGES"
+            # Extract unique package directory names
+            while IFS= read -r file; do
+              if [ -n "$file" ]; then
+                pkg_dir=$(echo "$file" | cut -d'/' -f1)
+                # Check if this is a valid package directory and not already in list
+                if [ -d "$pkg_dir" ] && [ -f "$pkg_dir/PKGBUILD" ]; then
+                  # Avoid duplicates using associative array approach
+                  already_added=false
+                  for existing in "${PACKAGE_LIST[@]}"; do
+                    if [ "$existing" = "$pkg_dir" ]; then
+                      already_added=true
+                      break
+                    fi
+                  done
+                  if [ "$already_added" = false ]; then
+                    PACKAGE_LIST+=("$pkg_dir")
+                  fi
+                fi
+              fi
+            done <<< "$CHANGED_FILES"
           fi
         fi
 
-        # Clean up packages string (remove trailing space, empty entries)
-        PACKAGES=$(echo "$PACKAGES" | sed 's/[[:space:]]*$//' | tr -s ' ')
+        # Debug: Show detected packages
+        echo "=== DEBUG: Detected packages ==="
+        printf '%s\n' "${PACKAGE_LIST[@]}" || echo "No packages detected"
+        echo ""
 
-        # Use proper GitHub Actions output format
-        if [ -n "$PACKAGES" ]; then
+        # Robust output generation using proper GitHub Actions patterns
+        if [ ${#PACKAGE_LIST[@]} -gt 0 ]; then
+          # Create space-separated packages string for legacy compatibility
+          PACKAGES=$(printf '%s ' "${PACKAGE_LIST[@]}")
+          PACKAGES="${PACKAGES% }"  # Remove trailing space
+
           echo "Final packages to build: $PACKAGES"
 
-          # Convert space-separated packages to JSON array for matrix
-          # This approach handles spaces correctly by using proper JSON serialization
-          MATRIX=$(echo "$PACKAGES" | jq -R 'split(" ") | map(select(. != ""))')
+          # Create JSON matrix using jq with proper escaping and compact output
+          # This approach is bulletproof for package names with special characters
+          MATRIX_JSON=$(printf '%s\n' "${PACKAGE_LIST[@]}" | jq -R -s -c 'split("\n") | map(select(length > 0)) | map({package: .})')
 
-          echo "packages=$PACKAGES" >> $GITHUB_OUTPUT
-          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+          echo "Matrix JSON: $MATRIX_JSON"
+
+          # Use proper GitHub Actions output format with delimiter for safety
+          {
+            echo "packages=$PACKAGES"
+            echo "matrix=$MATRIX_JSON"
+          } >> "$GITHUB_OUTPUT"
         else
           echo "No packages to build"
-          echo "packages=" >> $GITHUB_OUTPUT
-          echo "matrix=[]" >> $GITHUB_OUTPUT
+          {
+            echo "packages="
+            echo "matrix=[]"
+          } >> "$GITHUB_OUTPUT"
         fi
 
-  # Build packages in parallel (unchanged - this part was working)
+  # Build packages in parallel with fixed matrix consumption
   build-packages:
     needs: detect-changes
     if: needs.detect-changes.outputs.packages != ''
@@ -115,7 +162,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
+        include: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
 
     steps:
     - name: Checkout repository
@@ -217,7 +264,7 @@ jobs:
           /home/builder/build/.SRCINFO
         retention-days: 30
 
-  # Collect all packages and update repository (unchanged - this part was working)
+  # Collect all packages and update repository
   update-repository:
     needs: [detect-changes, build-packages]
     if: needs.detect-changes.outputs.packages != '' && success()
