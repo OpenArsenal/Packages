@@ -351,24 +351,106 @@ jobs:
       run: |
         cd /home/builder/build
 
-        # Check for AUR dependencies in depends/makedepends
-        AUR_DEPS=$(grep -E "^(depends|makedepends)=" PKGBUILD | \
-                   grep -oE "'[^']*'" | tr -d "'" | \
-                   while read dep; do
-                     if ! pacman -Si "$dep" >/dev/null 2>&1; then
-                       echo "$dep"
-                     fi
-                   done | tr '\n' ' ')
+        echo "=== Checking for AUR dependencies ==="
 
-        if [ -n "$AUR_DEPS" ]; then
-          echo "Installing AUR dependencies: $AUR_DEPS"
-          for dep in $AUR_DEPS; do
-            echo "Installing $dep from AUR"
-            sudo -u builder git clone "https://aur.archlinux.org/${dep}.git" "/tmp/$dep"
-            cd "/tmp/$dep"
-            sudo -u builder makepkg -si --noconfirm --asdeps
-            cd /home/builder/build
+        # Extract all dependencies from PKGBUILD
+        ALL_DEPS=$(grep -E "^(depends|makedepends|checkdepends)=" PKGBUILD | \
+                   sed 's/.*=(//' | sed 's/).*//' | \
+                   grep -oE "'[^']*'" | tr -d "'" | \
+                   sort -u)
+
+        if [ -n "$ALL_DEPS" ]; then
+          echo "Found dependencies: $ALL_DEPS"
+
+          AUR_DEPS=""
+          OFFICIAL_DEPS=""
+
+          # Categorize dependencies: AUR vs Official repos
+          for dep in $ALL_DEPS; do
+            # Clean dependency name (remove version constraints)
+            clean_dep=$(echo "$dep" | sed 's/[<>=].*//')
+
+            # Check if package exists in official repos
+            if pacman -Si "$clean_dep" >/dev/null 2>&1; then
+              OFFICIAL_DEPS="$OFFICIAL_DEPS $clean_dep"
+              echo "  ✓ Official repo: $clean_dep"
+            else
+              # Check if it's a virtual package (provides)
+              if pacman -Ss "^$clean_dep$" >/dev/null 2>&1; then
+                OFFICIAL_DEPS="$OFFICIAL_DEPS $clean_dep"
+                echo "  ✓ Official repo (virtual): $clean_dep"
+              else
+                AUR_DEPS="$AUR_DEPS $clean_dep"
+                echo "  ? AUR candidate: $clean_dep"
+              fi
+            fi
           done
+
+          # Install official dependencies first
+          if [ -n "$OFFICIAL_DEPS" ]; then
+            echo "Installing official dependencies..."
+            pacman -S --noconfirm --needed $OFFICIAL_DEPS
+          fi
+
+          # Handle AUR dependencies
+          if [ -n "$AUR_DEPS" ]; then
+            echo "=== Processing AUR dependencies ==="
+
+            # Create a temporary build directory for dependencies
+            mkdir -p /tmp/aur-deps
+
+            for aur_dep in $AUR_DEPS; do
+              echo "Processing AUR dependency: $aur_dep"
+
+              cd /tmp/aur-deps
+
+              # Skip if already processed
+              if [ -d "$aur_dep" ]; then
+                echo "  Already processed: $aur_dep"
+                continue
+              fi
+
+              # Try to clone from AUR
+              if git clone "https://aur.archlinux.org/${aur_dep}.git" 2>/dev/null; then
+                echo "  ✓ Found in AUR: $aur_dep"
+                cd "$aur_dep"
+
+                # Quick validation
+                if [ -f PKGBUILD ]; then
+                  echo "  Building AUR dependency: $aur_dep"
+
+                  # Build without installing dependencies (assume they exist)
+                  if sudo -u builder makepkg -sc --noconfirm; then
+                    # Install as dependency
+                    BUILT_PKG=$(ls *.pkg.tar.zst | head -1)
+                    if [ -n "$BUILT_PKG" ]; then
+                      pacman -U --noconfirm --asdeps "$BUILT_PKG"
+                      echo "  ✓ Installed AUR dependency: $aur_dep"
+                    fi
+                  else
+                    echo "  ⚠️  Failed to build AUR dependency: $aur_dep"
+                    echo "  This may cause the main package build to fail"
+                  fi
+                else
+                  echo "  ✗ Invalid AUR package: $aur_dep (no PKGBUILD)"
+                fi
+              else
+                echo "  ✗ AUR package not found: $aur_dep"
+                echo "  This dependency may need manual resolution"
+              fi
+            done
+
+            cd /home/builder/build
+          fi
+        else
+          echo "No dependencies found in PKGBUILD"
+        fi
+
+        # Show final dependency status
+        echo "=== Final dependency check ==="
+        if grep -E "^(depends|makedepends)=" PKGBUILD >/dev/null 2>&1; then
+          echo "Checking if all dependencies are now available..."
+          # This will be validated during the actual build step
         fi
 
     - name: Validate and build package
