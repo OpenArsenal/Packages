@@ -2,9 +2,9 @@
 # Maintainer: cookie <kyliepc@proton.me>
 _pkgname=Vesktop
 _name=vesktop
-pkgname=vesktop-electron
+pkgname=vesktop-electron-git
 pkgdesc="An Electron-based Discord app with Vencord & improved Linux support using system provided electron. Unsupported"
-pkgver=1.5.8
+pkgver=1.5.8.r6.g0d9ca22
 pkgrel=1
 
 arch=("x86_64" "aarch64")
@@ -12,24 +12,30 @@ url="https://github.com/Vencord/Vesktop"
 license=('GPL-3.0-only')
 
 depends=('electron')
-makedepends=('pnpm' 'npm')
+makedepends=('git' 'pnpm' 'npm' 'nodejs')
 optdepends=(
   'libnotify: Notifications'
   'xdg-utils: Open links, files, etc'
 )
 
 provides=("vesktop")
-conflicts=('vesktop')
+conflicts=('vesktop'  'vesktop-electron'  'vesktop-electron')
 
-source=("$_pkgname-$pkgver.tar.gz::https://github.com/Vencord/Vesktop/archive/v${pkgver}.tar.gz" "vesktop.desktop" "vesktop.sh" "afterPack.js")
+source=("$_pkgname::git+$url.git" "vesktop.desktop" "vesktop.sh" "afterPack.js")
 
-sha256sums=('63fd9df5259e0cf404caf8005adde43b85fc81550aa303d103501a3c79599957'
+sha256sums=('SKIP'
             '455c00b862aa0a7e18ca8e23d65d5c5ee4506cdfb15f1bf6f622cce39827de46'
             'a2da313031cfaa892f0f2e51fd0ffafbc14001d4efb0523bb8bfaeb7f4ddc3fa'
             '122b17ce996318e533e6f2ab1c9b2961b39c3eba271c9b40f10c0da5dd738baa')
 
+pkgver() {
+  cd "$_pkgname"
+  git describe --long --tags --abbrev=7 --exclude='*[a-zA-Z][a-zA-Z]*' \
+    | sed -E 's/^[^0-9]*//;s/([^-]*-g)/r\1/;s/-/./g'
+}
+
 build() {
-  cd "$srcdir/$_pkgname-$pkgver"
+  cd "$_pkgname"
 
   # Add unpacked icon extraction script
   sed -i '/"beforePack": "scripts\/build\/sandboxFix.js",/a\ \ \ \ \ \ \ \ "afterPack": "'$srcdir'/afterPack.js",' package.json
@@ -42,7 +48,7 @@ build() {
 }
 
 package() {
-  cd "$srcdir/$_pkgname-$pkgver"
+  cd "$_pkgname"
 
   # Create necessary directories
   install -d "$pkgdir/usr/lib/$_name"
