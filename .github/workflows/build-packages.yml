@@ -51,9 +51,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v5
       with:
-        submodules: 'recursive'
         fetch-depth: 2  # Need previous commit for comparison
-        token: ${{ secrets.GITHUB_TOKEN }}  # Add explicit token
     
     - name: Detect package changes
       id: changes
