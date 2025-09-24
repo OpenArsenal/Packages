@@ -49,8 +49,9 @@ jobs:
       matrix: ${{ steps.changes.outputs.matrix }}
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
+        submodules: 'recursive'
         fetch-depth: 2  # Need previous commit for comparison
     
     - name: Detect package changes
@@ -110,7 +111,9 @@ jobs:
     
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
+      with:
+        submodules: 'recursive'
     
     - name: Setup Arch Linux build environment
       run: |
