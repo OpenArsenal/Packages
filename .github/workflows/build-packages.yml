@@ -23,6 +23,11 @@ on:
         required: false
         default: 'all'
         type: string
+      force_rebuild:
+        description: 'Force rebuild even if no changes detected'
+        required: false
+        default: false
+        type: boolean
     paths:
       - './**'
       - '.github/workflows/**'
@@ -51,6 +56,10 @@ jobs:
     - name: Detect package changes
       id: changes
       run: |
+        ls -al
+        cd ./
+        ls -al
+
         # Manual package selection
         if [ "${{ github.event.inputs.packages }}" != "" ]; then
           if [ "${{ github.event.inputs.packages }}" = "all" ]; then
