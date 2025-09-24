@@ -17,6 +17,12 @@ on:
   
   # Auto-trigger on package changes
   push:
+    inputs:
+      packages:
+        description: 'Package names to build (space-separated, or "all")'
+        required: false
+        default: 'all'
+        type: string
     paths:
       - './**'
       - '.github/workflows/**'
