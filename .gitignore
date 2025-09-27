@@ -13,6 +13,8 @@
 *.log.*
 *.sig
 
+PKGBUILD.backup
+
 pkg/
 src/
 
