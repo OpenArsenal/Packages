@@ -1,0 +1,63 @@
+pkgname=talosctl-bin
+pkgver=1.11.5
+pkgrel=2
+pkgdesc="talosctl - utility for controlling Talos"
+arch=('x86_64' 'aarch64' 'armv7h')
+url="https://talos.dev/"
+license=('MPL-2.0')
+
+# Arch-per-arch sources (prebuilt upstream binaries)
+source_x86_64=(
+  "talosctl-linux-amd64-v${pkgver}::https://github.com/siderolabs/talos/releases/download/v${pkgver}/talosctl-linux-amd64"
+)
+source_aarch64=(
+  "talosctl-linux-arm64-v${pkgver}::https://github.com/siderolabs/talos/releases/download/v${pkgver}/talosctl-linux-arm64"
+)
+source_armv7h=(
+  "talosctl-linux-armv7-v${pkgver}::https://github.com/siderolabs/talos/releases/download/v${pkgver}/talosctl-linux-armv7"
+)
+
+sha256sums_x86_64=('9fc76cb0ee711dc16a03c777f2d71338b9692707de49ec916944c3e335963f67')
+sha256sums_aarch64=('b3e0df9df5b2cfe4d9d1768e75dc6005bc9e6d3c252efc57d725f6caa5b67a91')
+sha256sums_armv7h=('d88c52a4bbc0a1e4763c71374b9cfd154479abf63f6b610cf64880953244cf21')
+
+# Don't strip the prebuilt binary
+options=(!strip)
+
+# Optional: no build() because this is a binary package
+
+check() {
+  local bin_src
+  case "$CARCH" in
+    x86_64) bin_src="${srcdir}/talosctl-linux-amd64-v${pkgver}" ;;
+    aarch64) bin_src="${srcdir}/talosctl-linux-arm64-v${pkgver}" ;;
+    armv7h) bin_src="${srcdir}/talosctl-linux-armv7-v${pkgver}" ;;
+    *) echo "Unsupported architecture: $CARCH" >&2; return 1 ;;
+  esac
+
+  # Ensure the binary is executable (in case upstream ships it 0644)
+  chmod +x "${bin_src}"
+
+  # Sanity check: binary runs and prints help, no endpoints required
+  "${bin_src}" --help >/dev/null
+}
+
+package() {
+  local bin_src
+  case "$CARCH" in
+    x86_64) bin_src="${srcdir}/talosctl-linux-amd64-v${pkgver}" ;;
+    aarch64) bin_src="${srcdir}/talosctl-linux-arm64-v${pkgver}" ;;
+    armv7h) bin_src="${srcdir}/talosctl-linux-armv7-v${pkgver}" ;;
+    *) echo "Unsupported architecture: $CARCH" >&2; return 1 ;;
+  esac
+
+  install -Dm755 "${bin_src}" "${pkgdir}/usr/bin/talosctl"
+
+  # Shell completions
+  "${pkgdir}/usr/bin/talosctl" completion bash | install -Dm644 /dev/stdin \
+    "${pkgdir}/usr/share/bash-completion/completions/talosctl"
+  "${pkgdir}/usr/bin/talosctl" completion zsh | install -Dm644 /dev/stdin \
+    "${pkgdir}/usr/share/zsh/site-functions/_talosctl"
+  "${pkgdir}/usr/bin/talosctl" completion fish | install -Dm644 /dev/stdin \
+    "${pkgdir}/usr/share/fish/vendor_completions.d/talosctl.fish"
+}
