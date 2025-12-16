@@ -66,6 +66,5 @@ package() {
 	rm -r \
 		"$pkgdir"/etc/cron.daily/ \
 		"$pkgdir"/opt/google/chrome/cron/ \
-		"$pkgdir"/opt/google/chrome/product_logo_*.{png,xpm} \
-		"$pkgdir"/usr/share/menu/
+		"$pkgdir"/opt/google/chrome/product_logo_*.png
 }
