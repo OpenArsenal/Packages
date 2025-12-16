@@ -1,5 +1,5 @@
 pkgname=talosctl-bin
-pkgver=1.11.5
+pkgver='1.11.6'
 pkgrel=1
 pkgdesc="talosctl - utility for controlling Talos"
 arch=('x86_64' 'aarch64' 'armv7h')
@@ -17,9 +17,9 @@ source_armv7h=(
   "talosctl-linux-armv7-v${pkgver}::https://github.com/siderolabs/talos/releases/download/v${pkgver}/talosctl-linux-armv7"
 )
 
-sha256sums_x86_64=('9fc76cb0ee711dc16a03c777f2d71338b9692707de49ec916944c3e335963f67')
-sha256sums_aarch64=('b3e0df9df5b2cfe4d9d1768e75dc6005bc9e6d3c252efc57d725f6caa5b67a91')
-sha256sums_armv7h=('d88c52a4bbc0a1e4763c71374b9cfd154479abf63f6b610cf64880953244cf21')
+sha256sums_x86_64=('a248ef5c5f9cab08013281e6e14d8d8862e7363515e58e2fba8c94ca05c5cf34')
+sha256sums_aarch64=('39c4e3d1bda2870a2de5a4f30a6f728914d3d27da5bf75380387717d75ed694a')
+sha256sums_armv7h=('ae88b9c32a724892b9ed58b46f44b606e951a4cf90acd170dffcd8020a76a79a')
 
 # Don't strip the prebuilt binary
 options=(!strip)

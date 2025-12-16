@@ -1,5 +1,5 @@
 pkgname=omnictl-bin
-pkgver=1.3.3
+pkgver='1.4.0'
 pkgrel=1
 pkgdesc="CLI for Omni - SaaS-simple deployment of Kubernetes on your own hardware"
 arch=('x86_64' 'aarch64')
@@ -14,8 +14,8 @@ source_aarch64=(
   "omnictl-linux-arm64-v${pkgver}::https://github.com/siderolabs/omni/releases/download/v${pkgver}/omnictl-linux-arm64"
 )
 
-sha256sums_x86_64=('c178419669e5cf5a69b92e931de7c19d05d83d816f1dc70971dc3db141e6eef5')
-sha256sums_aarch64=('798252cd330b8fcef9d4c2b6687c371e311f13d71804810f52056d180dbc6aa9')
+sha256sums_x86_64=('009cc5126b1441203a9bd3b1303cd8f0b2affcdfe764385a6673670918d3a5ae')
+sha256sums_aarch64=('f1e380b3c5116c5d46a09147fab7a58b6b267d283116651e7429374cbf84436d')
 
 # Don't strip the prebuilt binary
 options=(!strip)

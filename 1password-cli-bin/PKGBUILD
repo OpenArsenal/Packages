@@ -1,7 +1,7 @@
 # Maintainer: Okiki <hey@okikio.dev>
 
 pkgname=1password-cli-bin
-pkgver=2.32.0
+pkgver='8.11.22'
 pkgrel=1
 pkgdesc="1Password command line tool"
 arch=('x86_64' 'i686' 'arm' 'armv6h' 'aarch64')
