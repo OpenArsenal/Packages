@@ -64,5 +64,4 @@ package() {
 		"$pkgdir"/etc/cron.daily/ \
 		"$pkgdir"/opt/google/chrome-$_channel/cron/ \
 		"$pkgdir"/opt/google/chrome-$_channel/product_logo_*.png
-	#	\ "$pkgdir"/usr/share/menu/
 }
