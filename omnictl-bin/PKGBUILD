@@ -1,3 +1,4 @@
+# Maintainer: Okiki <okiki@thunderstrike.co>
 pkgname=omnictl-bin
 pkgver='1.4.0'
 pkgrel=1
