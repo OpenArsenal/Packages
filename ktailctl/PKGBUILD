@@ -32,6 +32,7 @@ makedepends=(
   go
   nlohmann-json
 )
+changelog=$pkgname.changelog
 
 # use any of:
 #   gpg --keyserver keyserver.ubuntu.com --search-keys me@fkoehler.org
