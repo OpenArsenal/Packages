@@ -1,5 +1,4 @@
-# Maintainer: tarball <bootctl@gmail.com>
-
+# Maintainer: Okiki <okiki@thunderstrike.co>
 pkgname=ktailctl
 pkgver=0.21.2
 pkgrel=1

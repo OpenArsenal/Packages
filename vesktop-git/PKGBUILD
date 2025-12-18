@@ -1,5 +1,4 @@
-# Maintainer: zt <zt@zt64.dev>
-# Maintainer: cookie <kyliepc@proton.me>
+# Maintainer: Okiki <okiki@thunderstrike.co>
 _pkgname=Vesktop
 pkgname=vesktop-git
 pkgdesc="A standalone Electron-based Discord app with Vencord & improved Linux support"

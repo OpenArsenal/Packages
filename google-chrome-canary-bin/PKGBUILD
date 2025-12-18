@@ -1,4 +1,4 @@
-# Maintainer: Axel Navarro <navarroaxel gmail>
+# Maintainer: Okiki <okiki@thunderstrike.co>
 
 # Check for new Linux releases using:
 # curl -sSf https://dl.google.com/linux/chrome/deb/dists/stable/main/binary-amd64/Packages | grep -A1 "Package: google-chrome-canary" | awk '/Version/{print $2}' | cut -d '-' -f1

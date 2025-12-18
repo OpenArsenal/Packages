@@ -1,8 +1,4 @@
-# Maintainer: Nicolas Narvaez <nicomix1006@gmail.com>
-# Co-Maintainer: Aakash Hemadri <aakashhemadri123@gmail.com>
-# Contributor: EsauPR
-# Contributor: bittin
-# Contributor: nowy
+# Maintainer: Okiki <okiki@thunderstrike.co>
 
 pkgname=microsoft-edge-stable-bin
 _pkgname=microsoft-edge

@@ -1,5 +1,4 @@
-# Maintainer: zt <zt@zt64.dev>
-# Maintainer: cookie <kyliepc@proton.me>
+# Maintainer: Okiki <okiki@thunderstrike.co>
 _pkgname=Vesktop
 pkgname=vesktop
 pkgdesc="A standalone Electron-based Discord app with Vencord & improved Linux support"
@@ -17,18 +16,14 @@ optdepends=(
   'xdg-utils: Open links, files, etc'
 )
 
-source=("$_pkgname-$pkgver.tar.gz::https://github.com/Vencord/Vesktop/archive/v${pkgver}.tar.gz" "vesktop.desktop" "vesktop.sh" "afterPack.js")
+source=("$_pkgname-$pkgver.tar.gz::https://github.com/Vencord/Vesktop/archive/v${pkgver}.tar.gz" "vesktop.desktop" "vesktop.sh")
 
 sha256sums=('ba103cf8a9edef31eb78c1bc3d76e40151f84ff02b2da8fd2bc21a954841b523'
             '98fa8f661b065c2d825e24f0055a40ae01d58d23628ad7ebf6914296209dd43c'
-            '506c246328af639d6f6a3e52215c7b34af2a6df11d195de6f57a8bbee750cce9'
-            '122b17ce996318e533e6f2ab1c9b2961b39c3eba271c9b40f10c0da5dd738baa')
+            '506c246328af639d6f6a3e52215c7b34af2a6df11d195de6f57a8bbee750cce9')
 
 build() {
   cd "$srcdir/$_pkgname-$pkgver"
-
-  # Add unpacked icon extraction script
-  sed -i '/"beforePack": "scripts\/build\/sandboxFix.js",/a\ \ \ \ \ \ \ \ "afterPack": "'$srcdir'/afterPack.js",' package.json
 
   pnpm i --frozen-lockfile
   pnpm package:dir
@@ -45,7 +40,7 @@ package() {
 
   install -Dm644 "../vesktop.desktop" "$pkgdir/usr/share/applications/vesktop.desktop" # Install desktop entry
   install -Dm644 "LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE" # Install license
-  install -Dm644 "build/icon.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/$_pkgname.svg" # Install icons
+  install -Dm644 "build/icon.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/$pkgname.svg" # Install icons
 
   install -Dm755 "../vesktop.sh" "$pkgdir/usr/bin/$pkgname" # Start script
 }
