@@ -5,7 +5,7 @@ _pkgname=Figma-linux
 pkgver=0.11.4.r10.gd9a7a03
 _electronversion=31
 _nodeversion=22
-pkgrel=1
+pkgrel=2
 arch=('any')
 pkgdesc="The collaborative interface design tool. Unofficial Figma desktop client for Linux.(Use system-wide electron)"
 url="https://github.com/Figma-Linux/figma-linux"
@@ -90,9 +90,16 @@ package() {
     install -Dm644 "${srcdir}/${pkgname%-git}.git/build/linux-"*/swiftshader/* -t "${pkgdir}/usr/lib/${pkgname%-git}/swiftshader"
     install -Dm644 "${srcdir}/${pkgname%-git}.git/resources/${pkgname%-git}.desktop" -t "${pkgdir}/usr/share/applications"
     _icon_sizes=(24x24 36x36 48x48 64x64 72x72 96x96 128x128 192x192 256x256 384x384 512x512 scalable)
-    for _icons in "${_icon_sizes[@]}";do
-        install -Dm644 "${srcdir}/${pkgname%-git}.git/lib/icons/${_icons}."* \
-            "${pkgdir}/usr/share/icons/hicolor/${_icons}/apps/${pkgname%-git}."*
+    for _size in "${_icon_sizes[@]}"; do
+        for _src in "${srcdir}/${pkgname%-git}.git/lib/icons/${_size}."*; do
+            # Skip if the glob didn't match anything
+            [[ -e "${_src}" ]] || continue
+
+            _ext="${_src##*.}" # png, svg, etc.
+
+            install -Dm644 "${_src}" \
+                "${pkgdir}/usr/share/icons/hicolor/${_size}/apps/${pkgname%-git}.${_ext}"
+        done
     done
     install -Dm644 "${srcdir}/${pkgname%-git}.git/LICENSE" -t "${pkgdir}/usr/share/licenses/${pkgname}"
 }
