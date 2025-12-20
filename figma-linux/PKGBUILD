@@ -8,6 +8,9 @@ arch=('x86_64' 'aarch64')
 url="https://github.com/Figma-Linux/figma-linux"
 license=('GPL-2.0-only')
 
+provides=('figma-linux')
+conflicts=('figma-linux' 'figma-linux-electron' 'figma-linux-electron-git')
+
 options=(!strip)
 depends=('gtk3' 'nss' 'alsa-lib' 'hicolor-icon-theme')
 makedepends=('nodejs' 'npm')
