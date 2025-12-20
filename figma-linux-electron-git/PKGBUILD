@@ -1,18 +1,17 @@
 # Maintainer: Okiki Ojo <okiki@thunderstrike.co>
 _pkgname=figma-linux
-pkgname=${_pkgname}-git
+pkgname=${_pkgname}-electron-git
 pkgver=0.11.4.r10.gd9a7a03
 pkgrel=1
-pkgdesc="Unofficial Electron-based Figma desktop client for Linux (bundled Electron, git HEAD)"
+pkgdesc="Unofficial Electron-based Figma desktop client for Linux (system Electron, git HEAD)"
 arch=('x86_64' 'aarch64')
 url="https://github.com/Figma-Linux/figma-linux"
 license=('GPL-2.0-only')
 
 provides=('figma-linux')
-conflicts=('figma-linux' 'figma-linux-electron' 'figma-linux-electron-git')
+conflicts=('figma-linux' 'figma-linux-electron' 'figma-linux-git')
 
-options=(!strip)
-depends=('gtk3' 'nss' 'alsa-lib' 'hicolor-icon-theme')
+depends=('electron' 'libdbusmenu-gtk3' 'libdbusmenu-glib' 'libindicator-gtk3' 'hicolor-icon-theme')
 makedepends=('git' 'nodejs' 'npm')
 optdepends=(
   'xdg-utils: Open links and files'
@@ -75,20 +74,22 @@ build() {
 	# 👇 Apply opt-in mirrors (only if env vars exist)
 	_configure_npm_mirrors
 
+	# Avoid electron-builder downloading its own Electron when we’re using system Electron.
+	export ELECTRON_SKIP_BINARY_DOWNLOAD=1
+
   git submodule update --init --recursive || true
 
-	# Use lockfile if available for reproducible builds
   if [[ -f package-lock.json ]]; then
     npm ci --no-audit --no-fund
   else
     npm install --no-audit --no-fund
   fi
 
-	# Build application
   npm run build
 
-	# Create Linux bundle with electron-builder
-  npm exec -c "electron-builder --linux dir --config=config/builder.json"
+	# Build a linux dir so we get app.asar/app.asar.unpacked produced consistently.
+	# electronDist points at system electron distribution. Even if it copies, we don’t install those runtime files.
+  npm exec -c "electron-builder --linux dir --config=config/builder.json -c.electronDist=/usr/lib/electron"
 }
 
 package() {
@@ -96,18 +97,24 @@ package() {
 
   local _out=""
   _out="$(find . -maxdepth 3 -type d -name 'linux-*unpacked' 2>/dev/null | head -n 1 || true)"
-
+  
   if [[ -z "${_out}" || ! -d "${_out}" ]]; then
     echo "ERROR: Could not find linux-*unpacked output directory" >&2
     return 1
   fi
-	# Install entire bundled application (includes electron runtime)
-  install -d "${pkgdir}/usr/lib/${_pkgname}"
-  cp -a "${_out}/." "${pkgdir}/usr/lib/${_pkgname}/"
 
-	# Create predictable executable name if needed
-  if [[ -x "${pkgdir}/usr/lib/${_pkgname}/${_pkgname}" && ! -e "${pkgdir}/usr/lib/${_pkgname}/${_pkgname}" ]]; then
-    ln -s "${_pkgname}" "${pkgdir}/usr/lib/${_pkgname}/${_pkgname}"
+  local _res="${_out}/resources"
+  if [[ ! -r "${_res}/app.asar" ]]; then
+    echo "ERROR: Missing ${_res}/app.asar" >&2
+    return 1
+  fi
+
+  # Install ONLY the application payload
+  install -d "${pkgdir}/usr/lib/${_pkgname}"
+  install -Dm644 "${_res}/app.asar" "${pkgdir}/usr/lib/${_pkgname}/app.asar"
+
+  if [[ -d "${_res}/app.asar.unpacked" ]]; then
+    cp -a "${_res}/app.asar.unpacked" "${pkgdir}/usr/lib/${_pkgname}/"
   fi
 
 	# Install wrapper, desktop entry, license
@@ -115,15 +122,14 @@ package() {
   install -Dm644 "${srcdir}/figma-linux.desktop" "${pkgdir}/usr/share/applications/${_pkgname}.desktop"
   install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${_pkgname}/LICENSE"
 
-	# Install icons from upstream repo (not from our sources)
+  # Install icons from upstream source tree
   local -a _icon_sizes=(24x24 32x32 36x36 48x48 64x64 72x72 96x96 128x128 192x192 256x256 384x384 512x512 scalable)
   
   for _size in "${_icon_sizes[@]}"; do
     for _src in "lib/icons/${_size}."*; do
       [[ -e "${_src}" ]] || continue
       local _ext="${_src##*.}"
-      install -Dm644 "${_src}" \
-        "${pkgdir}/usr/share/icons/hicolor/${_size}/apps/${_pkgname}.${_ext}"
+      install -Dm644 "${_src}" "${pkgdir}/usr/share/icons/hicolor/${_size}/apps/${_pkgname}.${_ext}"
     done
   done
 }
