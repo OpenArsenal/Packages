@@ -1,8 +1,9 @@
-/*.AppImage
-/*.tar
-/*.tar.*
-/*.zip
-/pkg/
-/src/
-*.deb
-*.zip
+# ignore all
+*
+
+# pkg
+!.gitignore
+!PKGBUILD
+!.SRCINFO
+!figma-linux.sh
+!figma-linux.desktop

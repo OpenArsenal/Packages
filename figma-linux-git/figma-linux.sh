@@ -1,29 +1,81 @@
-#!/bin/bash
-set -o pipefail
-_APPDIR="/usr/lib/@appname@"
-_RUNNAME="${_APPDIR}/@runname@"
-_CFGDIR="@cfgdirname@/"
-_OPTIONS="@options@"
-export PATH="${_APPDIR}:${PATH}"
-export LD_LIBRARY_PATH="${_APPDIR}/swiftshader:${_APPDIR}/lib:${LD_LIBRARY_PATH}"
-export ELECTRON_IS_DEV=0
-export ELECTRON_FORCE_IS_PACKAGED=true
-export ELECTRON_DISABLE_SECURITY_WARNINGS=true
-export ELECTRON_OVERRIDE_DIST_PATH="/usr/bin/electron@electronversion@"
-export NODE_ENV=production
-export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
-export _FLAGS_FILE="${XDG_CONFIG_HOME}/${_CFGDIR}@appname@-flags.conf"
-declare -a _USER_FLAGS
+#!/usr/bin/env bash
+set -euo pipefail
+
+_APPDIR="/usr/lib/figma-linux"
+_RUN_ASAR="${_APPDIR}/app.asar"
+
+_XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-"${HOME}/.config"}"
+_FLAGS_FILE="${_XDG_CONFIG_HOME}/figma-linux/figma-linux-flags.conf"
+
+# Default env that helps most people.
+: "${ELECTRON_OZONE_PLATFORM_HINT:=auto}"
+export ELECTRON_OZONE_PLATFORM_HINT
+
+# Default flags: keep these conservative.
+declare -a DEFAULT_FLAGS=(
+	"--ozone-platform-hint=auto"
+)
+
+declare -a USER_FLAGS=()
+declare -a REMOVE_FLAGS=()
+
+trim_line() {
+	local s="$1"
+	s="${s#"${s%%[![:space:]]*}"}"
+	s="${s%"${s##*[![:space:]]}"}"
+	printf '%s' "${s}"
+}
+
+# Read flags file:
+# - normal lines: add to USER_FLAGS
+# - lines starting with ! : remove from DEFAULT_FLAGS by exact match
 if [[ -f "${_FLAGS_FILE}" ]]; then
-    while read -r line; do
-        if [[ ! "${line}" =~ ^[[:space:]]*#.* ]]; then
-            _USER_FLAGS+=("${line}")
-        fi
-    done < "${_FLAGS_FILE}"
+	while IFS= read -r line || [[ -n "${line}" ]]; do
+		line="$(trim_line "${line}")"
+		[[ -z "${line}" ]] && continue
+		[[ "${line}" == \#* ]] && continue
+
+		if [[ "${line}" == \!* ]]; then
+			REMOVE_FLAGS+=("${line:1}")
+		else
+			USER_FLAGS+=("${line}")
+		fi
+	done < "${_FLAGS_FILE}"
 fi
-cd "${_APPDIR}" || { echo "Failed to change directory to ${_APPDIR}"; exit 1; }
-if [[ "${EUID}" -ne 0 ]] || [[ "${ELECTRON_RUN_AS_NODE}" ]]; then
-    exec electron@electronversion@ "${_RUNNAME}" ${_OPTIONS} "${_USER_FLAGS[@]}" "$@"
-else
-    exec electron@electronversion@ "${_RUNNAME}" ${_OPTIONS} --no-sandbox "${_USER_FLAGS[@]}" "$@"
+
+# Remove defaults requested by user.
+if [[ "${#REMOVE_FLAGS[@]}" -gt 0 ]]; then
+	declare -a FILTERED_DEFAULTS=()
+
+	for d in "${DEFAULT_FLAGS[@]}"; do
+		local keep="1"
+		for r in "${REMOVE_FLAGS[@]}"; do
+			if [[ "${d}" == "${r}" ]]; then
+				keep="0"
+				break
+			fi
+		done
+
+		if [[ "${keep}" == "1" ]]; then
+			FILTERED_DEFAULTS+=("${d}")
+		fi
+	done
+
+	DEFAULT_FLAGS=("${FILTERED_DEFAULTS[@]}")
 fi
+
+if [[ ! -r "${_RUN_ASAR}" ]]; then
+	echo "figma-linux: missing ${_RUN_ASAR}" >&2
+	exit 1
+fi
+
+cd "${_APPDIR}"
+
+# Root fallback only (don’t pre-enable for everyone).
+if [[ "${EUID}" -eq 0 ]]; then
+	exec electron "${_RUN_ASAR}" --no-sandbox "${DEFAULT_FLAGS[@]}" "${USER_FLAGS[@]}" "$@"
+fi
+
+# Order matters: defaults first, then user, then CLI args
+# (later flags tend to win when duplicates exist).
+exec electron "${_RUN_ASAR}" "${DEFAULT_FLAGS[@]}" "${USER_FLAGS[@]}" "$@"
