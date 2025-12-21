@@ -1,7 +1,7 @@
 # Maintainer: Okiki <okiki@thunderstrike.co>
 pkgname=ktailctl
 pkgver=0.21.4
-pkgrel=1
+pkgrel=2
 arch=(x86_64 aarch64)
 url='https://github.com/f-koehler/KTailctl'
 pkgdesc='GUI to monitor and manage Tailscale'
@@ -33,6 +33,7 @@ makedepends=(
   nlohmann-json
 )
 changelog=$pkgname.changelog
+install=$pkgname.install
 
 # use any of:
 #   gpg --keyserver keyserver.ubuntu.com --search-keys me@fkoehler.org
