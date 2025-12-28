@@ -1,6 +1,6 @@
 # Maintainer: Okiki <okiki@thunderstrike.co>
 pkgname=omnictl-bin
-pkgver='1.4.1'
+pkgver='1.4.6'
 pkgrel=1
 pkgdesc="CLI for Omni - SaaS-simple deployment of Kubernetes on your own hardware"
 arch=('x86_64' 'aarch64')
@@ -15,8 +15,8 @@ source_aarch64=(
   "omnictl-linux-arm64-v${pkgver}::https://github.com/siderolabs/omni/releases/download/v${pkgver}/omnictl-linux-arm64"
 )
 
-sha256sums_x86_64=('9f4a4d256a34a2c45575283b18121c217f4e886248f2ff6ffc3df746d1d43bfd')
-sha256sums_aarch64=('3c1c61c63e90c0833e4e78817e209fbebc2d6ad96369467ae2e65f7d732639d1')
+sha256sums_x86_64=('047bf227ffce8496a2e34060941e90736f16d83be71868f973317ee7fddc6e59')
+sha256sums_aarch64=('6a8629e6b5eec361d45cfcb5109d621bb61c5e4a548643e99a10f07693fab8ad')
 
 # Don't strip the prebuilt binary
 options=(!strip)
@@ -47,6 +47,11 @@ package() {
   esac
 
   install -Dm755 "${bin_src}" "${pkgdir}/usr/bin/omnictl"
+
+  # Generate and install shell completions
+  install -dm755 "${pkgdir}/usr/share/bash-completion/completions"
+  install -dm755 "${pkgdir}/usr/share/zsh/site-functions"
+  install -dm755 "${pkgdir}/usr/share/fish/vendor_completions.d"
 
   # Shell completions
   "${pkgdir}/usr/bin/omnictl" completion bash | install -Dm644 /dev/stdin \
