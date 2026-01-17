@@ -1,0 +1,190 @@
+# Maintainer: Okiki Ojo <okiki@thunderstrike.co>
+
+pkgname=calibre
+pkgver=8.16.2
+pkgrel=1
+pkgdesc='Ebook management application'
+arch=(x86_64 aarch64 i686)
+url=https://calibre-ebook.com
+license=(GPL-3.0-only)
+
+provides=(calibre)
+conflicts=(calibre-common calibre-python3)
+
+_pydeps=(apsw
+         beautifulsoup4
+         css-parser
+         cssselect
+         dateutil
+         dnspython
+         faust-cchardet
+         feedparser
+         html2text
+         html5-parser
+         jeepney
+         lxml
+         lxml-html-clean
+         markdown
+         mechanize
+         msgpack
+         netifaces
+         pdftotext
+         pillow
+         psutil
+         py7zr
+         pychm
+         pycryptodome
+         pygments
+         pykakasi
+         pyqt6
+         pyqt6-webengine
+         regex
+         unrardll
+         xxhash
+         zeroconf
+         zstandard)
+
+depends=(hunspell
+         hyphen
+         icu
+         jxrlib
+         libmtp
+         libstemmer
+         libusb
+         libwmf
+#        mathjax
+         mtdev
+         optipng
+         podofo
+         "${_pydeps[@]/#/python-}"
+         qt6-imageformats
+         qt6-multimedia
+         qt6-speech
+         qt6-svg
+         qt6-webengine
+         ttf-liberation
+         uchardet
+         udisks2
+         zstd)
+
+makedepends=(cmake
+            #  espeak-ng           # ← ADD THIS
+            #  onnxruntime         # ← ADD THIS
+             ffmpeg              # ← ADD THIS (provides libpostproc)
+             pyqt-builder
+             rapydscript-ng
+             sip
+             xdg-utils)
+
+checkdepends=(poppler
+              python-fonttools
+              speech-dispatcher
+              tk)
+
+
+optdepends=('poppler: required for converting pdf to html'
+            'python-fonttools: required for font subset feature in epub editor'
+            'speech-dispatcher: TTS support in the viewer')
+
+replaces=("${conflicts[@]}")
+
+options=('!strip')
+							
+_archive="$pkgname-$pkgver"
+
+# Your sources (mixing patch + binaries - WRONG)
+source=(
+	"${_archive}.tar.gz::https://github.com/kovidgoyal/calibre/archive/v${pkgver}.tar.gz"	# ← Source archive
+	calibre-qt610-headless-private.patch  # ← Patch for SOURCE builds
+)
+
+# Checksums
+sha256sums=('a5071eadf9119d3d8fa9cef5ba2fc7dadbe58c9e2ac5b62f59254426297f694c'
+            'bd05eb7f5884262ba43228e3c3565b9b7303a0d3af008b3405a66ba265d97438')
+
+prepare(){
+	cd "$_archive"
+
+	# Desktop integration (e.g. enforce arch defaults)
+	# Use uppercase naming scheme, don't delete config files under fakeroot.
+	sed -e "/import config_dir/,/os.rmdir(config_dir)/d" \
+		  -e "s/'ctc-posml'/'text' not in mt and 'pdf' not in mt and 'xhtml'/" \
+		  -e "s/^Name=calibre/Name=Calibre/g" \
+		  -i  src/calibre/linux.py
+
+	# Remove unneeded files
+	rm -f resources/$pkgname-portable.*
+
+
+    # Remove piper extension from build
+    if [ -f setup/extensions.json ]; then
+        python -c "
+import json
+with open('setup/extensions.json', 'r') as f:
+    data = json.load(f)
+# Remove piper from extensions list
+data = [ext for ext in data if 'piper' not in ext.get('name', '').lower()]
+with open('setup/extensions.json', 'w') as f:
+    json.dump(data, f, indent=2)
+"
+    fi
+    
+    # Also remove the source file as backup
+    rm -f src/calibre/utils/tts/piper.cpp
+    
+
+  # Only apply if upstream hasn't already added it
+	patch -Np1 --forward -i "${srcdir}/calibre-qt610-headless-private.patch"
+}
+
+build() {
+	cd "$_archive"
+	export LANG='en_US.UTF-8'
+
+	python setup.py build
+	python setup.py iso639
+	python setup.py iso3166
+
+	# the liberation fonts directory is deleted later, but this step is necessary to prevent the setup from downloading them
+	python setup.py liberation_fonts --system-liberation_fonts \
+				 --path-to-liberation_fonts /usr/share/fonts/liberation
+
+	#	MathJax 4 not supported
+	#	python setup.py mathjax --system-mathjax --path-to-mathjax /usr/share/mathjax
+	python setup.py mathjax
+	python setup.py gui
+}
+
+check() {
+	cd "$_archive"
+	export LANG='en_US.UTF-8'
+	# Skip piper test since we disabled it
+	python setup.py test --under-sanitize --exclude-test-name test_piper
+	python setup.py test_rs
+}
+
+package() {
+	cd "$_archive"
+	export LANG='en_US.UTF-8'
+
+	# If this directory doesn't exist, zsh completion won't install.
+	install -d "$pkgdir/usr/share/zsh/site-functions"
+
+	python setup.py install \
+		    --staging-root="$pkgdir/usr" \
+		    --prefix=/usr \
+		    --system-plugins-location=/usr/share/calibre/system-plugins
+
+	cp -a man-pages/ "$pkgdir/usr/share/man"
+	
+	# Remove build artifacts
+	rm -r "$pkgdir/usr/share/calibre/rapydscript/"
+	rm -r "$pkgdir/usr/share/calibre/fonts/liberation/"
+
+	# Compile Python bytecode
+	while read -rd '' _file; do
+		_destdir="$(dirname "${_file#${pkgdir}}")"
+		python -m compileall -d "${_destdir}" "${_file}"
+		python -O -m compileall -d "${_destdir}" "${_file}"
+	done < <(find "$pkgdir/usr/lib/" -name '*.py' -print0)
+}
