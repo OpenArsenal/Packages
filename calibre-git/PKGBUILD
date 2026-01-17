@@ -1,0 +1,165 @@
+# Maintainer: Alex Potapenko <opotapenko@gmail.com>
+
+pkgname=calibre-git
+pkgver=8.16.2.r309.gef29a57a03
+pkgrel=1
+pkgdesc='Ebook management application'
+arch=(x86_64 aarch64 i686)
+url=https://calibre-ebook.com
+license=(GPL3)
+_pydeps=(apsw
+         beautifulsoup4
+         faust-cchardet
+         css-parser
+         cssselect
+         dateutil
+         dnspython
+         feedparser
+         html2text
+         html5-parser
+         jeepney
+         lxml
+         lxml-html-clean
+         markdown
+         mechanize
+         msgpack
+         netifaces
+         pdftotext
+         pillow
+         psutil
+         py7zr
+         pychm
+         pycryptodome
+         pygments
+         pykakasi
+         pyqt6
+         pyqt6-webengine
+         regex
+         unrardll
+         xxhash
+         zeroconf
+         zstandard)
+depends=(hunspell
+         hyphen
+         icu
+         jxrlib
+         libmtp
+         libstemmer
+         libusb
+         libwmf
+         mathjax
+         mtdev
+         optipng
+         podofo
+         "${_pydeps[@]/#/python-}"
+         qt6-imageformats
+         qt6-multimedia
+         qt6-speech
+         qt6-svg
+         qt6-webengine
+         ttf-liberation
+         uchardet
+         udisks2
+         zstd)
+makedepends=(cmake
+             git
+             pyqt-builder
+             rapydscript-ng
+             sip
+             xdg-utils
+             python-sphinx)
+checkdepends=(poppler
+              python-fonttools
+              speech-dispatcher
+              tk)
+optdepends=('poppler: required for converting pdf to html'
+            'python-fonttools: required for font subset feature in epub editor'
+            'speech-dispatcher: TTS support in the viewer')
+
+provides=("${pkgname%-git}=$pkgver")
+conflicts=("${pkgname%-git}"
+           calibre-common
+           calibre-python3)
+
+license=(GPL3)
+options=('!strip')
+
+# Sources
+#   Since there doesn't seem to be a simple way to generate desktop
+#   integration files without building calibre from source,
+#   we'll provide them here
+source=("git+https://github.com/kovidgoyal/${pkgname%-git}.git"
+        "git+https://github.com/kovidgoyal/${pkgname%-git}-translations.git"
+        user-agent-data.json)
+sha256sums=('SKIP'
+            'SKIP'
+            '93dae22f2586ea8f39a5f63890975ad1f01d565ee82fbd9249c7c6eb1e482d73')
+
+pkgver() {
+	cd "${pkgname%-git}"
+	git describe --long | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+prepare(){
+	cd "${pkgname%-git}"
+	python setup.py git_version
+	# Link translations to build dir
+	ln -sfT ../calibre-translations translations
+	# Desktop integration (e.g. enforce arch defaults)
+	# Use uppercase naming scheme, don't delete config files under fakeroot.
+	sed -e "/import config_dir/,/os.rmdir(config_dir)/d" \
+		-e "s/'ctc-posml'/'text' not in mt and 'pdf' not in mt and 'xhtml'/" \
+		-e "s/^Name=calibre/Name=Calibre/g" \
+		-i  src/calibre/linux.py
+	# Remove unneeded files
+	rm -f resources/$pkgname-portable.*
+}
+
+check() {
+	cd "${pkgname%-git}"
+	export LANG='en_US.UTF-8'
+	python setup.py test --under-sanitize --exclude-test-name test_piper
+	python setup.py test_rs
+ }
+
+build() {
+	cd "${pkgname%-git}"
+	export LANG='en_US.UTF-8'
+	python setup.py build
+	python setup.py iso639
+	python setup.py iso3166
+	python setup.py gui
+	python setup.py translations
+	python setup.py hyphenation
+	python setup.py liberation_fonts --system-liberation_fonts --path-to-liberation_fonts /usr/share/fonts/liberation
+	python setup.py mathjax --system-mathjax --path-to-mathjax /usr/share/mathjax
+	python setup.py man_pages
+	python setup.py resources
+}
+
+
+package() {
+	cd "${pkgname%-git}"
+	export LANG='en_US.UTF-8'
+
+	# If this directory doesn't exist, zsh completion won't install.
+	install -d "${pkgdir}/usr/share/zsh/site-functions"
+
+	python setup.py install \
+		--staging-root="${pkgdir}/usr" \
+		--prefix=/usr \
+		--system-plugins-location=/usr/share/calibre/system-plugins
+
+	cp -a man-pages/ "${pkgdir}/usr/share/man"
+
+	# not needed at runtime
+	rm -r "${pkgdir}"/usr/share/calibre/rapydscript/
+
+	# Compiling bytecode FS#33392
+	# This is kind of ugly but removes traces of the build root.
+	while read -rd '' _file; do
+		_destdir="$(dirname "${_file#${pkgdir}}")"
+		python -m compileall -d "${_destdir}" "${_file}"
+		python -O -m compileall -d "${_destdir}" "${_file}"
+	done < <(find "${pkgdir}"/usr/lib/ -name '*.py' -print0)
+}
