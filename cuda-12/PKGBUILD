@@ -2,18 +2,18 @@
 # Contributor: Stephan Düsterhaupt <me at stephanduesterhaupt dot de>
 # Contributor: Ivo Noack <ivo at insonic dot de>
 
-pkgname=cuda-12.9
+pkgname=cuda-12
 pkgver=12.9.1
 _driverver=575.57.08
 pkgrel=1
-pkgdesc="NVIDIA's GPU programming toolkit version 12.9 (Maxwell/Pascal/Volta support)"
+pkgdesc="NVIDIA's GPU programming toolkit version 12 (Maxwell/Pascal/Volta support)"
 arch=('x86_64')
 url="https://developer.nvidia.com/cuda-zone"
 license=('custom:NVIDIA')
 depends=('gcc14' 'opencl-nvidia' 'nvidia-utils')
 conflicts=('cuda')
 replaces=('cuda-toolkit' 'cuda-sdk')
-provides=('cuda-toolkit' 'cuda-sdk' 'cuda=12.9')
+provides=('cuda-toolkit' 'cuda-sdk' 'cuda=12')
 optdepends=('gdb: for cuda-gdb'
             'java-runtime=8: for nsight and nvvp')
 options=(!strip staticlibs)
