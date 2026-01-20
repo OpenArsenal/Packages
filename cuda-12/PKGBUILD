@@ -10,7 +10,8 @@ pkgdesc="NVIDIA's GPU programming toolkit version 12 (Maxwell/Pascal/Volta suppo
 arch=('x86_64')
 url="https://developer.nvidia.com/cuda-zone"
 license=('custom:NVIDIA')
-depends=('gcc14' 'opencl-nvidia' 'nvidia-utils')
+depends=('opencl-nvidia' 'nvidia-utils')
+makedepends=('gcc14')
 conflicts=('cuda')
 replaces=('cuda-toolkit' 'cuda-sdk')
 provides=('cuda-toolkit' 'cuda-sdk' 'cuda=12')
