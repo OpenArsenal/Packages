@@ -1,0 +1,12 @@
+# Build
+makechroot
+
+pkg
+src
+
+*.log
+
+# Archive
+*.tar.gz
+*.pkg.tar.zst
+koboldcpp-cuda-bin-*
