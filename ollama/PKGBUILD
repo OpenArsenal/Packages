@@ -144,6 +144,7 @@ build() {
       -B "$_cuda_build_dir"
       -D CMAKE_CUDA_COMPILER=/opt/cuda/bin/nvcc
       -D CMAKE_CUDA_ARCHITECTURES="50;52;53;60;61;62;70;72;75;80;86;87;89;90;90a"
+      -D CMAKE_CUDA_FLAGS="-Wno-deprecated-gpu-targets"
     )
     cmake "${cmake_cuda_options[@]}"
     cmake --build "$_cuda_build_dir"
