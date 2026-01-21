@@ -2,7 +2,7 @@
 # Contributor: Stephan Düsterhaupt <me at stephanduesterhaupt dot de>
 # Contributor: Ivo Noack <ivo at insonic dot de>
 
-pkgname=cudnn9.10-cuda12.9
+pkgname=cudnn9-cuda12
 pkgver=9.10.2.21
 _pkgver=9.10.2
 cudaver=12.9
