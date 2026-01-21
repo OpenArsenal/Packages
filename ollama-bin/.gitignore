@@ -1,6 +1,7 @@
 *
 !.gitignore
-!LICENSE
+!LICENSE*
+!README*.md
 !ollama.conf
 !ollama.service
 !PKGBUILD
