@@ -25,7 +25,7 @@ _appimage="${pkgname}-${pkgver}.AppImage"
 
 # Installer URL uses hyphen format: 0.3.39-2
 source=("${_appimage}::https://installers.lmstudio.ai/linux/x64/${_pkgver}/LM-Studio-${_pkgver}-x64.AppImage")
-sha256sums=('SKIP')  # Use 'SKIP' or run updpkgsums after first download
+sha256sums=('23e74efed0ba4802e3afc62bc958177c8edee9edf9cbb0a4507b07781716139c')
 noextract=("${_appimage}")
 
 prepare() {
