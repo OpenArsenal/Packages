@@ -1,68 +1,247 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "packages": [
-    { "name": "1password-cli-bin", "dir": "1password-cli-bin", "enabled": true, "feed": { "type": "1password-cli2", "url": "https://app-updates.agilebits.com/check/1/0/CLI2/en/0/N" } },
-    { "name": "1password-wayland", "dir": "1password-wayland", "enabled": true, "feed": { "type": "1password-linux-stable", "url": "https://releases.1password.com/linux/stable/" } },
-
-    { "name": "alpaca", "dir": "alpaca", "enabled": true, "feed": { "type": "github-release", "repo": "jeffser/alpaca", "channel": "stable" } },
-    { "name": "alpaca-git", "dir": "alpaca-git", "enabled": true, "feed": { "type": "vcs", "repo": "jeffser/alpaca" } },
-    { "name": "alpaka-git", "dir": "alpaka-git", "enabled": true, "feed": { "type": "vcs" } },
-
-    { "name": "calibre", "dir": "calibre", "enabled": true, "feed": { "type": "github-release", "repo": "kovidgoyal/calibre", "channel": "stable" } },
-    { "name": "calibre-bin", "dir": "calibre-bin", "enabled": true, "feed": { "type": "github-release", "repo": "kovidgoyal/calibre", "channel": "stable" } },
-    { "name": "calibre-git", "dir": "calibre-git", "enabled": true, "feed": { "type": "vcs", "repo": "kovidgoyal/calibre" } },
-
-    { "name": "cherry-studio", "dir": "cherry-studio", "enabled": true, "feed": { "type": "github-release", "repo": "CherryHQ/cherry-studio", "channel": "stable" } },
-    { "name": "cherry-studio-bin", "dir": "cherry-studio-bin", "enabled": true, "feed": { "type": "github-release", "repo": "CherryHQ/cherry-studio", "channel": "stable" } },
-    { "name": "cherry-studio-electron-bin", "dir": "cherry-studio-electron-bin", "enabled": true, "feed": { "type": "github-release", "repo": "CherryHQ/cherry-studio", "channel": "stable" } },
-    { "name": "cherry-studio-git", "dir": "cherry-studio-git", "enabled": true, "feed": { "type": "vcs", "repo": "CherryHQ/cherry-studio" } },
-
-    { "name": "cuda-12", "dir": "cuda-12", "enabled": true, "feed": { "type": "manual" } },
-    { "name": "cudnn9-cuda12", "dir": "cudnn9-cuda12", "enabled": true, "feed": { "type": "manual" } },
-
-    { "name": "figma-linux", "dir": "figma-linux", "enabled": true, "feed": { "type": "github-release", "repo": "Figma-Linux/figma-linux", "channel": "stable" } },
-    { "name": "figma-linux-electron", "dir": "figma-linux-electron", "enabled": true, "feed": { "type": "github-release", "repo": "Figma-Linux/figma-linux", "channel": "stable" } },
-    { "name": "figma-linux-git", "dir": "figma-linux-git", "enabled": true, "feed": { "type": "vcs", "repo": "Figma-Linux/figma-linux" } },
-    { "name": "figma-linux-electron-git", "dir": "figma-linux-electron-git", "enabled": true, "feed": { "type": "vcs", "repo": "Figma-Linux/figma-linux" } },
-
-    { "name": "github-cli", "dir": "github-cli", "enabled": true, "feed": { "type": "github-release", "repo": "cli/cli", "channel": "stable" } },
-
-    { "name": "google-chrome-bin", "dir": "google-chrome-bin", "enabled": true, "feed": { "type": "chrome", "channel": "stable" } },
-    { "name": "google-chrome-canary-bin", "dir": "google-chrome-canary-bin", "enabled": true, "feed": { "type": "chrome", "channel": "canary" } },
-
-    { "name": "icu69", "dir": "icu69", "enabled": true, "feed": { "type": "github-tags", "repo": "unicode-org/icu" } },
-    { "name": "icu69-bin", "dir": "icu69-bin", "enabled": true, "feed": { "type": "manual" } },
-
-    { "name": "jan", "dir": "jan", "enabled": true, "feed": { "type": "github-release", "repo": "janhq/jan", "channel": "stable" } },
-    { "name": "jan-bin", "dir": "jan-bin", "enabled": true, "feed": { "type": "github-release", "repo": "janhq/jan", "channel": "stable" } },
-
-    { "name": "koboldcpp-cuda", "dir": "koboldcpp-cuda", "enabled": true, "feed": { "type": "github-release", "repo": "LostRuins/koboldcpp", "channel": "stable" } },
-    { "name": "koboldcpp-cuda-bin", "dir": "koboldcpp-cuda-bin", "enabled": true, "feed": { "type": "github-release", "repo": "LostRuins/koboldcpp", "channel": "stable" } },
-
-    { "name": "ktailctl", "dir": "ktailctl", "enabled": true, "feed": { "type": "github-release", "repo": "f-koehler/KTailctl", "channel": "stable" } },
-    { "name": "kurtosis-cli-bin", "dir": "kurtosis-cli-bin", "enabled": true, "feed": { "type": "github-release", "repo": "kurtosis-tech/kurtosis", "channel": "stable" } },
-
-    { "name": "lmstudio-bin", "dir": "lmstudio-bin", "enabled": true, "feed": { "type": "lmstudio" } },
-
-    { "name": "microsoft-edge-stable-bin", "dir": "microsoft-edge-stable-bin", "enabled": true, "feed": { "type": "edge", "repomdUrl": "https://packages.microsoft.com/yumrepos/edge/repodata/repomd.xml" } },
-
-    { "name": "ollama", "dir": "ollama", "enabled": true, "feed": { "type": "github-release", "repo": "ollama/ollama", "channel": "stable" } },
-    { "name": "ollama-bin", "dir": "ollama-bin", "enabled": true, "feed": { "type": "github-release", "repo": "ollama/ollama", "channel": "stable" } },
-    { "name": "ollama-cuda12", "dir": "ollama-cuda12", "enabled": true, "feed": { "type": "github-release", "repo": "ollama/ollama", "channel": "stable" } },
-    { "name": "ollama-cuda13", "dir": "ollama-cuda13", "enabled": true, "feed": { "type": "github-release", "repo": "ollama/ollama", "channel": "stable" } },
-
-    { "name": "omnictl-bin", "dir": "omnictl-bin", "enabled": true, "feed": { "type": "github-release", "repo": "siderolabs/omni", "channel": "stable" } },
-
-    { "name": "pupu-git", "dir": "pupu-git", "enabled": true, "feed": { "type": "vcs", "repo": "haoxiang-xu/PuPu" } },
-
-    { "name": "python312", "dir": "python312", "enabled": true, "feed": { "type": "manual" } },
-    { "name": "python-customtkinter", "dir": "python-customtkinter", "enabled": true, "feed": { "type": "github-tags", "repo": "TomSchimansky/CustomTkinter" } },
-
-    { "name": "vesktop", "dir": "vesktop", "enabled": true, "feed": { "type": "github-release", "repo": "Vencord/Vesktop", "channel": "stable" } },
-    { "name": "vesktop-electron", "dir": "vesktop-electron", "enabled": true, "feed": { "type": "github-release", "repo": "Vencord/Vesktop", "channel": "stable" } },
-    { "name": "vesktop-git", "dir": "vesktop-git", "enabled": true, "feed": { "type": "vcs", "repo": "Vencord/Vesktop" } },
-    { "name": "vesktop-electron-git", "dir": "vesktop-electron-git", "enabled": true, "feed": { "type": "vcs", "repo": "Vencord/Vesktop" } },
-
-    { "name": "visual-studio-code-bin", "dir": "visual-studio-code-bin", "enabled": true, "feed": { "type": "vscode" } }
+    {
+      "name": "1password-cli-bin",
+      "type": "1password-cli2",
+      "url": "https://app-updates.agilebits.com/check/1/0/CLI2/en/0/N"
+    },
+    {
+      "name": "1password-wayland",
+      "type": "manual"
+    },
+    {
+      "name": "alpaca",
+      "type": "github-release",
+      "repo": "Jeffser/Alpaca",
+      "channel": "stable"
+    },
+    {
+      "name": "alpaca-git",
+      "type": "vcs"
+    },
+    {
+      "name": "alpaka-git",
+      "type": "vcs"
+    },
+    {
+      "name": "calibre",
+      "type": "github-release",
+      "repo": "kovidgoyal/calibre",
+      "channel": "stable"
+    },
+    {
+      "name": "calibre-bin",
+      "type": "github-release",
+      "repo": "kovidgoyal/calibre",
+      "channel": "stable"
+    },
+    {
+      "name": "calibre-git",
+      "type": "vcs"
+    },
+    {
+      "name": "cherry-studio",
+      "type": "github-release",
+      "repo": "CherryHQ/cherry-studio",
+      "channel": "stable"
+    },
+    {
+      "name": "cherry-studio-bin",
+      "type": "github-release",
+      "repo": "CherryHQ/cherry-studio",
+      "channel": "stable"
+    },
+    {
+      "name": "cherry-studio-electron-bin",
+      "type": "github-release",
+      "repo": "CherryHQ/cherry-studio",
+      "channel": "stable"
+    },
+    {
+      "name": "cherry-studio-git",
+      "type": "vcs"
+    },
+    {
+      "name": "cuda-12",
+      "type": "manual"
+    },
+    {
+      "name": "cudnn9-cuda12",
+      "type": "manual"
+    },
+    {
+      "name": "figma-linux",
+      "type": "github-release",
+      "repo": "Figma-Linux/figma-linux",
+      "channel": "stable"
+    },
+    {
+      "name": "figma-linux-electron",
+      "type": "github-release",
+      "repo": "Figma-Linux/figma-linux",
+      "channel": "stable"
+    },
+    {
+      "name": "figma-linux-git",
+      "type": "vcs"
+    },
+    {
+      "name": "figma-linux-electron-git",
+      "type": "vcs"
+    },
+    {
+      "name": "github-cli",
+      "type": "github-release",
+      "repo": "cli/cli",
+      "channel": "stable"
+    },
+    {
+      "name": "google-chrome-bin",
+      "type": "chrome",
+      "channel": "stable"
+    },
+    {
+      "name": "google-chrome-canary-bin",
+      "type": "chrome",
+      "channel": "canary"
+    },
+    {
+      "name": "icu69",
+      "type": "github-release-filtered",
+      "repo": "unicode-org/icu",
+      "channel": "stable",
+      "tagRegex": "^release-69-[0-9]+$",
+      "versionRegex": "^release-([0-9]+)-([0-9]+)$",
+      "versionFormat": "$1.$2"
+    },
+    {
+      "name": "icu69-bin",
+      "type": "github-release-filtered",
+      "repo": "unicode-org/icu",
+      "channel": "stable",
+      "tagRegex": "^release-69-[0-9]+$",
+      "versionRegex": "^release-([0-9]+)-([0-9]+)$",
+      "versionFormat": "$1.$2"
+    },
+    {
+      "name": "jan",
+      "type": "github-release",
+      "repo": "janhq/jan",
+      "channel": "stable"
+    },
+    {
+      "name": "jan-bin",
+      "type": "github-release",
+      "repo": "janhq/jan",
+      "channel": "stable"
+    },
+    {
+      "name": "koboldcpp-cuda",
+      "type": "github-release",
+      "repo": "LostRuins/koboldcpp",
+      "channel": "stable"
+    },
+    {
+      "name": "koboldcpp-cuda-bin",
+      "type": "github-release",
+      "repo": "LostRuins/koboldcpp",
+      "channel": "stable"
+    },
+    {
+      "name": "ktailctl",
+      "type": "github-release",
+      "repo": "f-koehler/KTailctl",
+      "channel": "stable"
+    },
+    {
+      "name": "kurtosis-cli-bin",
+      "type": "github-release",
+      "repo": "kurtosis-tech/kurtosis",
+      "channel": "stable"
+    },
+    {
+      "name": "lmstudio-bin",
+      "type": "lmstudio"
+    },
+    {
+      "name": "microsoft-edge-stable-bin",
+      "type": "edge",
+      "url": "https://packages.microsoft.com/yumrepos/edge/repodata/repomd.xml"
+    },
+    {
+      "name": "ollama",
+      "type": "github-release",
+      "repo": "ollama/ollama",
+      "channel": "stable"
+    },
+    {
+      "name": "ollama-bin",
+      "type": "github-release",
+      "repo": "ollama/ollama",
+      "channel": "stable"
+    },
+    {
+      "name": "ollama-cuda12",
+      "type": "github-release",
+      "repo": "ollama/ollama",
+      "channel": "stable"
+    },
+    {
+      "name": "ollama-cuda13",
+      "type": "github-release",
+      "repo": "ollama/ollama",
+      "channel": "stable"
+    },
+    {
+      "name": "omnictl-bin",
+      "type": "github-release",
+      "repo": "siderolabs/omni",
+      "channel": "stable"
+    },
+    {
+      "name": "pupu-git",
+      "type": "vcs"
+    },
+    {
+      "name": "python312",
+      "type": "github-tags-filtered",
+      "repo": "python/cpython",
+      "tagRegex": "^v3\\.12\\.[0-9]+$",
+      "versionRegex": "^v(3\\.12\\.[0-9]+)$",
+      "versionFormat": "$1"
+    },
+    {
+      "name": "python-customtkinter",
+      "type": "github-release",
+      "repo": "TomSchimansky/CustomTkinter",
+      "channel": "stable"
+    },
+    {
+      "name": "vesktop",
+      "type": "github-release",
+      "repo": "Vencord/Vesktop",
+      "channel": "stable"
+    },
+    {
+      "name": "vesktop-electron",
+      "type": "github-release",
+      "repo": "Vencord/Vesktop",
+      "channel": "stable"
+    },
+    {
+      "name": "vesktop-git",
+      "type": "vcs"
+    },
+    {
+      "name": "vesktop-electron-git",
+      "type": "vcs"
+    },
+    {
+      "name": "visual-studio-code-bin",
+      "type": "github-release",
+      "repo": "microsoft/vscode",
+      "channel": "stable"
+    }
   ]
 }
