@@ -107,6 +107,7 @@ src/
 *.sig
 *.rpm
 *.deb
+*.git
 
 # Temporary files
 .SRCINFO
