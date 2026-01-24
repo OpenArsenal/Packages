@@ -265,6 +265,12 @@
       "type": "github-release",
       "repo": "logseq/logseq",
       "channel": "stable"
+    },
+    {
+      "name": "aurutils",
+      "type": "github-release",
+      "repo": "AladW/aurutils",
+      "channel": "stable"
     }
   ]
 }
