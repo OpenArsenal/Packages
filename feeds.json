@@ -242,6 +242,29 @@
       "type": "github-release",
       "repo": "microsoft/vscode",
       "channel": "stable"
+    },
+    {
+      "name": "logseq-desktop-git",
+      "type": "vcs",
+      "repo": "logseq/logseq",
+      "channel": "stable"
+    },
+    {
+      "name": "logseq-desktop",
+      "type": "github-release",
+      "repo": "logseq/logseq",
+      "channel": "stable"
+    },
+    {
+      "name": "logseq-desktop-electron-bin",
+      "type": "manual",
+      "channel": "stable"
+    },
+    {
+      "name": "logseq-desktop-bin",
+      "type": "github-release",
+      "repo": "logseq/logseq",
+      "channel": "stable"
     }
   ]
 }
