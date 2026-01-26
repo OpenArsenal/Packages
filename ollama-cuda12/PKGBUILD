@@ -48,27 +48,29 @@ b2sums=('06357dc7c37b4aa8f3053945748647f1138f536afe8759a5a2ffb1a3df498f3429e9087
 _cuda_variant=""
 _cuda_build_dir=""
 
-if [[ -x "/opt/cuda/bin/nvcc" ]]; then
-  _cuda_major=$(/opt/cuda/bin/nvcc --version | grep "release" | sed -n 's/.*release \([0-9]*\)\..*/\1/p')
-  echo "==> Detected CUDA version: $_cuda_major at /opt/cuda"
-  
-  if [[ "$_cuda_major" -eq 12 ]]; then
-    _cuda_variant="cuda12"
-    _cuda_build_dir="build-cuda12"
-    pkgname+=(ollama-cuda12)
-    echo "==> Will build: ollama-cuda12 (Maxwell, Pascal, Volta, Turing, Ampere, Hopper)"
-  elif [[ "$_cuda_major" -ge 13 ]]; then
-    _cuda_variant="cuda13"
-    _cuda_build_dir="build-cuda13"
-    pkgname+=(ollama-cuda13)
-    echo "==> Will build: ollama-cuda13 (Ampere, Ada Lovelace, Hopper, Blackwell)"
+prepare() {
+  if [[ -x "/opt/cuda/bin/nvcc" ]]; then
+    _cuda_major=$(/opt/cuda/bin/nvcc --version | grep "release" | sed -n 's/.*release \([0-9]*\)\..*/\1/p')
+    echo "==> Detected CUDA version: $_cuda_major at /opt/cuda"
+    
+    if [[ "$_cuda_major" -eq 12 ]]; then
+      _cuda_variant="cuda12"
+      _cuda_build_dir="build-cuda12"
+      pkgname+=(ollama-cuda12)
+      echo "==> Will build: ollama-cuda12 (Maxwell, Pascal, Volta, Turing, Ampere, Hopper)"
+    elif [[ "$_cuda_major" -ge 13 ]]; then
+      _cuda_variant="cuda13"
+      _cuda_build_dir="build-cuda13"
+      pkgname+=(ollama-cuda13)
+      echo "==> Will build: ollama-cuda13 (Ampere, Ada Lovelace, Hopper, Blackwell)"
+    else
+      echo "==> WARNING: CUDA version $_cuda_major is not supported. Skipping CUDA build."
+    fi
   else
-    echo "==> WARNING: CUDA version $_cuda_major is not supported. Skipping CUDA build."
+    echo "==> WARNING: nvcc not found at /opt/cuda."
+    echo "==> WARNING: Install 'cuda' (13.x) or 'cuda-12.9' (AUR) to build CUDA support."
   fi
-else
-  echo "==> WARNING: nvcc not found at /opt/cuda."
-  echo "==> WARNING: Install 'cuda' (13.x) or 'cuda-12.9' (AUR) to build CUDA support."
-fi
+}
 
 build() {
   export CGO_CPPFLAGS="${CPPFLAGS}"
