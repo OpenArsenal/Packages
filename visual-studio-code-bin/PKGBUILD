@@ -79,5 +79,5 @@ package() {
   cp -r "${srcdir}/$(_pkg)/"* "${pkgdir}/opt/${_pkgname}"
 
   # Launcher
-	install -m755 "${srcdir}/${_pkgname}-bin.sh" "${pkgdir}/usr/bin/code"
+  install -m755 "${srcdir}/${_pkgname}-bin.sh" "${pkgdir}/usr/bin/code"
 }
