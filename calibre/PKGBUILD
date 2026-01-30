@@ -1,7 +1,7 @@
 # Maintainer: Okiki Ojo <okiki@thunderstrike.co>
 
 pkgname=calibre
-pkgver=8.16.2
+pkgver='9.0.0'
 pkgrel=1
 pkgdesc='Ebook management application'
 arch=(x86_64 aarch64 i686)
@@ -99,7 +99,7 @@ source=(
 )
 
 # Checksums
-sha256sums=('a5071eadf9119d3d8fa9cef5ba2fc7dadbe58c9e2ac5b62f59254426297f694c'
+sha256sums=('5bc802e246c63d72b6b9a4499e86c48c56eaa5e1cfbfdeef3e89a315c23c2c7d'
             'bd05eb7f5884262ba43228e3c3565b9b7303a0d3af008b3405a66ba265d97438')
 
 prepare(){
