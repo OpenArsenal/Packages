@@ -1,0 +1,24 @@
+pkgbase = vesktop-electron
+	pkgdesc = An Electron-based Discord app with Vencord & improved Linux support using system provided electron. Unsupported
+	pkgver = 1.6.4
+	pkgrel = 1
+	url = https://github.com/Vencord/Vesktop
+	arch = x86_64
+	arch = aarch64
+	license = GPL-3.0-only
+	makedepends = pnpm
+	makedepends = npm
+	depends = electron
+	optdepends = libnotify: Notifications
+	optdepends = xdg-utils: Open links, files, etc
+	provides = vesktop
+	conflicts = vesktop
+	conflicts = vesktop-electron
+	source = Vesktop-1.6.4.tar.gz::https://github.com/Vencord/Vesktop/archive/v1.6.4.tar.gz
+	source = vesktop.desktop
+	source = vesktop.sh
+	sha256sums = 19f131dcfaa48df02268bbda538389c7e1ce63c80420fa617089a83253dba702
+	sha256sums = 455c00b862aa0a7e18ca8e23d65d5c5ee4506cdfb15f1bf6f622cce39827de46
+	sha256sums = a2da313031cfaa892f0f2e51fd0ffafbc14001d4efb0523bb8bfaeb7f4ddc3fa
+
+pkgname = vesktop-electron
