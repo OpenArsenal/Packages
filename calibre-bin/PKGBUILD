@@ -4,59 +4,58 @@ pkgname=calibre-bin
 pkgver='9.0.0'
 pkgrel=1
 pkgdesc="Official binary version Calibre"
-arch=(x86_64 aarch64 i686)
+arch=(x86_64 aarch64)
 url="https://download.calibre-ebook.com"
 license=(GPL3)
 depends=()
 makedepends=()
 optdepends=()
 conflicts=(calibre calibre-git)
-provides=()
+provides=(calibre)
 options=('!strip')
 
 # Sources
 #   Since there doesn't seem to be a simple way to generate desktop
 #   integration files without building calibre from source,
 #   we'll provide them here
-source=(
-	share.tar.xz
-)
+source=(share.tar.xz)
 
 # Arch-per-arch sources (prebuilt upstream binaries)
-source_x86_64=(
-  "calibre-linux-amd64-v${pkgver}::https://github.com/kovidgoyal/calibre/releases/download/v${pkgver}/calibre-${pkgver}-x86_64.txz"
-)
-source_aarch64=(
-  "calibre-linux-arm64-v${pkgver}::https://github.com/kovidgoyal/calibre/releases/download/v${pkgver}/calibre-${pkgver}-arm64.txz"
-)
+source_x86_64=("calibre-${pkgver}-x86_64.txz::https://github.com/kovidgoyal/calibre/releases/download/v${pkgver}/calibre-${pkgver}-x86_64.txz")
+source_aarch64=("calibre-${pkgver}-aarch64.txz::https://github.com/kovidgoyal/calibre/releases/download/v${pkgver}/calibre-${pkgver}-arm64.txz")
 
 # Checksums
-sha256sums=('c7aae61afba19c9cceed8bbafd2b39b5c4d6d683de0ccfc9c1fe2651857f757a'
-            'f5603782b815a5192b8086f5134d732211f058635babb17d950d0d0a7efeaa06')
-
-prepare() {
-    # don't want the sources symlinks in the final tarball
-    for src in "${source[@]##*/}"; do
-        if [[ -L "$srcdir/$src" ]]; then
-            rm "$srcdir/$src"
-        fi
-    done
-}
+sha256sums=('c7aae61afba19c9cceed8bbafd2b39b5c4d6d683de0ccfc9c1fe2651857f757a')
+sha256sums_x86_64=('b9cc2b8fe65f25b4057b66ff0839bed986a519cbeae18ef53d6ee722ee2686cd')
+sha256sums_aarch64=('0a873e9c2f3b11ecca46ffd6832c3882c4f5c3749b7ef254f3062239e67e32d3')
 
 package() {
-	# Creating needed directories
-	install -dm755 "$pkgdir/usr/bin"
-	install -dm755 "$pkgdir/opt/calibre"
+  install -dm755 "$pkgdir/usr/bin" "$pkgdir/opt/calibre"
 
-	# Package calibre
-	cp -af "$srcdir/"* "$pkgdir/opt/calibre"
-	mv -f "$pkgdir/opt/calibre/share" "$pkgdir/usr"
-	# espeak-ng-data used by calibre
-	install -dm755 "$pkgdir/opt/calibre/share"
-	mv -f "$pkgdir/usr/share/espeak-ng-data" "$pkgdir/opt/calibre/share"
 
-	# Create symlinks in /usr/bin
-	for f in `find "$pkgdir/opt/calibre" -maxdepth 1 -type f -printf "%f\n"`; do
-		ln -s "/opt/calibre/$f" "$pkgdir/usr/bin/$f"
-	done
+
+  # Find the first top-level directory that looks like the calibre payload.
+  # (Adjust this heuristic once you confirm the extracted layout.)
+  local payload_dir
+  payload_dir="$(find "$srcdir" -maxdepth 1 -type d -name 'calibre*' -print -quit)"
+
+  if [[ -z "$payload_dir" ]]; then
+    echo "ERROR: Could not find extracted calibre payload directory in \$srcdir" >&2
+    return 1
+  fi
+
+  # Copy only what you actually intend (adjust if the extracted directory name differs)
+  # Example assumes the txz extracts directly into $srcdir with calibre binaries at the top-level.
+  cp -aT "$payload_dir" "$pkgdir/opt/calibre"
+
+  # If your share.tar.xz provides /share, move it under /usr
+  if [[ -d "$pkgdir/opt/calibre/share" ]]; then
+    mv -f "$pkgdir/opt/calibre/share" "$pkgdir/usr/"
+  fi
+
+  # Symlink top-level executables from /opt/calibre into /usr/bin
+  find "$pkgdir/opt/calibre" -maxdepth 1 -type f -printf '%f\0' |
+    while IFS= read -r -d '' f; do
+      ln -s "/opt/calibre/$f" "$pkgdir/usr/bin/$f"
+    done
 }
