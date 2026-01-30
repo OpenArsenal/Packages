@@ -1,7 +1,7 @@
 # Maintainer: Okiki Ojo <okiki@thunderstrike.co>
 
 pkgname=calibre-bin
-pkgver=8.16.2
+pkgver='9.0.0'
 pkgrel=1
 pkgdesc="Official binary version Calibre"
 arch=(x86_64 aarch64 i686)

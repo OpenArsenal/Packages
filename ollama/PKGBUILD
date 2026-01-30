@@ -12,7 +12,7 @@
 
 pkgbase=ollama
 pkgname=(ollama ollama-rocm ollama-vulkan ollama-docs)
-pkgver='0.14.3'
+pkgver='0.15.2'
 pkgrel=1
 pkgdesc='Create, run and share large language models (LLMs)'
 arch=(x86_64)
@@ -38,7 +38,7 @@ source=(git+https://github.com/ollama/ollama#tag=v$pkgver
         ollama.service
         sysusers.conf
         tmpfiles.d)
-b2sums=('1aecccb86e29b083abba8e56ab31fa34315d4d62a160ce89f214e909b16bec5b56b8c71ed0f595c14566d03fea15997e969c5f5d995dbe92df0bbf9275424c47'
+b2sums=('24cf05f5d1e81a2bc11d47628b3218fe7c74ec15242497816f16c72c47fe4302fb8148ad61cf28d8157c3f8f96b6bab909d08a314117b0965a0f96d665a6ce6a'
         '121a7854b5a7ffb60226aaf22eed1f56311ab7d0a5630579525211d5c096040edbcfd2608169a4b6d83e8b4e4855dbb22f8ebf3d52de78a34ea3d4631b7eff36'
         '031e0809a7f564de87017401c83956d43ac29bd0e988b250585af728b952a27d139b3cad0ab1e43750e2cd3b617287d3b81efc4a70ddd61709127f68bd15eabd'
         '68622ac2e20c1d4f9741c57d2567695ec7b5204ab43356d164483cd3bc9da79fad72489bb33c8a17c2e5cb3b142353ed5f466ce857b0f46965426d16fb388632'

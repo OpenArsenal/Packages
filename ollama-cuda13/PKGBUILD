@@ -12,7 +12,7 @@
 
 pkgbase=ollama
 pkgname=(ollama ollama-docs)
-pkgver='0.14.3'
+pkgver='0.15.2'
 pkgrel=1
 pkgdesc='Create, run and share large language models (LLMs)'
 arch=(x86_64)
