@@ -48,7 +48,7 @@ b2sums=('24cf05f5d1e81a2bc11d47628b3218fe7c74ec15242497816f16c72c47fe4302fb8148a
 _cuda_variant=""
 _cuda_build_dir=""
 
-prepare() {
+_detect_cuda() {
   if [[ -x "/opt/cuda/bin/nvcc" ]]; then
     _cuda_major=$(/opt/cuda/bin/nvcc --version | grep "release" | sed -n 's/.*release \([0-9]*\)\..*/\1/p')
     echo "==> Detected CUDA version: $_cuda_major at /opt/cuda"
@@ -79,6 +79,8 @@ build() {
   export CGO_LDFLAGS="${LDFLAGS}"
   export GOPATH="${srcdir}"
   export GOFLAGS="-buildmode=pie -mod=readonly -modcacherw '-ldflags=-linkmode=external -compressdwarf=false -X=github.com/ollama/ollama/version.Version=$pkgver -X=github.com/ollama/ollama/server.mode=release'"
+
+  _detect_cuda
 
   # Add CUDA to environment if detected
   if [[ -n "$_cuda_variant" ]]; then
