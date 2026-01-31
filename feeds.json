@@ -271,6 +271,12 @@
       "type": "github-release",
       "repo": "AladW/aurutils",
       "channel": "stable"
+    },
+    {
+      "name": "espeak-ng",
+      "type": "github-release",
+      "repo": "espeak-ng/espeak-ng",
+      "channel": "stable"
     }
   ]
 }
