@@ -85,7 +85,10 @@ checkdepends=(poppler
               python-fonttools
               python-pyzstd
               speech-dispatcher
-              tk)
+              tk
+              python
+              python-tzlocal
+              python-tzdata)
 optdepends=('poppler: required for converting pdf to html'
             'python-fonttools: required for font subset feature in epub editor'
             'speech-dispatcher: TTS support in the viewer')
@@ -99,10 +102,10 @@ _archive="$pkgname-$pkgver"
 
 # Your sources (mixing patch + binaries - WRONG)
 source=(
-  "calibre-${pkgver}.tar.gz::https://github.com/kovidgoyal/calibre/archive/refs/tags/v${pkgver}.tar.gz"
+  "calibre-${pkgver}.tar.xz::https://download.calibre-ebook.com/${pkgver}/calibre-${pkgver}.tar.xz"
   qt-6.10.patch
 )
-sha256sums=('5bc802e246c63d72b6b9a4499e86c48c56eaa5e1cfbfdeef3e89a315c23c2c7d'
+sha256sums=('88a5130c28ea3c260ab3db4164db2a51443ece8f7b6e3a514f5a4045bb67b230'
             '7b878663100c38ac849570afc8ee41cfcd55609367a5cb38305ef73bb3094f4e')
 
 prepare() {
