@@ -1,7 +1,7 @@
 # Maintainer: Alex Potapenko <opotapenko@gmail.com>
 
 pkgname=calibre-git
-pkgver=8.16.2.r309.gef29a57a03
+pkgver=9.1.0.r2.gbdb6839a76
 pkgrel=1
 pkgdesc='Ebook management application'
 arch=(x86_64 aarch64 i686)
@@ -60,18 +60,32 @@ depends=(hunspell
          ttf-liberation
          uchardet
          udisks2
-         zstd)
+         zstd
+         
+         # Piper TTS build needs ONNX Runtime headers + lib + pkg-config.
+         # Use the virtual so users can satisfy with cpu/cuda/rocm variants.
+         onnxruntime
+         ffmpeg
+         espeak-ng)
 makedepends=(cmake
              git
              pyqt-builder
              rapydscript-ng
              sip
              xdg-utils
-             python-sphinx)
+             python-sphinx
+
+             # Needed at build-time too (headers + libonnxruntime.pc)
+             onnxruntime
+             ffmpeg
+             espeak-ng)
 checkdepends=(poppler
               python-fonttools
               speech-dispatcher
-              tk)
+              tk
+              python
+              python-tzlocal
+              python-tzdata)
 optdepends=('poppler: required for converting pdf to html'
             'python-fonttools: required for font subset feature in epub editor'
             'speech-dispatcher: TTS support in the viewer')
@@ -81,6 +95,7 @@ conflicts=("${pkgname%-git}"
            calibre-common
            calibre-python3)
 
+replaces=("${conflicts[@]}")
 license=(GPL3)
 options=('!strip')
 
@@ -132,7 +147,26 @@ build() {
 	python setup.py translations
 	python setup.py hyphenation
 	python setup.py liberation_fonts --system-liberation_fonts --path-to-liberation_fonts /usr/share/fonts/liberation
-	python setup.py mathjax --system-mathjax --path-to-mathjax /usr/share/mathjax
+	# python setup.py mathjax --system-mathjax --path-to-mathjax /usr/share/mathjax
+
+  # ---- MathJax compat shim -----------------------------------------------
+  # Calibre expects /input/tex-full.js, but Arch's mathjax package ships tex.js
+  # (no tex-full.js). Create a tiny compat overlay in $srcdir and point calibre
+  # at it, without modifying /usr.
+  local _mathjax_src="/usr/share/mathjax"
+  local _mathjax_compat="${srcdir}/mathjax-calibre-compat"
+
+  rm -rf "${_mathjax_compat}"
+  mkdir -p "${_mathjax_compat}"
+  cp -a "${_mathjax_src}/." "${_mathjax_compat}/"
+
+  if [[ ! -e "${_mathjax_compat}/input/tex-full.js" && -e "${_mathjax_compat}/input/tex.js" ]]; then
+    ln -s tex.js "${_mathjax_compat}/input/tex-full.js"
+  fi
+
+  python setup.py mathjax --system-mathjax --path-to-mathjax "${_mathjax_compat}"
+
+
 	python setup.py man_pages
 	python setup.py resources
 }
@@ -145,15 +179,18 @@ package() {
 	# If this directory doesn't exist, zsh completion won't install.
 	install -d "${pkgdir}/usr/share/zsh/site-functions"
 
+  # staging root should be $pkgdir; prefix decides /usr inside it
 	python setup.py install \
 		--staging-root="${pkgdir}/usr" \
 		--prefix=/usr \
 		--system-plugins-location=/usr/share/calibre/system-plugins
 
+  install -d "${pkgdir}/usr/share/man"
 	cp -a man-pages/ "${pkgdir}/usr/share/man"
 
 	# not needed at runtime
-	rm -r "${pkgdir}"/usr/share/calibre/rapydscript/
+	rm -r "$pkgdir/usr/share/calibre/rapydscript/"
+	rm -r "$pkgdir/usr/share/calibre/fonts/liberation/"
 
 	# Compiling bytecode FS#33392
 	# This is kind of ugly but removes traces of the build root.
