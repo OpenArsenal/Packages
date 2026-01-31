@@ -69,7 +69,8 @@ depends=(hunspell
          # Piper TTS build needs ONNX Runtime headers + lib + pkg-config.
          # Use the virtual so users can satisfy with cpu/cuda/rocm variants.
          onnxruntime
-         ffmpeg)
+         ffmpeg
+         espeak-ng)
 makedepends=(cmake
              pyqt-builder
              rapydscript-ng
@@ -78,7 +79,8 @@ makedepends=(cmake
 
              # Needed at build-time too (headers + libonnxruntime.pc)
              onnxruntime
-             ffmpeg)
+             ffmpeg
+             espeak-ng)
 checkdepends=(poppler
               python-fonttools
               python-pyzstd
