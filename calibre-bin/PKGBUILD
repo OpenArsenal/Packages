@@ -33,7 +33,6 @@ package() {
   install -dm755 "$pkgdir/usr/bin" "$pkgdir/opt/calibre"
 
 
-
   # Find the first top-level directory that looks like the calibre payload.
   # (Adjust this heuristic once you confirm the extracted layout.)
   local payload_dir

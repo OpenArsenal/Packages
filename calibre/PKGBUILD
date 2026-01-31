@@ -4,7 +4,7 @@ pkgname=calibre
 pkgver='9.0.0'
 pkgrel=1
 pkgdesc='Ebook management application'
-arch=(x86_64 aarch64 i686)
+arch=(x86_64 aarch64)
 url=https://calibre-ebook.com
 license=(GPL-3.0-only)
 
@@ -43,7 +43,6 @@ _pydeps=(apsw
          xxhash
          zeroconf
          zstandard)
-
 depends=(hunspell
          hyphen
          icu
@@ -65,45 +64,47 @@ depends=(hunspell
          ttf-liberation
          uchardet
          udisks2
-         zstd)
-
+         zstd
+         
+         # Piper TTS build needs ONNX Runtime headers + lib + pkg-config.
+         # Use the virtual so users can satisfy with cpu/cuda/rocm variants.
+         onnxruntime
+         ffmpeg)
 makedepends=(cmake
-            #  espeak-ng           # ← ADD THIS
-            #  onnxruntime         # ← ADD THIS
-             ffmpeg              # ← ADD THIS (provides libpostproc)
              pyqt-builder
              rapydscript-ng
              sip
-             xdg-utils)
+             xdg-utils
 
+             # Needed at build-time too (headers + libonnxruntime.pc)
+             onnxruntime
+             ffmpeg)
 checkdepends=(poppler
               python-fonttools
+              python-pyzstd
               speech-dispatcher
               tk)
-
-
 optdepends=('poppler: required for converting pdf to html'
             'python-fonttools: required for font subset feature in epub editor'
             'speech-dispatcher: TTS support in the viewer')
-
+conflicts=(calibre-common
+           calibre-python3)
 replaces=("${conflicts[@]}")
+options=('!strip')	
 
-options=('!strip')
-							
+# GitHub tag archives usually unpack as "calibre-<tag>" (tag is "v9.0.0")				
 _archive="$pkgname-$pkgver"
 
 # Your sources (mixing patch + binaries - WRONG)
 source=(
-	"${_archive}.tar.gz::https://github.com/kovidgoyal/calibre/archive/v${pkgver}.tar.gz"	# ← Source archive
-	calibre-qt610-headless-private.patch  # ← Patch for SOURCE builds
+  "calibre-${pkgver}.tar.gz::https://github.com/kovidgoyal/calibre/archive/refs/tags/v${pkgver}.tar.gz"
+  qt-6.10.patch
 )
-
-# Checksums
 sha256sums=('5bc802e246c63d72b6b9a4499e86c48c56eaa5e1cfbfdeef3e89a315c23c2c7d'
-            'bd05eb7f5884262ba43228e3c3565b9b7303a0d3af008b3405a66ba265d97438')
+            '7b878663100c38ac849570afc8ee41cfcd55609367a5cb38305ef73bb3094f4e')
 
-prepare(){
-	cd "$_archive"
+prepare() {
+  cd "${srcdir}/${_archive}"
 
 	# Desktop integration (e.g. enforce arch defaults)
 	# Use uppercase naming scheme, don't delete config files under fakeroot.
@@ -115,31 +116,17 @@ prepare(){
 	# Remove unneeded files
 	rm -f resources/$pkgname-portable.*
 
-
-    # Remove piper extension from build
-    if [ -f setup/extensions.json ]; then
-        python -c "
-import json
-with open('setup/extensions.json', 'r') as f:
-    data = json.load(f)
-# Remove piper from extensions list
-data = [ext for ext in data if 'piper' not in ext.get('name', '').lower()]
-with open('setup/extensions.json', 'w') as f:
-    json.dump(data, f, indent=2)
-"
-    fi
-    
-    # Also remove the source file as backup
-    rm -f src/calibre/utils/tts/piper.cpp
-    
-
-  # Only apply if upstream hasn't already added it
-	patch -Np1 --forward -i "${srcdir}/calibre-qt610-headless-private.patch"
+  patch -Np1 -i "${srcdir}/qt-6.10.patch"
 }
 
 build() {
-	cd "$_archive"
+  cd "${srcdir}/${_archive}"
 	export LANG='en_US.UTF-8'
+
+  # If you're using ffmpeg4.4 compat, its .pc files are under /usr/lib/ffmpeg4.4/pkgconfig.
+  # if [[ -d /usr/lib/ffmpeg4.4/pkgconfig ]]; then
+  #   export PKG_CONFIG_PATH="/usr/lib/ffmpeg4.4/pkgconfig:/usr/lib/pkgconfig"
+  # fi
 
 	python setup.py build
 	python setup.py iso639
@@ -156,32 +143,36 @@ build() {
 }
 
 check() {
-	cd "$_archive"
+  cd "${srcdir}/${_archive}"
 	export LANG='en_US.UTF-8'
+
 	# Skip piper test since we disabled it
 	python setup.py test --under-sanitize --exclude-test-name test_piper
 	python setup.py test_rs
 }
 
 package() {
-	cd "$_archive"
+  cd "${srcdir}/${_archive}"
 	export LANG='en_US.UTF-8'
 
 	# If this directory doesn't exist, zsh completion won't install.
 	install -d "$pkgdir/usr/share/zsh/site-functions"
 
+  # staging root should be $pkgdir; prefix decides /usr inside it
 	python setup.py install \
 		    --staging-root="$pkgdir/usr" \
 		    --prefix=/usr \
 		    --system-plugins-location=/usr/share/calibre/system-plugins
 
-	cp -a man-pages/ "$pkgdir/usr/share/man"
+  install -d "${pkgdir}/usr/share/man"
+	cp -a man-pages/. "$pkgdir/usr/share/man"
 	
 	# Remove build artifacts
 	rm -r "$pkgdir/usr/share/calibre/rapydscript/"
 	rm -r "$pkgdir/usr/share/calibre/fonts/liberation/"
 
-	# Compile Python bytecode
+	# Compiling bytecode FS#33392
+	# This is kind of ugly but removes traces of the build root.
 	while read -rd '' _file; do
 		_destdir="$(dirname "${_file#${pkgdir}}")"
 		python -m compileall -d "${_destdir}" "${_file}"
