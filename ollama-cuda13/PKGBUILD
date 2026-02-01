@@ -108,8 +108,6 @@ build() {
     -W no-dev
     -D CMAKE_BUILD_TYPE=Release
     -D CMAKE_INSTALL_PREFIX=/usr
-    -D AMDGPU_TARGETS="$(rocm-supported-gfx)"
-    -D GPU_TARGETS="$(rocm-supported-gfx)"
   )
 
   # Build CUDA variant based on detected version
@@ -128,6 +126,7 @@ build() {
       -D CMAKE_HIP_COMPILER=OFF
       -D CMAKE_CUDA_ARCHITECTURES="75;80;86;87;88;89;90;100;103;110;120;121;121-virtual"
     )
+    rm -rf -- "$_cuda_build_dir"
     cmake "${cmake_cuda_options[@]}"
     cmake --build "$_cuda_build_dir"
   fi
@@ -143,6 +142,8 @@ check() {
 }
 
 package_ollama() {
+  _detect_cuda
+
   # Install CPU components from whichever build directory exists
   local build_dir=""
   if [[ -n "$_cuda_build_dir" && -d "ollama/$_cuda_build_dir" ]]; then
@@ -169,6 +170,8 @@ package_ollama-cuda13() {
   depends=(ollama cuda)
   provides=(ollama-cuda)
   conflicts=(ollama-cuda12)
+
+  _detect_cuda
 
   DESTDIR="$pkgdir" cmake --install "ollama/$_cuda_build_dir" --component CUDA
 }
