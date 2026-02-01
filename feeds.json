@@ -18,11 +18,15 @@
     },
     {
       "name": "alpaca-git",
-      "type": "vcs"
+      "type": "vcs",
+      "repo": "Jeffser/Alpaca",
+      "channel": "stable"
     },
     {
       "name": "alpaka-git",
-      "type": "vcs"
+      "type": "vcs",
+      "repo": "Jeffser/Alpaca",
+      "channel": "stable"
     },
     {
       "name": "calibre",
@@ -38,7 +42,9 @@
     },
     {
       "name": "calibre-git",
-      "type": "vcs"
+      "type": "vcs",
+      "repo": "kovidgoyal/calibre",
+      "channel": "stable"
     },
     {
       "name": "cherry-studio",
@@ -60,7 +66,9 @@
     },
     {
       "name": "cherry-studio-git",
-      "type": "vcs"
+      "type": "vcs",
+      "repo": "CherryHQ/cherry-studio",
+      "channel": "stable"
     },
     {
       "name": "cuda-12",
@@ -84,11 +92,15 @@
     },
     {
       "name": "figma-linux-git",
-      "type": "vcs"
+      "type": "vcs",
+      "repo": "Figma-Linux/figma-linux",
+      "channel": "stable"
     },
     {
       "name": "figma-linux-electron-git",
-      "type": "vcs"
+      "type": "vcs",
+      "repo": "Figma-Linux/figma-linux",
+      "channel": "stable"
     },
     {
       "name": "github-cli",
@@ -201,7 +213,9 @@
     },
     {
       "name": "pupu-git",
-      "type": "vcs"
+      "type": "vcs",
+      "repo": "haoxiang-xu/PuPu",
+      "channel": "stable"
     },
     {
       "name": "python312",
@@ -231,11 +245,15 @@
     },
     {
       "name": "vesktop-git",
-      "type": "vcs"
+      "type": "vcs",
+      "repo": "Vencord/Vesktop",
+      "channel": "stable"
     },
     {
       "name": "vesktop-electron-git",
-      "type": "vcs"
+      "type": "vcs",
+      "repo": "Vencord/Vesktop",
+      "channel": "stable"
     },
     {
       "name": "visual-studio-code-bin",
@@ -257,7 +275,8 @@
     },
     {
       "name": "logseq-desktop-electron-bin",
-      "type": "manual",
+      "type": "github-release",
+      "repo": "logseq/logseq",
       "channel": "stable"
     },
     {
