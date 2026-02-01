@@ -118,3 +118,9 @@ Thumbs.db
 
 # Local testing
 test-builds/
+
+# Keep important files
+!*.install
+!PKGBUILD
+!.SRCINFO
+!.gitignore
