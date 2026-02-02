@@ -177,7 +177,8 @@
     },
     {
       "name": "lmstudio-bin",
-      "type": "lmstudio"
+      "type": "lmstudio",
+      "url": "https://lmstudio.ai/changelog"
     },
     {
       "name": "microsoft-edge-stable-bin",
