@@ -178,6 +178,7 @@
     {
       "name": "lmstudio-bin",
       "type": "lmstudio",
+      "platform": "linux/x64",
       "url": "https://lmstudio.ai/changelog"
     },
     {
