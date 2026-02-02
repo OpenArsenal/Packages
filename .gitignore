@@ -121,6 +121,9 @@ test-builds/
 
 # Keep important files
 !*.install
+!*.desktop
+!*.service
+!*.conf
 !PKGBUILD
 !.SRCINFO
 !.gitignore
