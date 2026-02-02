@@ -119,19 +119,22 @@
       "channel": "canary"
     },
     {
+      "_comment": "ICU69: Old series - use tagPrefix for efficient matching-refs lookup",
       "name": "icu69",
-      "type": "github-release-filtered",
+      "type": "github-tags-filtered",
       "repo": "unicode-org/icu",
       "channel": "stable",
+      "tagPrefix": "release-69-",
       "tagRegex": "^release-69-[0-9]+$",
       "versionRegex": "^release-([0-9]+)-([0-9]+)$",
       "versionFormat": "$1.$2"
     },
     {
       "name": "icu69-bin",
-      "type": "github-release-filtered",
+      "type": "github-tags-filtered",
       "repo": "unicode-org/icu",
       "channel": "stable",
+      "tagPrefix": "release-69-",
       "tagRegex": "^release-69-[0-9]+$",
       "versionRegex": "^release-([0-9]+)-([0-9]+)$",
       "versionFormat": "$1.$2"
@@ -218,18 +221,25 @@
       "channel": "stable"
     },
     {
+      "_comment": "Python 3.12: Use tagPrefix to skip 3.13, 3.14, etc.",
       "name": "python312",
       "type": "github-tags-filtered",
       "repo": "python/cpython",
+      "tagPrefix": "v3.12.",
       "tagRegex": "^v3\\.12\\.[0-9]+$",
       "versionRegex": "^v(3\\.12\\.[0-9]+)$",
       "versionFormat": "$1"
     },
     {
+      "_comment": "CustomTkinter: Use tags (more reliable than releases for this project)",
       "name": "python-customtkinter",
-      "type": "github-release",
+      "type": "github-tags-filtered",
       "repo": "TomSchimansky/CustomTkinter",
-      "channel": "stable"
+      "channel": "stable",
+      "tagPrefix": "v",
+      "tagRegex": "^v[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "versionRegex": "^v([0-9]+\\.[0-9]+\\.[0-9]+)$",
+      "versionFormat": "$1"
     },
     {
       "name": "vesktop",
