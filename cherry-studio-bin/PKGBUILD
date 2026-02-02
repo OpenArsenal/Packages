@@ -16,6 +16,7 @@ source=("${_pkgname}-${pkgver}.AppImage::${url}/releases/download/v${pkgver}/Che
   "${pkgname}.sh")
 noextract=("${_pkgname}-${pkgver}.AppImage")
 conflicts=("$_pkgname")
+replaces=("${pkgname%-bin}")
 
 package() {
   cd "$srcdir"

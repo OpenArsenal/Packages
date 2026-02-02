@@ -28,6 +28,7 @@ optdepends=(
 provides=('google-chrome')
 options=('!emptydirs' '!strip')
 install=$pkgname.install
+replaces=("${pkgname%-bin}")
 _channel=canary
 source=("https://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-${_channel}/google-chrome-${_channel}_${pkgver}-1_amd64.deb"
 	'eula_text.html'

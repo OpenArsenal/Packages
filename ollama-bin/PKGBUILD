@@ -15,6 +15,7 @@ provides=("ollama")
 conflicts=("ollama")
 depends=("glibc" "gcc-libs")
 optdepends=("ollama-cuda: NVIDIA GPU Support")
+replaces=("${pkgname%-bin}")
 
 backup=('etc/ollama.conf')
 

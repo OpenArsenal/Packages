@@ -14,6 +14,7 @@ depends=()
 makedepends=("git" "yarn" "npm" "nvm" "clojure" "nodejs>=22")
 provides=("${pkgname%-git}")
 conflicts=("${pkgname%-git}" "${pkgname%-git}-bin")
+replaces=("${pkgname%-git}")
 source=(
     "${pkgname}::git+${repo}#branch=${branch}"
     "${pkgname%-git}.desktop"

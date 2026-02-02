@@ -18,6 +18,8 @@ license=(
 )
 provides=("${_appname}=${pkgver}")
 conflicts=("${_appname}")
+
+replaces=("${pkgname%-bin}")
 depends=(
     "electron${_electronversion}"
     'python'

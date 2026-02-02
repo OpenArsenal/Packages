@@ -10,6 +10,7 @@ _ghurl="https://github.com/janhq/jan"
 license=('Apache-2.0')
 provides=("${pkgname%-bin}=${pkgver}")
 conflicts=("${pkgname%-bin}")
+replaces=("${pkgname%-bin}")
 depends=(
     'gtk3'
     'gdk-pixbuf2'

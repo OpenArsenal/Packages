@@ -21,6 +21,7 @@ depends=(
 optdepends=(
   'ollama'
 )
+replaces=("${pkgname%-git}")
 conflicts=('alpaca' 'alpaca-git' 'alpaca-ai')
 source=("git+https://github.com/jeffser/$_pkgname.git")
 md5sums=('SKIP')
