@@ -1,0 +1,75 @@
+# Maintainer: Okiki <okiki@thunderstrike.co>
+pkgname=tessl-cli
+pkgver=0.61.3
+pkgrel=1
+pkgdesc="Tessl CLI (npm: @tessl/cli) for managing agent context/skills"
+arch=('any')
+url="https://docs.tessl.io/"
+license=('custom')
+depends=('nodejs')
+makedepends=('npm')
+source=("https://registry.npmjs.org/@tessl/cli/-/cli-${pkgver}.tgz")
+sha256sums=('SKIP')
+
+prepare() {
+  cd "${srcdir}"
+  rm -rf package
+  tar -xzf "cli-${pkgver}.tgz"
+}
+
+build() {
+  cd "${srcdir}/package"
+
+  # Keep npm from writing outside the build dir.
+  export HOME="${srcdir}/.home"
+  mkdir -p "${HOME}"
+
+  # Install deps. (This fetches from npm during build: pragmatic, not “fully strict”.)
+  npm install \
+    --no-audit \
+    --fund=false
+
+  # If upstream publishes compiled output already, this is a no-op.
+  npm run build --if-present
+
+  # Drop dev deps if they were pulled in.
+  npm prune --omit=dev
+}
+
+package() {
+  cd "${srcdir}/package"
+
+  # Install the package payload.
+  install -d "${pkgdir}/usr/lib/node_modules/${pkgname}"
+  cp -a . "${pkgdir}/usr/lib/node_modules/${pkgname}"
+
+  # Install licenses if present (keeps Arch packaging norms).
+  install -d "${pkgdir}/usr/share/licenses/${pkgname}"
+  find . -maxdepth 1 -type f -iname 'license*' -o -iname 'copying*' | while read -r f; do
+    install -Dm644 "${f}" "${pkgdir}/usr/share/licenses/${pkgname}/$(basename "${f}")"
+  done
+
+  # Create /usr/bin wrappers based on package.json "bin".
+  # Works whether "bin" is a string or an object map.
+  local bin_keys
+  bin_keys="$(node -p "Object.keys(require('./package.json').bin ?? {}).join('\n')")"
+
+  if [[ -z "${bin_keys}" ]]; then
+    echo "ERROR: No bin entries found in package.json; can't expose a CLI command."
+    return 1
+  fi
+
+  while IFS= read -r bin_name; do
+    [[ -z "${bin_name}" ]] && continue
+
+    local bin_target
+    bin_target="$(node -p "require('./package.json').bin['${bin_name}']")"
+
+    install -d "${pkgdir}/usr/bin"
+    cat > "${pkgdir}/usr/bin/${bin_name}" <<EOF
+#!/usr/bin/env bash
+exec /usr/bin/node /usr/lib/node_modules/${pkgname}/${bin_target} "\$@"
+EOF
+    chmod 755 "${pkgdir}/usr/bin/${bin_name}"
+  done <<< "${bin_keys}"
+}

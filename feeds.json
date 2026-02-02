@@ -314,6 +314,12 @@
       "type": "vcs",
       "repo": "github/spec-kit",
       "channel": "stable"
+    },
+    {
+      "name": "tessl-cli",
+      "type": "npm",
+      "package": "@tessl/cli",
+      "channel": "stable"
     }
   ]
 }
