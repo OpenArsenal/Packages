@@ -11,6 +11,7 @@ url="https://cherry-ai.com/"
 _ghurl="https://github.com/CherryHQ/cherry-studio"
 license=('LicenseRef-custom')
 conflicts=("${pkgname%-git}")
+replaces=("${pkgname%-git}")
 provides=("${pkgname%-git}=${pkgver%.r*}")
 depends=(
     "electron${_electronversion}"

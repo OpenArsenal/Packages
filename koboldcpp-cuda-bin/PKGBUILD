@@ -10,6 +10,7 @@ license=('AGPL3')
 depends=('glibc')
 conflicts=('koboldcpp')
 provides=("koboldcpp=$pkgver")
+replaces=("${pkgname%-bin}")
 source=(
 	"$pkgname-$pkgver::https://github.com/LostRuins/koboldcpp/releases/download/v$pkgver/koboldcpp-linux-x64"
 	"koboldcpp.desktop"

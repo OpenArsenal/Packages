@@ -21,6 +21,7 @@ optdepends=(
 	'kwallet: for storing passwords in KWallet'
 	)
 options=(!strip !zipman)
+replaces=("${pkgname%-bin}")
 source=("https://packages.microsoft.com/yumrepos/edge/Packages/m/${_pkgname}-stable-${pkgver}-1.x86_64.rpm"
 	"microsoft-edge-stable.sh")
 sha256sums=('862c635d1361392e805700593ca02e973484d6075dbda289106599eafc799944'

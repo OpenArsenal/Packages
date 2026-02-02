@@ -6,7 +6,8 @@ pkgdesc="Spec Kit Specify CLI (git)"
 arch=('any')
 url='https://github.com/github/spec-kit'
 license=('MIT')
-
+conflicts=("${pkgname%-git}")
+replaces=("${pkgname%-git}")
 depends=(
   'python>=3.12'
   'python-typer'

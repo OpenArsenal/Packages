@@ -20,6 +20,7 @@ license=('LicenseRef-EULA')
 depends=('zlib' 'hicolor-icon-theme' 'fuse2' 'clblast')
 makedepends=('squashfs-tools' 'graphicsmagick')
 options=(!strip !debug)
+replaces=("${pkgname%-bin}")
 
 _appimage="${pkgname}-${pkgver}.AppImage"
 

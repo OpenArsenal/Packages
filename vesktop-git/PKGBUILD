@@ -19,6 +19,7 @@ optdepends=(
 
 provides=("vesktop")
 conflicts=('vesktop' 'vesktop-git')
+replaces=("${pkgname%-git}")
 source=("$_pkgname::git+$url.git" "vesktop.desktop" "vesktop.sh")
 
 sha256sums=('SKIP'

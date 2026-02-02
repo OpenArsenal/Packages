@@ -26,6 +26,7 @@ optdepends=(
 	'gnome-keyring: for storing passwords in GNOME keyring'
 	'kwallet: for storing passwords in KWallet'
 )
+replaces=("${pkgname%-bin}")
 options=('!emptydirs' '!strip')
 install=$pkgname.install
 _channel=stable

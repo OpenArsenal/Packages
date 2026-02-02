@@ -20,6 +20,7 @@ depends=(gcc-libs
          kcrash
          ollama
 )
+replaces=("${pkgname%-git}")
 makedepends=(extra-cmake-modules)
 groups=(kde-applications
         kde-utilities)

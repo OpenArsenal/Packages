@@ -6,6 +6,7 @@ pkgdesc="CLI for Omni - SaaS-simple deployment of Kubernetes on your own hardwar
 arch=('x86_64' 'aarch64')
 url="https://omni.siderolabs.com/"
 license=('BUSL-1.1')
+replaces=("${pkgname%-bin}")
 
 # Arch-per-arch sources (prebuilt upstream binaries)
 source_x86_64=(

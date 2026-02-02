@@ -10,6 +10,7 @@ license=('GPL-2.0-only')
 
 provides=('figma-linux')
 conflicts=('figma-linux' 'figma-linux-electron' 'figma-linux-electron-git')
+replaces=("${pkgname%-git}")
 
 options=(!strip)
 depends=('gtk3' 'nss' 'alsa-lib' 'hicolor-icon-theme')

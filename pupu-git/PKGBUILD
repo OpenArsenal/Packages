@@ -11,6 +11,7 @@ url="https://github.com/haoxiang-xu/PuPu"
 license=('0BSD')
 provides=("${pkgname%-git}=${pkgver%.r*}")
 conflicts=("${pkgname%-git}")
+replaces=("${pkgname%-git}")
 depends=(
     "electron${_electronversion}"
     'ollama'

@@ -13,6 +13,7 @@ optdepends=()
 conflicts=(calibre calibre-git)
 provides=(calibre)
 options=('!strip')
+replaces=("${pkgname%-bin}")
 
 # Sources
 #   Since there doesn't seem to be a simple way to generate desktop
