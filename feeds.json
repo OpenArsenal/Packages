@@ -296,6 +296,24 @@
       "type": "github-release",
       "repo": "espeak-ng/espeak-ng",
       "channel": "stable"
+    },
+    {
+      "name": "onnxruntime",
+      "type": "github-release",
+      "repo": "microsoft/onnxruntime",
+      "channel": "stable"
+    },
+    {
+      "name": "specify-cli",
+      "type": "github-release",
+      "repo": "github/spec-kit",
+      "channel": "stable"
+    },
+    {
+      "name": "specify-cli-git",
+      "type": "vcs",
+      "repo": "github/spec-kit",
+      "channel": "stable"
     }
   ]
 }
