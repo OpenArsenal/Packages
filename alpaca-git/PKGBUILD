@@ -7,7 +7,7 @@ pkgdesc="An Ollama client made with GTK4 and Adwaita"
 arch=('any')
 url="https://github.com/jeffser/Alpaca"
 license=('GPL-3.0')
-makedepends=('meson' 'blueprint-compiler')
+makedepends=('meson' 'blueprint-compiler' 'gettext' 'desktop-file-utils' 'appstream')
 depends=(
   'python-requests'
   'python-pillow'
@@ -22,9 +22,9 @@ optdepends=(
   'ollama'
 )
 replaces=("${pkgname%-git}")
-conflicts=('alpaca' 'alpaca-git' 'alpaca-ai')
+conflicts=('alpaca' 'alpaca-ai')
 source=("git+https://github.com/jeffser/$_pkgname.git")
-md5sums=('SKIP')
+sha256sums=('SKIP')
 
 build() {
   cd "$srcdir/$_pkgname"
