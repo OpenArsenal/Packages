@@ -15,6 +15,7 @@ depends=(
   'python-platformdirs'
   'python-readchar'
   'python-truststore'
+  'python-socksio'
 )
 
 makedepends=(
