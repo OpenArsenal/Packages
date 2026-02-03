@@ -20,6 +20,7 @@ depends=(
 
 provides=("$_pkgname")
 conflicts=("$_pkgname" "${_pkgname}-git")
+replaces=("${pkgname%-bin}")
 
 # Prebuilt binaries are often already stripped and may contain weird sections.
 options=(!strip)
