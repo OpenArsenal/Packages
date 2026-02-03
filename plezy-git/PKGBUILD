@@ -29,6 +29,7 @@ makedepends=(
 
 provides=("$_pkgname")
 conflicts=("$_pkgname")
+replaces=("${pkgname%-git}")
 
 _flutter_ver=3.38.6
 
