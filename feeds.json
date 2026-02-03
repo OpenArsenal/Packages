@@ -350,6 +350,11 @@
       "type": "snap",
       "package": "plex-desktop",
       "channel": "stable"
+    },
+    {
+      "name": "flutter",
+      "type": "manual",
+      "channel": "stable"
     }
   ]
 }
