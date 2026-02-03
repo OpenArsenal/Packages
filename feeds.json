@@ -332,6 +332,24 @@
       "type": "npm",
       "package": "@tessl/cli",
       "channel": "stable"
+    },
+    {
+      "name": "plezy",
+      "type": "github-release",
+      "repo": "edde746/plezy",
+      "channel": "stable"
+    },
+    {
+      "name": "plezy-git",
+      "type": "vcs",
+      "repo": "edde746/plezy",
+      "channel": "stable"
+    },
+    {
+      "name": "plex-desktop",
+      "type": "snap",
+      "package": "plex-desktop",
+      "channel": "stable"
     }
   ]
 }
