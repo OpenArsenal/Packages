@@ -353,8 +353,7 @@
     },
     {
       "name": "flutter",
-      "type": "manual",
-      "channel": "stable"
+      "type": "flutter"
     }
   ]
 }

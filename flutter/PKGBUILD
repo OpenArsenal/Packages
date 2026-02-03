@@ -5,7 +5,7 @@
 pkgbase=flutter
 _group=flutter
 groups=("$_group")
-pkgver=3.38.1
+pkgver='3.38.9'
 _enginever=b5990e5ccc5e325fd24f0746e7d6689bbebc7c65
 _materialfontsver=3012db47f3130e62f7cc0beabff968a33cbec8d8
 _gradlewver=fd5c1f2c013565a3bea56ada6df9d2b8e96d56aa
@@ -16,7 +16,7 @@ _dartmax="3.11.0"
 # this host is blocked in China, according to Flutter docs, the FLUTTER_STORAGE_BASE_URL environment variable
 # should be used to provide an alternative mirror
 _storagebase="${FLUTTER_STORAGE_BASE_URL:-"https://storage.googleapis.com"}"
-pkgrel=3
+pkgrel=1
 pkgdesc="A new mobile app SDK to help developers and designers build modern mobile apps for iOS and Android."
 _pkgdesc="Flutter SDK component"
 arch=("x86_64" "aarch64")
@@ -174,7 +174,7 @@ noextract=(
   "dart-sdk-arm64-${_enginever}.zip"
 )
 
-sha256sums=('3acd76b6a4871fb797b5b3b5f184e9ae8114c533b4c3371a8fc98aae568adefc'
+sha256sums=('02ed5df35a676254eced5a3c46f6cf10ce67af2ece98498db9b3fb660c73e95c'
             'e56fa8e9bb4589fde964be3de451f3e5b251e4a1eafb1dc98d94add034dd5a86'
             '31e9428baf1a2b2f485f1110c5899f852649b33d46a2e9b07f9d17752d50190a'
             '73e3593d3fea1a91b1cc2fa5052e7bae989a5188a61a95fa265beb87846d89cd'
