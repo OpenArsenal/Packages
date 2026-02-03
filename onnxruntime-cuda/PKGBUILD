@@ -42,6 +42,8 @@ b2sums=('ba28fe6c0ee88f151c0df386c42155b5a70bf0593691c8584b7f8314de148f10b22d509
 # A “policy list”: what we *want* to ship if nvcc supports it.
 # Keep this small unless you truly need legacy coverage.
 _desired_sm_real=(
+  61  # Kepler (GTX 6xx)
+  70  # Pascal (GTX 10xx)
   75  # Turing (RTX 20xx / T4)
   80  # Ampere (A100)
   86  # Ampere (RTX 30xx)
