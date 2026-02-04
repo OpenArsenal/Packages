@@ -1,0 +1,48 @@
+pkgname=repomix
+pkgver=1.11.1
+pkgrel=1
+pkgdesc="Pack a repository into a single AI-friendly file (CLI)"
+arch=('any')
+url="https://repomix.com/"
+license=('MIT')
+
+depends=('nodejs')
+makedepends=('npm' 'jq')
+optdepends=('git: pack remote repositories')
+
+source=("$pkgname-$pkgver.tgz::https://registry.npmjs.org/$pkgname/-/$pkgname-$pkgver.tgz")
+noextract=("$pkgname-$pkgver.tgz")
+sha256sums=('011c9a566f3373288d2139078e3713cc0bcda1cff33fa704949f085a83cb16d5')
+
+package() {
+  export npm_config_cache="$srcdir/npm-cache"
+  export npm_config_update_notifier=false
+  export npm_config_audit=false
+  export npm_config_fund=false
+
+  npm install -g \
+    --prefix "$pkgdir/usr" \
+    --omit=dev \
+    --no-progress \
+    "$srcdir/$pkgname-$pkgver.tgz"
+
+  install -Dm644 \
+    "$pkgdir/usr/lib/node_modules/$pkgname/LICENSE" \
+    "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+
+  # Fix "Package contains reference to $srcdir/$pkgdir" warnings from npm metadata:
+  # Dependencies: remove "_where" lines from package.json files
+  find "$pkgdir" -name package.json -print0 \
+    | xargs -0r sed -i '/"_where":/d'
+
+  # Main package: remove underscore-prefixed keys in package.json (e.g. _from, _resolved, _where)
+  pkgjson="$pkgdir/usr/lib/node_modules/$pkgname/package.json"
+  tmpjson="$(mktemp -p "$srcdir" "${pkgname}.pkgjson.XXXXXX")"
+  jq '.|=with_entries(select(.key|test("^_.+")|not))' "$pkgjson" > "$tmpjson"
+  install -m644 "$tmpjson" "$pkgjson"
+  rm -f "$tmpjson"
+
+  # npm can occasionally leave 777 perms behind; normalize just those cases
+  find "$pkgdir/usr/lib/node_modules/$pkgname" -type d -perm 777 -exec chmod 755 {} +
+  find "$pkgdir/usr/lib/node_modules/$pkgname" -type f -perm 777 -exec chmod 755 {} +
+}
