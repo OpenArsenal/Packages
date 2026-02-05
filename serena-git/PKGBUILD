@@ -1,0 +1,80 @@
+# Maintainer: Carl <you@example.com>
+# Upstream: https://github.com/oraios/serena
+
+pkgname=serena-git
+pkgver=0.1.4.r0.g0000000
+pkgrel=1
+pkgdesc="Serena MCP server + CLI (git)"
+arch=('x86_64')
+url="https://github.com/oraios/serena"
+license=('MIT')
+
+provides=('serena')
+conflicts=('serena' 'serena-bin')
+
+depends=(
+  'python'
+  'python-beautifulsoup4'
+  'python-dotenv'
+  'python-joblib'
+  'python-overrides'
+  'python-pathspec'
+  'python-psutil'
+  'python-pydantic'
+  'python-requests'
+  'python-ruamel-yaml'
+  'python-tqdm'
+  'python-yaml'
+  'python-jinja'
+  'python-flask'
+  'python-tiktoken'
+  'python-anthropic'
+  'python-mcp'
+  'python-types-pyyaml'
+  'pyright'
+  'fortls'
+)
+
+makedepends=(
+  'git'
+  'python-build'
+  'python-installer'
+  'python-wheel'
+  'python-hatchling'
+)
+
+source=("git+https://github.com/oraios/serena.git")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd "${srcdir}/serena"
+  local v
+  v=$(git describe --tags --long --abbrev=7 2>/dev/null || true)
+
+  # Fallback if there are no tags yet
+  if [[ -z "${v}" ]]; then
+    printf '0.0.0.r%s.g%s\n' "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+    return
+  fi
+
+  # v0.1.4-12-gabcdef0 -> 0.1.4.r12.gabcdef0
+  printf '%s\n' "${v}" | sed -E 's/^v//; s/-/.r/; s/-/./'
+}
+
+prepare() {
+  cd "${srcdir}/serena"
+
+  # Same metadata relaxation as the stable package.
+  sed -i 's/^requires-python = ">=3\.11, <3\.12"$/requires-python = ">=3.11"/' pyproject.toml
+}
+
+build() {
+  cd "${srcdir}/serena"
+  python -m build --wheel --no-isolation
+}
+
+package() {
+  cd "${srcdir}/serena"
+  python -m installer --destdir="${pkgdir}" dist/*.whl
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
