@@ -1,0 +1,71 @@
+# Maintainer: <you>
+pkgname=dagger-bin
+_pkgname=dagger
+pkgver=0.19.10
+pkgrel=1
+pkgdesc="An open-source runtime for composable workflows (prebuilt binary)"
+arch=('x86_64' 'aarch64')
+url="https://dagger.io"
+license=('Apache-2.0')
+
+depends=('glibc')
+optdepends=(
+  'docker: container runtime (recommended)'
+  'podman: alternative container runtime'
+)
+
+provides=('dagger')
+conflicts=('dagger' 'dagger-git')
+
+# Dagger’s docs install via dl.dagger.io (with DAGGER_VERSION), and the distro includes checksums. :contentReference[oaicite:3]{index=3}
+# The archive naming here follows the common GoReleaser-style pattern:
+#   dagger_vX.Y.Z_linux_{amd64|arm64}.tar.gz
+# If upstream changes naming, you only need to adjust _archive below.
+source=(
+  "checksums.txt::https://dl.dagger.io/dagger/releases/v${pkgver}/checksums.txt"
+)
+source_x86_64+=(
+  "dagger_v${pkgver}_linux_amd64.tar.gz::https://dl.dagger.io/dagger/releases/v${pkgver}/dagger_v${pkgver}_linux_amd64.tar.gz"
+)
+source_aarch64+=(
+  "dagger_v${pkgver}_linux_arm64.tar.gz::https://dl.dagger.io/dagger/releases/v${pkgver}/dagger_v${pkgver}_linux_arm64.tar.gz"
+)
+
+# We verify the binary tarball ourselves via checksums.txt in prepare().
+sha256sums=('SKIP')
+sha256sums_x86_64=('SKIP')
+sha256sums_aarch64=('SKIP')
+
+prepare() {
+  cd "$srcdir"
+
+  local _arch
+  case "$CARCH" in
+    x86_64) _arch="amd64" ;;
+    aarch64) _arch="arm64" ;;
+    *) echo "Unsupported arch: $CARCH" >&2; exit 1 ;;
+  esac
+
+  local _archive="dagger_v${pkgver}_linux_${_arch}.tar.gz"
+
+  # Verify the downloaded tarball using upstream checksums.txt
+  grep -E " ${_archive}\$" checksums.txt > "checksums.${_archive}.txt"
+  sha256sum -c "checksums.${_archive}.txt"
+}
+
+package() {
+  cd "$srcdir"
+
+  local _arch
+  case "$CARCH" in
+    x86_64) _arch="amd64" ;;
+    aarch64) _arch="arm64" ;;
+    *) echo "Unsupported arch: $CARCH" >&2; exit 1 ;;
+  esac
+
+  local _archive="dagger_v${pkgver}_linux_${_arch}.tar.gz"
+
+  bsdtar -xf "$_archive"
+  # Expect the extracted binary to be named "dagger"
+  install -Dm755 dagger "$pkgdir/usr/bin/dagger"
+}
