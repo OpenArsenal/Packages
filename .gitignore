@@ -124,6 +124,6 @@ test-builds/
 !*.desktop
 !*.service
 !*.conf
+!*.patch
 !PKGBUILD
-!.SRCINFO
 !.gitignore
