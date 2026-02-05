@@ -1,0 +1,47 @@
+# Maintainer: Your Name <you@example.com>
+
+pkgname=container-use
+pkgver=0.4.2
+pkgrel=1
+pkgdesc="Sandboxed dev environments for coding agents (Dagger-powered), with git worktree workflows"
+arch=('x86_64' 'aarch64')
+url="https://container-use.com"
+license=('Apache-2.0')
+
+depends=('glibc' 'git')
+makedepends=('go' 'git')
+
+optdepends=(
+  'docker: container runtime for environments'
+  'podman: alternative container runtime'
+)
+
+# Use a signed git tag to pin the exact source without relying on JS-gated “assets/checksums”.
+# This is deterministic (tag pin) and avoids the worse practice of SKIP on an HTTP tarball.
+source=(
+  "git+https://github.com/dagger/container-use.git#tag=v${pkgver}"
+)
+sha256sums=('SKIP')
+
+build() {
+  cd "${srcdir}/container-use"
+
+  export GOPATH="${srcdir}/.gopath"
+  export GOFLAGS="-mod=readonly -trimpath"
+
+  go build \
+    -buildmode=pie \
+    -ldflags="-s -w" \
+    -o "${srcdir}/container-use" \
+    ./cmd/container-use
+}
+
+package() {
+  install -Dm755 "${srcdir}/container-use" "${pkgdir}/usr/bin/container-use"
+
+  # Docs and release notes use both `container-use ...` and `cu ...` styles; ship a friendly alias.
+  ln -s "container-use" "${pkgdir}/usr/bin/cu"
+
+  cd "${srcdir}/container-use"
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
