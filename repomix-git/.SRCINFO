@@ -1,0 +1,17 @@
+pkgbase = repomix-git
+	pkgdesc = Pack repository contents into a single AI-friendly file (git version)
+	pkgver = 1.11.1.r0.g0000000
+	pkgrel = 1
+	url = https://github.com/yamadashy/repomix
+	arch = any
+	license = MIT
+	makedepends = git
+	makedepends = npm
+	depends = git
+	depends = nodejs
+	provides = repomix
+	conflicts = repomix
+	source = git+https://github.com/yamadashy/repomix.git
+	sha256sums = SKIP
+
+pkgname = repomix-git
