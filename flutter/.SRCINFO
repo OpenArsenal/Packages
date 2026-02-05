@@ -1,7 +1,7 @@
 pkgbase = flutter
 	pkgdesc = A new mobile app SDK to help developers and designers build modern mobile apps for iOS and Android.
-	pkgver = 3.38.1
-	pkgrel = 3
+	pkgver = 3.38.9
+	pkgrel = 1
 	url = https://flutter.dev
 	arch = x86_64
 	arch = aarch64
@@ -50,7 +50,7 @@ pkgbase = flutter
 	noextract = dart-sdk-x64-b5990e5ccc5e325fd24f0746e7d6689bbebc7c65.zip
 	noextract = dart-sdk-arm64-b5990e5ccc5e325fd24f0746e7d6689bbebc7c65.zip
 	options = !emptydirs
-	source = flutter-3.38.1.tar.xz::https://github.com/flutter/flutter/archive/refs/tags/3.38.1.tar.gz
+	source = flutter-3.38.9.tar.xz::https://github.com/flutter/flutter/archive/refs/tags/3.38.9.tar.gz
 	source = material_fonts-3012db47f3130e62f7cc0beabff968a33cbec8d8.zip::https://storage.googleapis.com/flutter_infra_release/flutter/fonts/3012db47f3130e62f7cc0beabff968a33cbec8d8/fonts.zip
 	source = gradle_wrapper-fd5c1f2c013565a3bea56ada6df9d2b8e96d56aa.tar.gz::https://storage.googleapis.com/flutter_infra_release/gradle-wrapper/fd5c1f2c013565a3bea56ada6df9d2b8e96d56aa/gradle-wrapper.tgz
 	source = android-x86-b5990e5ccc5e325fd24f0746e7d6689bbebc7c65.zip::https://storage.googleapis.com/flutter_infra_release/flutter/b5990e5ccc5e325fd24f0746e7d6689bbebc7c65/android-x86/artifacts.zip
@@ -75,7 +75,7 @@ pkgbase = flutter
 	source = no-runtime-download.patch
 	source = doctor.patch
 	source = opt-in-analytics.patch
-	sha256sums = 3acd76b6a4871fb797b5b3b5f184e9ae8114c533b4c3371a8fc98aae568adefc
+	sha256sums = 02ed5df35a676254eced5a3c46f6cf10ce67af2ece98498db9b3fb660c73e95c
 	sha256sums = e56fa8e9bb4589fde964be3de451f3e5b251e4a1eafb1dc98d94add034dd5a86
 	sha256sums = 31e9428baf1a2b2f485f1110c5899f852649b33d46a2e9b07f9d17752d50190a
 	sha256sums = 73e3593d3fea1a91b1cc2fa5052e7bae989a5188a61a95fa265beb87846d89cd
@@ -214,41 +214,41 @@ pkgname = flutter-artifacts-engine-common-google-bin
 	depends = flutter-sky-engine
 	depends = flutter-material-fonts
 	depends = dart>=3.10.0
-	provides = flutter-engine-common=3.38.1
+	provides = flutter-engine-common=3.38.9
 	conflicts = flutter-engine-common
 
 pkgname = flutter-artifacts-engine-linux-google-bin
 	pkgdesc = Flutter SDK component - linux engine
 	depends = flutter-engine-common
-	provides = flutter-engine-linux=3.38.1
+	provides = flutter-engine-linux=3.38.9
 	conflicts = flutter-engine-linux
 
 pkgname = flutter-artifacts-engine-web-google-bin
 	pkgdesc = Flutter SDK component - web engine
 	depends = flutter-engine-common
-	provides = flutter-engine-web=3.38.1
+	provides = flutter-engine-web=3.38.9
 	conflicts = flutter-engine-web
 
 pkgname = flutter-artifacts-engine-android-google-bin
 	pkgdesc = Flutter SDK component - android engine
 	depends = flutter-engine-common
-	provides = flutter-engine-android=3.38.1
+	provides = flutter-engine-android=3.38.9
 	conflicts = flutter-engine-android
 
 pkgname = flutter-artifacts-sky-engine-google-bin
 	pkgdesc = Flutter SDK component - sky-engine
-	provides = flutter-sky-engine=3.38.1
+	provides = flutter-sky-engine=3.38.9
 	conflicts = flutter-sky-engine
 
 pkgname = flutter-artifacts-material-fonts-google-bin
 	pkgdesc = Flutter SDK component - material fonts
-	provides = flutter-material-fonts=3.38.1
+	provides = flutter-material-fonts=3.38.9
 	conflicts = flutter-material-fonts
 
 pkgname = flutter-artifacts-gradle-google-bin
 	pkgdesc = Flutter SDK component - gradle wrapper
 	depends = flutter-common
-	provides = flutter-gradle=3.38.1
+	provides = flutter-gradle=3.38.9
 	conflicts = flutter-gradle
 
 pkgname = flutter-artifacts-dart-google-bin
