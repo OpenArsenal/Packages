@@ -2,6 +2,7 @@
 
 pkgname=plezy-git
 _pkgname=plezy
+pkgver=1.15.0.r74.g2b5ccc2
 pkgrel=1
 pkgdesc="Modern Plex client built with Flutter (git)"
 arch=('x86_64')
@@ -25,6 +26,7 @@ makedepends=(
   'pkgconf'
   'curl'
   'unzip'
+  'flutter'
 )
 
 provides=("$_pkgname")
