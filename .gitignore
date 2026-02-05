@@ -18,6 +18,8 @@ PKGBUILD.backup
 pkg/
 src/
 
+.gnupg/
+
 ### Linux ###
 *~
 
