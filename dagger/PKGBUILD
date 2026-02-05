@@ -1,0 +1,47 @@
+# Maintainer: Your Name <you@example.com>
+
+pkgname=dagger
+pkgver=0.19.10
+pkgrel=1
+pkgdesc="Dagger CLI: programmable CI/CD engine that runs pipelines in containers"
+arch=('x86_64' 'aarch64')
+url="https://dagger.io"
+license=('Apache-2.0')
+
+depends=('glibc')
+makedepends=('go')
+
+# Dagger runs an engine as a container; you need a container runtime available.
+optdepends=(
+  'docker: container runtime used to run the Dagger Engine'
+  'podman: alternative container runtime'
+)
+
+source=(
+  "${pkgname}-${pkgver}.tar.gz::https://github.com/dagger/dagger/archive/refs/tags/v${pkgver}.tar.gz"
+)
+sha256sums=(
+  '8e4e8e2227fb62c0a75907fbc0cdbc1bcfd39bf205dab5394249657ce701c83d'
+)
+
+build() {
+  cd "${srcdir}/dagger-${pkgver}"
+
+  export GOPATH="${srcdir}/.gopath"
+  export GOFLAGS="-mod=readonly -trimpath"
+
+  # Common Arch-style hardening for Go binaries (PIE, stripped symbols).
+  go build \
+    -buildmode=pie \
+    -ldflags="-s -w" \
+    -o "${srcdir}/dagger" \
+    ./cmd/dagger
+}
+
+package() {
+  install -Dm755 "${srcdir}/dagger" "${pkgdir}/usr/bin/dagger"
+
+  cd "${srcdir}/dagger-${pkgver}"
+  # Keep the license discoverable by pacman conventions.
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
