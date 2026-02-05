@@ -425,6 +425,11 @@
       "project": "mcp"
     },
     {
+      "name": "mcp",
+      "type": "pypi",
+      "project": "mcp"
+    },
+    {
       "name": "python-uv-dynamic-versioning",
       "type": "pypi",
       "project": "uv-dynamic-versioning"
