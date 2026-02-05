@@ -354,6 +354,75 @@
     {
       "name": "flutter",
       "type": "flutter"
+    },
+    {
+      "name": "dagger",
+      "type": "github-tags-filtered",
+      "repo": "dagger/dagger",
+      "channel": "stable",
+      "tagPrefix": "v",
+      "tagRegex": "^v[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "versionRegex": "^v([0-9]+\\.[0-9]+\\.[0-9]+)$",
+      "versionFormat": "$1"
+    },
+    {
+      "name": "dagger-bin",
+      "type": "github-tags-filtered",
+      "repo": "dagger/dagger",
+      "channel": "stable",
+      "tagPrefix": "v",
+      "tagRegex": "^v[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "versionRegex": "^v([0-9]+\\.[0-9]+\\.[0-9]+)$",
+      "versionFormat": "$1"
+    },
+    {
+      "name": "dagger-git",
+      "type": "vcs",
+      "repo": "dagger/dagger",
+      "channel": "stable"
+    },
+    {
+      "name": "container-use",
+      "type": "github-tags-filtered",
+      "repo": "dagger/container-use",
+      "channel": "stable",
+      "tagPrefix": "v",
+      "tagRegex": "^v[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "versionRegex": "^v([0-9]+\\.[0-9]+\\.[0-9]+)$",
+      "versionFormat": "$1"
+    },
+    {
+      "name": "container-use-bin",
+      "type": "github-tags-filtered",
+      "repo": "dagger/container-use",
+      "channel": "stable",
+      "tagPrefix": "v",
+      "tagRegex": "^v[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "versionRegex": "^v([0-9]+\\.[0-9]+\\.[0-9]+)$",
+      "versionFormat": "$1"
+    },
+    {
+      "name": "container-use-git",
+      "type": "vcs",
+      "repo": "dagger/container-use",
+      "channel": "stable"
+    },
+    {
+      "name": "repomix",
+      "type": "npm",
+      "package": "repomix",
+      "channel": "stable"
+    },
+    {
+      "name": "repomix-git",
+      "type": "vcs",
+      "repo": "yamadashy/repomix",
+      "channel": "stable"
+    },
+    {
+      "name": "python-mcp",
+      "type": "manual",
+      "channel": "stable"
     }
   ]
 }
