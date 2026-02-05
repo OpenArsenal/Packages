@@ -1,62 +1,240 @@
-# OpenArsenal AUR Repository
-
 Multi-package Arch Linux repository with automated builds and GitHub Pages distribution.
 
-## 📦 Available Packages
+This repo provides:
 
-| Package | Description | Status |
-|---------|-------------|--------|
-| 1password | Password manager | ✅ Active |
-| other-package | Description | ✅ Active |
+* Reproducible package builds
+* Repo-local build + cache isolation
+* Automated CI builds + hosting
+* Upstream signature verification
 
-## 🛠️ Development
+---
 
-### Prerequisites
+# Development
+
+## Prerequisites
+
 ```bash
-sudo pacman -S --needed base-devel git curl gnupg pacman-contrib
+sudo pacman -S --needed base-devel git curl gnupg pacman-contrib direnv
 ```
 
-### Local Testing
-```bash
-# Build specific package
-./scripts/build-local.sh package-name
+Enable direnv in your shell if not already:
 
-# Build & Install
+```bash
+direnv allow
+```
+
+---
+
+## Local Testing
+
+Build a package:
+
+```bash
+./scripts/build-local.sh package-name
+```
+
+Build + install:
+
+```bash
 ./scripts/build-local.sh 1password -sci
 ```
 
-### Add New Package
+---
+
+## Adding Packages
+
 ```bash
 ./scripts/add-package.sh my-package
-# Edit ./my-package/PKGBUILD
+# edit PKGBUILD
 ./scripts/build-local.sh my-package
 ```
 
-### Update Existing Package
+---
+
+## Updating Packages
+
 ```bash
 ./scripts/update-package.sh 1password 8.11.5
 ./scripts/build-local.sh 1password
 ```
 
-## 🤖 Automation
+---
 
-### GitHub Actions Features
-- ✅ **Auto-build** on package changes
-- ✅ **Parallel builds** for multiple packages  
-- ✅ **GitHub Pages** repository hosting
-- ✅ **Manual triggers** with package selection
-- ✅ **Weekly rebuilds** to catch dependency updates
-- ✅ **GPG verification** and security checks
-- ✅ **Artifact uploads** for easy downloads
+# Repository Environment
 
-### Manual Triggers
-1. Go to Actions → "Build All Packages"
-2. Click "Run workflow"
-3. Specify packages (or "all") and options
+This repo uses a **repo-local makepkg environment** loaded via `direnv`.
 
-### Repository Structure
+Key exported paths:
+
+* `PKGDEST` → built packages
+* `SRCDEST` → downloaded sources
+* `BUILDDIR` → working build dirs
+* `LOGDEST` → build logs
+* `SRCPKGDEST` → source packages
+* `GNUPGHOME` → repo-local GPG keyring
+
+Confirm:
+
+```bash
+echo $GNUPGHOME
 ```
-./
+
+---
+
+# Repo-Local GPG Keyring
+
+## Why this exists
+
+We isolate GPG operations so builds are:
+
+* Reproducible
+* Independent of maintainer keyrings
+* CI-compatible
+* Auditable via `validpgpkeys`
+
+Because of this, the repo keyring is **git-ignored**:
+
+```
+.gnupg/
+```
+
+Every contributor must bootstrap it locally.
+
+---
+
+## Initializing the keyring
+
+Run once per clone:
+
+```bash
+mkdir -p "$GNUPGHOME"
+chmod 700 "$GNUPGHOME"
+
+gpg --homedir "$GNUPGHOME" --list-keys >/dev/null
+```
+
+---
+
+# Upstream Signature Verification
+
+Some PKGBUILDs verify upstream artifacts in `check()`.
+
+If a key is missing, builds fail with:
+
+```
+gpg: Can't check signature: No public key
+==> ERROR: A failure occurred in check().
+```
+
+This means the signing key is not in the repo keyring.
+
+---
+
+## Importing Signing Keys
+
+### Example — 1Password CLI
+
+Fingerprint:
+
+```
+3FEF 9748 469A DBE1 5DA7  CA80 AC2D 6274 2012 EA22
+```
+
+### Import via keyserver
+
+**Bash/zsh**
+
+```bash
+KEY=3FEF9748469ADBE15DA7CA80AC2D62742012EA22
+gpg --homedir "$GNUPGHOME" --keyserver keyserver.ubuntu.com --recv-keys "$KEY"
+```
+
+**Fish**
+
+```fish
+set KEY 3FEF9748469ADBE15DA7CA80AC2D62742012EA22
+gpg --homedir "$GNUPGHOME" --keyserver keyserver.ubuntu.com --recv-keys $KEY
+```
+
+---
+
+## Trusting Keys (optional)
+
+Without trust you may see:
+
+```
+WARNING: This key is not certified with a trusted signature!
+```
+
+The signature is still valid — this is only a Web-of-Trust warning.
+
+To suppress it:
+
+```bash
+gpg --homedir "$GNUPGHOME" --edit-key 3FEF9748469ADBE15DA7CA80AC2D62742012EA22
+trust
+# choose 4 or 5
+quit
+```
+
+Rebuild trustdb:
+
+```bash
+gpg --homedir "$GNUPGHOME" --check-trustdb
+```
+
+---
+
+## Verify key presence
+
+```bash
+gpg --homedir "$GNUPGHOME" --list-keys
+```
+
+---
+
+# Building Packages
+
+```bash
+makepkg -Cfsri
+```
+
+Artifacts output to:
+
+```
+repo/x86_64/
+```
+
+---
+
+# Automation
+
+## GitHub Actions
+
+Features:
+
+* Auto-build on changes
+* Parallel package builds
+* GitHub Pages repo hosting
+* Manual workflow triggers
+* Weekly rebuilds
+* Signature verification
+* Artifact uploads
+
+---
+
+## Manual CI Trigger
+
+1. Actions → **Build All Packages**
+2. Run workflow
+3. Select packages or `all`
+
+---
+
+# Repository Structure
+
+```
+.
 ├── 1password/
 │   ├── PKGBUILD
 │   └── 1password.install
@@ -66,53 +244,52 @@ sudo pacman -S --needed base-devel git curl gnupg pacman-contrib
     └── PKGBUILD
 ```
 
-## 🔧 Configuration
+---
 
-### Package Guidelines
-- **Dependencies**: Use `depends=()` for runtime, `makedepends=()` for build-time
-- **Optional deps**: Use `optdepends=('package: description')` for optional features
-- **AUR deps**: List in depends arrays - CI will auto-install from AUR
-- **GPG verification**: Add `validpgpkeys=()` and `.sig` files to source
-- **Versioning**: Follow semantic versioning, bump `pkgrel` for packaging changes
+# Packaging Guidelines
 
-## 📋 Optional Dependencies Examples
+* Runtime deps → `depends=()`
+* Build deps → `makedepends=()`
+* Optional → `optdepends=()`
+* AUR deps allowed
+* Add `validpgpkeys=()` for signed sources
+* Bump `pkgrel` for packaging-only changes
 
-```bash
-optdepends=(
-    'cups: printing support'
-    'sane: scanner support'  
-    'alsa-lib: audio support'
-    'nvidia-utils: GPU acceleration (optional)'
-)
-```
+---
 
-**Note**: Optional dependencies are for runtime features. If your package is built differently based on presence of a dependency, that dependency should be in `depends=()` or `makedepends=()`.
+# Update Workflow
 
-## 🔄 Update Workflow
+1. Detect upstream release
+2. Update locally
+3. Test build
+4. Commit + push
+5. CI builds + deploys
 
-1. **Detect updates**: Monitor upstream releases
-2. **Update locally**: `./scripts/update-package.sh package version`
-3. **Test build**: `./scripts/build-local.sh package`  
-4. **Commit & push**: Triggers automated CI build
-5. **Deploy**: Packages automatically added to repository
+---
 
-## 🆘 Troubleshooting
+# Troubleshooting
 
-### Build Failures
-- Check logs in GitHub Actions
-- Test locally with `./scripts/build-local.sh`
-- Verify dependencies and sources
+## Build failures
 
-### GPG Issues  
-- Ensure `validpgpkeys=()` is correct
-- Check key server accessibility
-- Use fallback key import in CI
+* Check CI logs
+* Rebuild locally
+* Verify sources + sums
 
-### Repository Access
-- Verify GitHub Pages is enabled
-- Check repository URL in pacman.conf
-- Ensure SigLevel allows unsigned packages
+## GPG failures
 
-## 📄 License
+* Import missing keys
+* Verify fingerprints
+* Ensure `$GNUPGHOME` is initialized
 
-This repository structure is MIT licensed. Individual packages retain their original licenses.
+## Repo access issues
+
+* Confirm Pages enabled
+* Check pacman.conf URL
+* Adjust SigLevel if needed
+
+---
+
+# License
+
+Repo structure: MIT
+Packages retain upstream licenses.
