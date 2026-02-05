@@ -1,4 +1,6 @@
 *
-!PKGBUILD
-!pupu.sh
 !.gitignore
+!.SRCINFO
+!PKGBUILD
+!*.patch
+!*.sh
