@@ -421,8 +421,33 @@
     },
     {
       "name": "python-mcp",
-      "type": "manual",
-      "channel": "stable"
+      "type": "pypi",
+      "project": "mcp"
+    },
+    {
+      "name": "python-uv-dynamic-versioning",
+      "type": "pypi",
+      "project": "uv-dynamic-versioning"
+    },
+    {
+      "name": "python-async-timeout",
+      "type": "pypi",
+      "project": "async_timeout"
+    },
+    {
+      "name": "python-asgi-lifespan",
+      "type": "pypi",
+      "project": "asgi-lifespan"
+    },
+    {
+      "name": "python-sse-starlette",
+      "type": "pypi",
+      "project": "sse-starlette"
+    },
+    {
+      "name": "python-httpx-sse",
+      "type": "pypi",
+      "project": "httpx-sse"
     }
   ]
 }
