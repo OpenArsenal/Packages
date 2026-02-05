@@ -1,0 +1,74 @@
+# Maintainer: Carl <you@example.com>
+# Upstream: https://github.com/oraios/serena
+
+pkgname=serena
+pkgver=0.1.4
+pkgrel=1
+pkgdesc="Serena MCP server + CLI for project-based symbolic editing workflows"
+arch=('x86_64')
+url="https://github.com/oraios/serena"
+license=('MIT')
+
+# Notes:
+# - Upstream PyPI metadata says Requires-Python: <3.12,>=3.11.
+#   Arch system python is newer, so we relax the metadata in prepare().
+# - Some deps below may be [extra]/[community]/AUR depending on your system.
+
+depends=(
+  'python'
+  'python-beautifulsoup4'
+  'python-dotenv'
+  'python-joblib'
+  'python-overrides'
+  'python-pathspec'
+  'python-psutil'
+  'python-pydantic'
+  'python-requests'
+  'python-ruamel-yaml'
+  'python-tqdm'
+  'python-yaml'
+  'python-jinja'
+  'python-flask'
+  'python-tiktoken'
+  'python-anthropic'
+  'python-mcp'
+  'python-types-pyyaml'
+  'pyright'
+  'fortls'
+)
+
+makedepends=(
+  'python-build'
+  'python-installer'
+  'python-wheel'
+  'python-hatchling'
+)
+
+# PyPI sdist (v0.1.4)
+source=(
+  "serena_agent-${pkgver}.tar.gz::https://files.pythonhosted.org/packages/56/31/b5e1d0d55ce5669b60df3a20af45dc81ed0aa173eb735f35fe6712e9be74/serena_agent-0.1.4.tar.gz"
+)
+sha256sums=(
+  '8bb79a964a4bd09d5e5b86115d5436d9229dc80e6a3e0f176415e34294531a84'
+)
+
+prepare() {
+  cd "${srcdir}/serena_agent-${pkgver}"
+
+  # Arch ships newer Python than upstream's metadata allows.
+  # This only changes packaging metadata; it does not magically guarantee runtime compatibility.
+  sed -i 's/^requires-python = ">=3\.11, <3\.12"$/requires-python = ">=3.11"/' pyproject.toml
+}
+
+build() {
+  cd "${srcdir}/serena_agent-${pkgver}"
+  python -m build --wheel --no-isolation
+}
+
+package() {
+  cd "${srcdir}/serena_agent-${pkgver}"
+  python -m installer --destdir="${pkgdir}" dist/*.whl
+
+  # Arch license convention
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

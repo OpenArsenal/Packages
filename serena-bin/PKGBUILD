@@ -1,0 +1,58 @@
+# Maintainer: Carl <you@example.com>
+# Upstream: https://github.com/oraios/serena
+
+pkgname=serena-bin
+pkgver=0.1.4
+pkgrel=1
+pkgdesc="Serena MCP server + CLI (prebuilt PyPI wheel)"
+arch=('x86_64')
+url="https://github.com/oraios/serena"
+license=('MIT')
+
+provides=('serena')
+conflicts=('serena' 'serena-git')
+
+depends=(
+  'python'
+  'python-beautifulsoup4'
+  'python-dotenv'
+  'python-joblib'
+  'python-overrides'
+  'python-pathspec'
+  'python-psutil'
+  'python-pydantic'
+  'python-requests'
+  'python-ruamel-yaml'
+  'python-tqdm'
+  'python-yaml'
+  'python-jinja'
+  'python-flask'
+  'python-tiktoken'
+  'python-anthropic'
+  'python-mcp'
+  'python-types-pyyaml'
+  'pyright'
+  'fortls'
+)
+
+makedepends=(
+  'python-installer'
+)
+
+source=(
+  "serena_agent-${pkgver}-py3-none-any.whl::https://files.pythonhosted.org/packages/0e/56/74d9a4dbbe574c93ccaefa0999091205fb9b5ee885dc28f89c6cc5b5e11e/serena_agent-0.1.4-py3-none-any.whl"
+  # grab LICENSE from sdist so we can install it properly
+  "serena_agent-${pkgver}.tar.gz::https://files.pythonhosted.org/packages/56/31/b5e1d0d55ce5669b60df3a20af45dc81ed0aa173eb735f35fe6712e9be74/serena_agent-0.1.4.tar.gz"
+)
+
+sha256sums=(
+  'af8cccc17cf64c991eccbdbde7b64f512e6c15052524041a1547c410d450c148'
+  '8bb79a964a4bd09d5e5b86115d5436d9229dc80e6a3e0f176415e34294531a84'
+)
+
+package() {
+  cd "${srcdir}"
+  python -m installer --destdir="${pkgdir}" "serena_agent-${pkgver}-py3-none-any.whl"
+
+  install -Dm644 "serena_agent-${pkgver}/LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
