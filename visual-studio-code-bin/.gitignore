@@ -1,2 +1,6 @@
-*.in
-.xml
+*
+!.gitignore
+!.SRCINFO
+!PKGBUILD
+!*.patch
+!*.sh
