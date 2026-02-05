@@ -1,4 +1,6 @@
-pkg
-src
-*.tar.xz
-*.pkg.tar.zst
+*
+!.gitignore
+!.SRCINFO
+!PKGBUILD
+!*.patch
+!*.sh
