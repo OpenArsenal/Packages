@@ -1,0 +1,55 @@
+# Maintainer: <you>
+pkgname=container-use-git
+_pkgname=container-use
+pkgver=0.0.0.r0.g0000000
+pkgrel=1
+pkgdesc="MCP server for container workflows (development version)"
+arch=('x86_64' 'aarch64')
+url="https://container-use.com"
+license=('Apache-2.0')
+
+depends=('glibc')
+makedepends=('git' 'go')
+
+provides=('container-use')
+conflicts=('container-use' 'container-use-bin')
+
+source=("git+https://github.com/dagger/container-use.git")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd "$srcdir/$_pkgname"
+  local _d
+  _d="$(git describe --tags --long --abbrev=7 --match 'v[0-9]*' 2>/dev/null || true)"
+  if [[ -n "$_d" ]]; then
+    printf '%s\n' "$_d" | sed -E 's/^v//; s/-/./g'
+  else
+    printf '0.0.0.r%s.g%s\n' "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+  fi
+}
+
+build() {
+  cd "$srcdir/$_pkgname"
+
+  export CGO_ENABLED=0
+  export GOFLAGS="-trimpath -buildvcs=false -mod=readonly"
+
+  # Quickstart build-from-source uses:
+  #   go build -o container-use ./cmd/container-use :contentReference[oaicite:4]{index=4}
+  go build \
+    -buildmode=pie \
+    -ldflags="-s -w" \
+    -o "$srcdir/container-use" \
+    ./cmd/container-use
+}
+
+package() {
+  install -Dm755 "$srcdir/container-use" "$pkgdir/usr/bin/container-use"
+
+  # Provide the documented shortcut command.
+  ln -s container-use "$pkgdir/usr/bin/cu"
+
+  cd "$srcdir/$_pkgname"
+  install -Dm644 LICENSE* "$pkgdir/usr/share/licenses/$pkgname/LICENSE" 2>/dev/null || true
+  install -Dm644 README* -t "$pkgdir/usr/share/doc/$pkgname/" 2>/dev/null || true
+}

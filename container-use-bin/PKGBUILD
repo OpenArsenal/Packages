@@ -1,0 +1,65 @@
+# Maintainer: <you>
+pkgname=container-use-bin
+_pkgname=container-use
+pkgver=0.4.2
+pkgrel=1
+pkgdesc="MCP server for container workflows (prebuilt binary)"
+arch=('x86_64' 'aarch64')
+url="https://container-use.com"
+license=('Apache-2.0')
+
+depends=('glibc')
+
+provides=('container-use')
+conflicts=('container-use' 'container-use-git')
+
+_tag="v${pkgver}"
+
+source=(
+  "checksums.txt::https://github.com/dagger/container-use/releases/download/${_tag}/checksums.txt"
+)
+source_x86_64+=(
+  "container-use_${_tag}_linux_amd64.tar.gz::https://github.com/dagger/container-use/releases/download/${_tag}/container-use_${_tag}_linux_amd64.tar.gz"
+)
+source_aarch64+=(
+  "container-use_${_tag}_linux_arm64.tar.gz::https://github.com/dagger/container-use/releases/download/${_tag}/container-use_${_tag}_linux_arm64.tar.gz"
+)
+
+sha256sums=('SKIP')
+sha256sums_x86_64=('SKIP')
+sha256sums_aarch64=('SKIP')
+
+prepare() {
+  cd "$srcdir"
+
+  local _arch
+  case "$CARCH" in
+    x86_64) _arch="amd64" ;;
+    aarch64) _arch="arm64" ;;
+    *) echo "Unsupported arch: $CARCH" >&2; exit 1 ;;
+  esac
+
+  local _archive="container-use_${_tag}_linux_${_arch}.tar.gz"
+
+  grep -E " ${_archive}\$" checksums.txt > "checksums.${_archive}.txt"
+  sha256sum -c "checksums.${_archive}.txt"
+}
+
+package() {
+  cd "$srcdir"
+
+  local _arch
+  case "$CARCH" in
+    x86_64) _arch="amd64" ;;
+    aarch64) _arch="arm64" ;;
+    *) echo "Unsupported arch: $CARCH" >&2; exit 1 ;;
+  esac
+
+  local _archive="container-use_${_tag}_linux_${_arch}.tar.gz"
+
+  bsdtar -xf "$_archive"
+  install -Dm755 container-use "$pkgdir/usr/bin/container-use"
+
+  # Provide the documented shortcut.
+  ln -s container-use "$pkgdir/usr/bin/cu"
+}
