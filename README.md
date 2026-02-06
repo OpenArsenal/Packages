@@ -205,6 +205,50 @@ Artifacts output to:
 repo/x86_64/
 ```
 
+## Local repo permissions (pacman `DownloadUser`)
+
+When you add this repo to `pacman.conf` using a `file://...` URL, **pacman does not necessarily read the DB as root**.
+On modern Arch/pacman setups, downloads are performed by an unprivileged user (commonly `alpm`) via `DownloadUser`.
+If your repository lives under `/home/<you>/...` and your home directory is `0700` (common default),
+`alpm` cannot traverse the path, and you’ll see errors like:
+
+```
+
+openarsenal.db failed to download
+error: failed retrieving file 'openarsenal.db' from disk : Could not open file /home/<you>/.../openarsenal.db
+
+```
+
+### Fix (ACL) — allow `alpm` to traverse + read the repo
+
+Run once (adjust the path if your repo lives elsewhere):
+
+```bash
+# Allow alpm to traverse the path (execute bit on directories)
+sudo setfacl -m u:alpm:--x /home/$USER
+sudo setfacl -m u:alpm:--x /home/$USER/Projects
+sudo setfacl -m u:alpm:--x /home/$USER/Projects/Packages
+sudo setfacl -m u:alpm:--x /home/$USER/Projects/Packages/repo
+sudo setfacl -m u:alpm:--x /home/$USER/Projects/Packages/repo/x86_64
+
+# Allow alpm to read repo contents (DB + packages)
+sudo setfacl -m u:alpm:r-- /home/$USER/Projects/Packages/repo/x86_64/openarsenal.db*
+sudo setfacl -m u:alpm:r-- /home/$USER/Projects/Packages/repo/x86_64/*.pkg.tar.*
+```
+
+To ensure **future** DB/package files are readable without re-running ACLs every time:
+
+```bash
+sudo setfacl -m d:u:alpm:rx /home/$USER/Projects/Packages/repo/x86_64
+```
+
+Verify:
+
+```bash
+sudo -u alpm ls -l /home/$USER/Projects/Packages/repo/x86_64/
+sudo pacman -Sy
+```
+
 ---
 
 # Automation
