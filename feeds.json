@@ -455,11 +455,6 @@
       "project": "httpx-sse"
     },
     {
-      "name": "python-sensai-utils",
-      "type": "pypi",
-      "project": "sensai-utils"
-    },
-    {
       "_comment": "Dart SDK (stable): track only x.y.z tags; ignore dev/beta tags like 3.12.0-106.0.dev and 3.11.0-296.5.beta",
       "name": "dart",
       "type": "github-tags-filtered",
@@ -468,6 +463,31 @@
       "tagRegex": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
       "versionRegex": "^([0-9]+\\.[0-9]+\\.[0-9]+)$",
       "versionFormat": "$1"
+    },
+    {
+      "name": "python-docstring-parser",
+      "type": "pypi",
+      "project": "docstring-parser"
+    },
+    {
+      "name": "python-anthropic",
+      "type": "pypi",
+      "project": "anthropic"
+    },
+    {
+      "name": "python-types-pyyaml",
+      "type": "pypi",
+      "project": "types-PyYAML"
+    },
+    {
+      "name": "fortls",
+      "type": "pypi",
+      "project": "fortls"
+    },
+    {
+      "name": "python-sensai-utils",
+      "type": "pypi",
+      "project": "sensai-utils"
     }
 
   ]
