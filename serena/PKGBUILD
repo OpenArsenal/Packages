@@ -45,18 +45,17 @@ makedepends=(
 )
 
 # PyPI sdist (v0.1.4)
+# Prefer GitHub release asset sdist (or keep your PyPI URL if you prefer)
 source=(
-  "serena_agent-${pkgver}.tar.gz::https://files.pythonhosted.org/packages/56/31/b5e1d0d55ce5669b60df3a20af45dc81ed0aa173eb735f35fe6712e9be74/serena_agent-0.1.4.tar.gz"
+  "serena_agent-${pkgver}.tar.gz::https://github.com/oraios/serena/releases/download/v${pkgver}/serena_agent-${pkgver}.tar.gz"
 )
-sha256sums=(
-  '8bb79a964a4bd09d5e5b86115d5436d9229dc80e6a3e0f176415e34294531a84'
-)
+
+sha256sums=('8bb79a964a4bd09d5e5b86115d5436d9229dc80e6a3e0f176415e34294531a84')
 
 prepare() {
   cd "${srcdir}/serena_agent-${pkgver}"
 
-  # Arch ships newer Python than upstream's metadata allows.
-  # This only changes packaging metadata; it does not magically guarantee runtime compatibility.
+  # If (and only if) you decide to override upstream's python constraint on Arch:
   sed -i 's/^requires-python = ">=3\.11, <3\.12"$/requires-python = ">=3.11"/' pyproject.toml
 }
 
@@ -65,10 +64,15 @@ build() {
   python -m build --wheel --no-isolation
 }
 
+check() {
+  cd "${srcdir}/serena_agent-${pkgver}"
+  python -c 'import serena; print("serena import ok")'
+  python -m serena.cli --help >/dev/null
+}
+
 package() {
   cd "${srcdir}/serena_agent-${pkgver}"
   python -m installer --destdir="${pkgdir}" dist/*.whl
 
-  # Arch license convention
   install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 }
