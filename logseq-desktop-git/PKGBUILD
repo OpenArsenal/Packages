@@ -19,10 +19,8 @@ source=(
     "${pkgname}::git+${repo}#branch=${branch}"
     "${pkgname%-git}.desktop"
 )
-md5sums=(
-    "SKIP"
-    "53b345faf8839be86f1e3a5f9f0db8f1"
-)
+md5sums=('SKIP'
+         '53b345faf8839be86f1e3a5f9f0db8f1')
 
 pkgver() {
     cd "${srcdir}/${pkgname}"

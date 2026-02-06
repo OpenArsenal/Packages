@@ -31,10 +31,8 @@ source=(
   "LICENSE-$pkgver::https://raw.githubusercontent.com/edde746/plezy/${pkgver}/LICENSE"
 )
 
-sha256sums=(
-  '35d3915a4f66c98a45bc0056c6b38e5e8a0f384821d5fde646797c60c4f561bd'
-  'SKIP'
-)
+sha256sums=('35d3915a4f66c98a45bc0056c6b38e5e8a0f384821d5fde646797c60c4f561bd'
+            '3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986')
 
 package() {
   cd "$srcdir"

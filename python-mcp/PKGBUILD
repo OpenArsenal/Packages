@@ -58,10 +58,8 @@ source=(
   "${_name}::git+${url}.git#tag=v${pkgver}"
   "https://github.com/modelcontextprotocol/python-sdk/pull/1834.patch"
 )
-sha256sums=(
-  'eb63712c1da8d41ec45b3290a9ca488e78d99ef913f735514aa058c5b973c634'
-  '61524580a527d9c4405d713edcd04d7e263fcc091ebfd4c4a438f75abb749f2d'
-)
+sha256sums=('eb63712c1da8d41ec45b3290a9ca488e78d99ef913f735514aa058c5b973c634'
+            '61524580a527d9c4405d713edcd04d7e263fcc091ebfd4c4a438f75abb749f2d')
 
 prepare() {
   cd "${srcdir}/${_name}"
