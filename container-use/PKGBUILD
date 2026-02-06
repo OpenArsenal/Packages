@@ -25,7 +25,7 @@ conflicts=("${_pkgname}-git" "${_pkgname}-bin")
 source=(
   "${pkgname}::git+https://github.com/dagger/container-use.git#tag=v${pkgver}"
 )
-sha256sums=('SKIP')
+sha256sums=('d4692a5187fe25fe7e7484eeb6bf98582e85904419cd9f0271ec31dd6b52bd34')
 
 _prepare_go_env() {
   # Keep module downloads inside the build dir (avoid polluting ~/go)
