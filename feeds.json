@@ -453,6 +453,11 @@
       "name": "python-httpx-sse",
       "type": "pypi",
       "project": "httpx-sse"
+    },
+    {
+      "name": "python-sensai-utils",
+      "type": "pypi",
+      "project": "sensai-utils"
     }
   ]
 }

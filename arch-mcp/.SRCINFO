@@ -1,0 +1,23 @@
+pkgbase = arch-mcp
+	pkgdesc = MCP server bridging AI assistants with Arch Linux ecosystem (Wiki, AUR, official repos)
+	pkgver = 3.3.6
+	pkgrel = 1
+	url = https://github.com/nihalxkumar/arch-mcp
+	arch = any
+	license = GPL-3.0-only
+	license = MIT
+	checkdepends = python-pytest
+	checkdepends = python-pytest-asyncio
+	makedepends = python-build
+	makedepends = python-installer
+	makedepends = python-wheel
+	depends = python>=3.11
+	depends = python-beautifulsoup4
+	depends = python-httpx
+	depends = python-lxml
+	depends = python-markdownify
+	depends = python-mcp
+	source = arch-mcp-3.3.6.tar.gz::https://github.com/nihalxkumar/arch-mcp/archive/refs/tags/v3.3.6.tar.gz
+	sha256sums = 787fa93d6d1b3ac643fbd06e969b3e8b1c15472191fada58e650706d97a86b83
+
+pkgname = arch-mcp
