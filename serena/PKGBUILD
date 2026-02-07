@@ -84,7 +84,6 @@ check() {
   PYTHONPATH="${_site}" PATH="${_bin}:${PATH}" serena --help >/dev/null
 }
 
-
 package() {
   cd "${srcdir}/serena_agent-${pkgver}"
   python -m installer --destdir="${pkgdir}" dist/*.whl
