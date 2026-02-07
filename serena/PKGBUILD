@@ -4,6 +4,7 @@
 pkgname=serena
 pkgver=0.1.4
 pkgrel=1
+arch=('any')
 pkgdesc="Serena MCP server + CLI for project-based symbolic editing workflows"
 arch=('x86_64')
 url="https://github.com/oraios/serena"
@@ -68,22 +69,21 @@ build() {
 check() {
   cd "${srcdir}/serena_agent-${pkgver}"
 
-  # Install the built wheel into a temporary staging root
   python -m installer --destdir="${srcdir}/_check" dist/*.whl
 
-  # Compute the correct site-packages path inside the staged root
   local _pyver
   _pyver="$(python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
 
   local _site="${srcdir}/_check/usr/lib/python${_pyver}/site-packages"
   local _bin="${srcdir}/_check/usr/bin"
 
-  # Import from the staged site-packages
+  # 1) Import smoke test (from staged site-packages)
   PYTHONPATH="${_site}" python -c 'import serena; import serena.cli; print("serena import ok")'
 
-  # Smoke-test the installed console script (from the wheel)
-  PATH="${_bin}:${PATH}" serena --help >/dev/null
+  # 2) Console script smoke test (also pointing at staged site-packages)
+  PYTHONPATH="${_site}" PATH="${_bin}:${PATH}" serena --help >/dev/null
 }
+
 
 package() {
   cd "${srcdir}/serena_agent-${pkgver}"
