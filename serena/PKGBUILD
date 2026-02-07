@@ -17,6 +17,7 @@ license=('MIT')
 depends=(
   'python'
   'python-beautifulsoup4'
+  'python-sensai-utils'
   'python-dotenv'
   'python-joblib'
   'python-overrides'
@@ -66,8 +67,22 @@ build() {
 
 check() {
   cd "${srcdir}/serena_agent-${pkgver}"
-  python -c 'import serena; print("serena import ok")'
-  python -m serena.cli --help >/dev/null
+
+  # Install the built wheel into a temporary staging root
+  python -m installer --destdir="${srcdir}/_check" dist/*.whl
+
+  # Compute the correct site-packages path inside the staged root
+  local _pyver
+  _pyver="$(python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+
+  local _site="${srcdir}/_check/usr/lib/python${_pyver}/site-packages"
+  local _bin="${srcdir}/_check/usr/bin"
+
+  # Import from the staged site-packages
+  PYTHONPATH="${_site}" python -c 'import serena; import serena.cli; print("serena import ok")'
+
+  # Smoke-test the installed console script (from the wheel)
+  PATH="${_bin}:${PATH}" serena --help >/dev/null
 }
 
 package() {
