@@ -1,0 +1,111 @@
+# Maintainer: Alexander Rødseth <rodseth@gmail.com>
+# Maintainer: Felix Yan <felixonmars@archlinux.org>
+# Maintainer: Orhun Parmaksız <orhun@archlinux.org>
+# Contributor: Daniele Basso <d dot bass05 at proton dot me>
+# Contributor: T. Jameson Little <t.jameson.little at gmail dot com>
+# Contributor: Usagi Ito <usagi@WonderRabbitProject.net>
+# Contributor: siasia <http://pastebin.com/qsBEmNCw>
+# Contributor: Julien Nicoulaud <julien.nicoulaud@gmail.com>
+# Contributor: The one with the braid <info@braid.business>
+# Contributor: Juan Cuevas <juanandrescuevas14@gmail.com>
+# Contributor: Jacob Bang <julemand101@archlinux.dk>
+
+pkgname=dart
+pkgver=3.10.9
+pkgrel=1
+pkgdesc='The dart programming language SDK'
+arch=('x86_64')
+url='https://dart.dev/'
+depends=('glibc')
+license=('BSD-3-Clause')
+makedepends=(
+  'dart'
+  'git'
+  'gn'
+  'ninja'
+  'python'
+)
+# Pinned commit for depot_tools since it does not have release tags. See discussion here for further details:
+# https://gitlab.archlinux.org/archlinux/packaging/packages/dart/-/merge_requests/14#note_335643
+#
+# Should be updated with latest commit on origin/main when new version of Dart are released.
+_depotver='12b3e1f95e1377c0fe9cc3c84bc64193b234346b'
+source=(
+  "git+https://github.com/dart-lang/sdk.git#tag=$pkgver"
+  "git+https://chromium.googlesource.com/chromium/tools/depot_tools.git#commit=$_depotver"
+  "DEPS.patch"
+)
+sha256sums=('cb0b0b17325c666501eb962c9ea1aaf6b79ad43f3a02160dc7561e7f9028f515'
+            '7de37e557d18f51ed87de52bd25b0b051ebcf2c6237468410d16939006ed2c66'
+            '3fee7cc3da867b9af917f8d8ce2da5b12f7543ee23cded0644dad56eb1b1053e')
+
+prepare() {
+cat >.gclient <<EOF
+solutions = [
+  {
+    "name": "sdk",
+    "url": "file://${srcdir}/sdk",
+    "deps_file": "DEPS",
+    "managed": False,
+    "custom_deps": {},
+    "custom_vars": {},
+  },
+]
+EOF
+
+  export PATH+=":$PWD/depot_tools" DEPOT_TOOLS_UPDATE=0
+
+  cd sdk
+
+  patch -Np 1 --input="$srcdir/DEPS.patch"
+
+  gclient sync -D \
+      --nohooks \
+      --no-history \
+      --shallow \
+      -r "${srcdir}/sdk@${_commit}"
+
+  dart tools/generate_package_config.dart
+  python tools/generate_sdk_version_file.py
+
+  sed -i 's|prefix = "x86_64-linux-gnu-"|prefix = ""|g' build/toolchain/linux/BUILD.gn
+}
+
+build() {
+  cd sdk
+
+  # gn args --list out
+
+  /usr/bin/gn gen -qv out --args='
+                        target_cpu = "x64"
+                        is_debug = false
+                        is_release = true
+                        is_clang = false
+                        dart_platform_sdk = false
+                        verify_sdk_hash = false'
+  ninja create_sdk -v -C out
+}
+
+package() {
+  # cd to directory
+  cd sdk/out/
+
+  # Create directories
+  install -d "$pkgdir"{"/opt/$pkgname-sdk",/usr/{bin,"share/doc/$pkgname"}}
+
+  # Package the files
+  cp -a "$pkgname-sdk/"* "$pkgdir/opt/$pkgname-sdk/"
+
+  # Set up symbolic links for the executables
+  for f in dart dartaotruntime; do
+    ln -s "/opt/$pkgname-sdk/bin/$f" "$pkgdir/usr/bin/$f"
+  done
+
+  # Package documentation
+  install -Dm644 "$pkgdir/opt/$pkgname-sdk/README" -t "$pkgdir/usr/share/doc/$pkgname"
+
+  # BSD License
+  install -Dm644 ../LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
+
+# vim:set ts=2 sw=2 et:
