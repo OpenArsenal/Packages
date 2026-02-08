@@ -245,48 +245,107 @@ github_latest_release_tag_filtered() {
   local repo="${1:-}"
   local channel="${2:-stable}"
   local tag_regex="${3:-}"
+  local max_pages="${4:-10}"
   [[ -z "$repo" || -z "$tag_regex" ]] && return 1
 
-  log_debug "github_latest_release_tag_filtered: repo=$repo, channel=$channel, tag_regex=$tag_regex"
+  log_debug "github_latest_release_tag_filtered: repo=$repo, channel=$channel, tag_regex=$tag_regex, max_pages=$max_pages"
 
-  local releases
-  releases="$(fetch "https://api.github.com/repos/${repo}/releases?per_page=50")" || {
-    log_debug "Failed to fetch releases from GitHub API"
-    return 1
-  }
+  local page=1
+  local result=""
 
-  local total_releases
-  total_releases=$(echo "$releases" | jq -r '.[] | .tag_name' | wc -l)
-  log_debug "Found $total_releases total releases"
+  while [[ "$page" -le "$max_pages" && -z "$result" ]]; do
+    local releases
+    releases="$(fetch "https://api.github.com/repos/${repo}/releases?per_page=100&page=${page}")" || {
+      log_debug "Failed to fetch releases from GitHub API (page $page)"
+      break
+    }
 
-  local result
-  case "$channel" in
-    stable)
-      result=$(echo "$releases" | jq -r --arg re "$tag_regex" '
-        [.[] | select(.prerelease==false) | select(.tag_name | test($re))][0].tag_name // empty
-      ')
-      ;;
-    prerelease)
-      result=$(echo "$releases" | jq -r --arg re "$tag_regex" '
-        [.[] | select(.prerelease==true) | select(.tag_name | test($re))][0].tag_name // empty
-      ')
-      ;;
-    any|*)
-      result=$(echo "$releases" | jq -r --arg re "$tag_regex" '
-        [.[] | select(.tag_name | test($re))][0].tag_name // empty
-      ')
-      ;;
-  esac
+    local count
+    count=$(echo "$releases" | jq -r 'length // 0' 2>/dev/null || echo 0)
+    log_debug "Page $page: $count releases"
+
+    [[ "$count" -eq 0 ]] && break
+
+    case "$channel" in
+      stable)
+        result=$(echo "$releases" | jq -r --arg re "$tag_regex" '
+          [.[] | select(.prerelease==false) | select(.tag_name | test($re))][0].tag_name // empty
+        ')
+        ;;
+      prerelease)
+        result=$(echo "$releases" | jq -r --arg re "$tag_regex" '
+          [.[] | select(.prerelease==true) | select(.tag_name | test($re))][0].tag_name // empty
+        ')
+        ;;
+      any|*)
+        result=$(echo "$releases" | jq -r --arg re "$tag_regex" '
+          [.[] | select(.tag_name | test($re))][0].tag_name // empty
+        ')
+        ;;
+    esac
+
+    # Stop if we got fewer than requested (last page)
+    [[ "$count" -lt 100 ]] && break
+
+    page=$((page + 1))
+  done
 
   if [[ -z "$result" && "${DEBUG:-false}" == "true" ]]; then
-    log_debug "No releases matched regex '$tag_regex'"
-    log_debug "Sample releases (first 5):"
-    echo "$releases" | jq -r '.[] | .tag_name' | head -5 | while read -r tag; do
-      log_debug "  - $tag (prerelease: $(echo "$releases" | jq -r --arg t "$tag" '.[] | select(.tag_name==$t) | .prerelease'))"
-    done
+    log_debug "No releases matched regex '$tag_regex' across $page page(s)"
   fi
 
   echo "$result"
+}
+
+# Fetch tags using GitHub's matching-refs API (efficient for prefixed lookups)
+# Returns refs like "refs/tags/release-69-1"
+github_matching_refs_tags() {
+  local repo="${1:-}"
+  local prefix="${2:-}"
+  local page="${3:-1}"
+  local per_page="${4:-100}"
+  [[ -z "$repo" || -z "$prefix" ]] && return 1
+
+  log_debug "github_matching_refs_tags: repo=$repo prefix=$prefix page=$page"
+  fetch "https://api.github.com/repos/${repo}/git/matching-refs/tags/${prefix}?per_page=${per_page}&page=${page}"
+}
+
+# Fetch a single page of tags from the standard tags endpoint
+github_list_tags_page() {
+  local repo="${1:-}"
+  local page="${2:-1}"
+  local per_page="${3:-100}"
+  [[ -z "$repo" ]] && return 1
+
+  log_debug "github_list_tags_page: repo=$repo page=$page"
+  fetch "https://api.github.com/repos/${repo}/tags?per_page=${per_page}&page=${page}"
+}
+
+# Process a single tag through regex filtering and version extraction
+# Outputs the processed version or nothing if filtered out
+process_tag_to_version() {
+  local tag="${1:-}"
+  local tag_regex="${2:-}"
+  local version_regex="${3:-}"
+  local version_format="${4:-}"
+
+  [[ -z "$tag" ]] && return 0
+
+  # Apply tag regex filter if specified
+  if [[ -n "$tag_regex" ]]; then
+    if ! printf '%s\n' "$tag" | grep -Eq "$tag_regex"; then
+      return 0
+    fi
+  fi
+
+  # If versionRegex is provided, apply it to the ORIGINAL tag (before normalization)
+  # This allows regexes like ^v(1.2.3)$ to capture versions from tags like v1.2.3
+  if [[ -n "$version_regex" && -n "$version_format" ]]; then
+    apply_version_regex "$tag" "$version_regex" "$version_format" 2>/dev/null || true
+  else
+    # No version extraction regex - just normalize the tag
+    normalize_basic_tag_to_version "$tag"
+  fi
 }
 
 github_tags_filtered_versions() {
@@ -294,47 +353,59 @@ github_tags_filtered_versions() {
   local tag_regex="${2:-}"
   local version_regex="${3:-}"
   local version_format="${4:-}"
+  local tag_prefix="${5:-}"
+  local max_pages="${6:-20}"
   [[ -z "$repo" ]] && return 0
 
-  log_debug "github_tags_filtered_versions: repo=$repo, tag_regex=$tag_regex"
+  log_debug "github_tags_filtered_versions: repo=$repo tag_regex=$tag_regex tag_prefix=$tag_prefix max_pages=$max_pages"
 
-  local tags_json
-  tags_json="$(fetch "https://api.github.com/repos/${repo}/tags?per_page=100")" || {
-    log_debug "Failed to fetch tags from GitHub API"
-    return 1
-  }
+  local page=1
+  local total_found=0
 
-  local tag_count
-  tag_count=$(echo "$tags_json" | jq -r '.[] | .name' | wc -l)
-  log_debug "Found $tag_count total tags"
+  while [[ "$page" -le "$max_pages" ]]; do
+    local json=""
+    local count=0
 
-  local matching_tags
-  matching_tags=$(echo "$tags_json" | jq -r --arg re "$tag_regex" '
-    .[] | .name | select(test($re))
-  ')
-  
-  local matching_count
-  matching_count=$(echo "$matching_tags" | grep -c . || echo "0")
-  log_debug "Found $matching_count tags matching regex '$tag_regex'"
+    if [[ -n "$tag_prefix" ]]; then
+      # Use matching-refs API for efficient prefix lookup
+      json="$(github_matching_refs_tags "$repo" "$tag_prefix" "$page" 100 2>/dev/null)" || break
 
-  if [[ "$matching_count" -eq 0 && "${DEBUG:-false}" == "true" ]]; then
-    log_debug "Sample tags from repo (first 5):"
-    echo "$tags_json" | jq -r '.[] | .name' | head -5 | while read -r tag; do
-      log_debug "  - $tag"
-    done
-  fi
+      # matching-refs returns: [{ "ref": "refs/tags/release-69-1", ... }, ...]
+      count="$(echo "$json" | jq -r 'length // 0' 2>/dev/null || echo 0)"
+      log_debug "Page $page: $count refs from matching-refs"
 
-  echo "$matching_tags" | while IFS= read -r tag; do
-    [[ -z "$tag" ]] && continue
-    local raw
-    raw="$(normalize_basic_tag_to_version "$tag")"
-
-    if [[ -n "$version_regex" && -n "$version_format" ]]; then
-      apply_version_regex "$raw" "$version_regex" "$version_format" 2>/dev/null || true
+      if [[ "$count" -gt 0 ]]; then
+        echo "$json" | jq -r '.[].ref // empty' | sed 's|^refs/tags/||' | while IFS= read -r tag; do
+          process_tag_to_version "$tag" "$tag_regex" "$version_regex" "$version_format"
+        done
+      fi
     else
-      echo "$raw"
+      # Use standard tags endpoint with pagination
+      json="$(github_list_tags_page "$repo" "$page" 100 2>/dev/null)" || break
+
+      # tags endpoint returns: [{ "name": "v5.3.0", ... }, ...]
+      count="$(echo "$json" | jq -r 'length // 0' 2>/dev/null || echo 0)"
+      log_debug "Page $page: $count tags"
+
+      if [[ "$count" -gt 0 ]]; then
+        echo "$json" | jq -r '.[].name // empty' | while IFS= read -r tag; do
+          process_tag_to_version "$tag" "$tag_regex" "$version_regex" "$version_format"
+        done
+      fi
     fi
+
+    total_found=$((total_found + count))
+
+    # Stop if page was empty (no more results)
+    [[ "$count" -eq 0 ]] && break
+
+    # Stop if we got fewer than requested (last page)
+    [[ "$count" -lt 100 ]] && break
+
+    page=$((page + 1))
   done
+
+  log_debug "Total tags processed across $page page(s): $total_found"
 }
 
 get_chrome_version_json() {
@@ -422,6 +493,68 @@ PY
   echo "$result"
 }
 
+get_npm_version() {
+  local package="${1:-}"
+  local dist_tag="${2:-latest}"
+  [[ -z "$package" ]] && return 1
+
+  log_debug "get_npm_version: package=$package, dist_tag=$dist_tag"
+
+  # Encode scoped packages: @scope/name → @scope%2Fname
+  local encoded_package
+  encoded_package="$(printf '%s' "$package" | sed 's|/|%2F|g')"
+
+  local url="https://registry.npmjs.org/${encoded_package}"
+  log_debug "Fetching: $url"
+
+  local response
+  response="$(fetch "$url")" || {
+    log_debug "Failed to fetch npm registry"
+    return 1
+  }
+
+  # Get version from dist-tags
+  local version
+  version="$(echo "$response" | jq -r --arg tag "$dist_tag" '.["dist-tags"][$tag] // empty')"
+
+  if [[ -z "$version" && "${DEBUG:-false}" == "true" ]]; then
+    log_debug "No version found for dist-tag '$dist_tag'"
+    log_debug "Available dist-tags:"
+    echo "$response" | jq -r '.["dist-tags"] | keys[]' 2>/dev/null | while read -r tag; do
+      log_debug "  - $tag"
+    done
+  fi
+
+  echo "$version"
+}
+
+get_pypi_version() {
+  local project="${1:-}"
+  local allow_prerelease="${2:-false}"
+  [[ -z "$project" ]] && return 1
+
+  log_debug "get_pypi_version: project=$project, allow_prerelease=$allow_prerelease"
+
+  local url="https://pypi.org/pypi/${project}/json"
+  log_debug "Fetching: $url"
+
+  local response
+  response="$(fetch "$url")" || {
+    log_debug "Failed to fetch PyPI API"
+    return 1
+  }
+
+  # info.version is the latest stable version (PyPI's default)
+  local version
+  version="$(echo "$response" | jq -r '.info.version // empty')"
+
+  if [[ -z "$version" && "${DEBUG:-false}" == "true" ]]; then
+    log_debug "No version found in PyPI response"
+  fi
+
+  echo "$version"
+}
+
 # ============================================================================
 # Main Version Detection Dispatcher
 # ============================================================================
@@ -431,7 +564,7 @@ fetch_upstream_version_for_pkg() {
   local pkg="${2:-}"
   [[ -z "$feeds_json" || -z "$pkg" ]] && return 0
 
-  local type repo channel url tag_regex version_regex version_format
+  local type repo channel url tag_regex version_regex version_format tag_prefix
 
   type="$(feeds_json_get_field "$feeds_json" "$pkg" "type")"
   repo="$(feeds_json_get_field "$feeds_json" "$pkg" "repo")"
@@ -440,10 +573,11 @@ fetch_upstream_version_for_pkg() {
   tag_regex="$(feeds_json_get_field "$feeds_json" "$pkg" "tagRegex")"
   version_regex="$(feeds_json_get_field "$feeds_json" "$pkg" "versionRegex")"
   version_format="$(feeds_json_get_field "$feeds_json" "$pkg" "versionFormat")"
+  tag_prefix="$(feeds_json_get_field "$feeds_json" "$pkg" "tagPrefix")"
 
   [[ -z "$channel" ]] && channel="stable"
 
-  log_debug "Package: $pkg | Type: $type | Repo: $repo | Channel: $channel"
+  log_debug "Package: $pkg | Type: $type | Repo: $repo | Channel: $channel | TagPrefix: $tag_prefix"
 
   case "$type" in
     github-release)
@@ -466,7 +600,7 @@ fetch_upstream_version_for_pkg() {
       ;;
     github-tags-filtered)
       local versions
-      versions="$(github_tags_filtered_versions "$repo" "$tag_regex" "$version_regex" "$version_format" 2>/dev/null)"
+      versions="$(github_tags_filtered_versions "$repo" "$tag_regex" "$version_regex" "$version_format" "$tag_prefix" 2>/dev/null)"
       pick_max_version_list <<<"$versions"
       ;;
     vcs)
@@ -500,6 +634,30 @@ fetch_upstream_version_for_pkg() {
       ;;
     lmstudio)
       get_lmstudio_version 2>/dev/null
+      ;;
+    npm)
+      local package dist_tag
+      package="$(feeds_json_get_field "$feeds_json" "$pkg" "package")"
+      dist_tag="$(feeds_json_get_field "$feeds_json" "$pkg" "distTag")"
+      [[ -z "$dist_tag" ]] && dist_tag="latest"
+      [[ -z "$package" ]] && {
+        log_debug "npm: No 'package' field for $pkg"
+        echo ""
+        return 0
+      }
+      get_npm_version "$package" "$dist_tag" 2>/dev/null
+      ;;
+    pypi)
+      local project allow_prerelease
+      project="$(feeds_json_get_field "$feeds_json" "$pkg" "project")"
+      allow_prerelease="$(feeds_json_get_field "$feeds_json" "$pkg" "allowPrerelease")"
+      [[ -z "$allow_prerelease" ]] && allow_prerelease="false"
+      [[ -z "$project" ]] && {
+        log_debug "pypi: No 'project' field for $pkg"
+        echo ""
+        return 0
+      }
+      get_pypi_version "$project" "$allow_prerelease" 2>/dev/null
       ;;
     manual)
       echo ""
