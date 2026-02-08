@@ -29,47 +29,12 @@ tasks:
     cmds:
       - bash "{{.SCRIPTS}}/update-pkg.sh"
 
-  review:
-    desc: "Review PKGBUILD changes (diffs / prompts)"
+  aur-import:
+    desc: "Clone a package from the AUR and add it to the feeds.json file for updates"
     cmds:
-      - bash "{{.SCRIPTS}}/review-pkgbuild.sh"
-
-  build:
-    desc: "Build packages (recommended: chroot)"
-    deps: [doctor]
-    cmds:
-      - bash "{{.SCRIPTS}}/build-chroot.sh"
-
-  repo:
-    desc: "Update repo database / add built packages"
-    deps: [doctor]
-    cmds:
-      - bash "{{.SCRIPTS}}/repo-mgmt.sh"
+      - bash "{{.SCRIPTS}}/aur-imports.sh"
 
   cleanup:
     desc: "Cleanup repo artifacts / old packages"
     cmds:
       - git clean -fdx
-
-  install:
-    desc: "Install updates from your repo (be careful; keep this simple)"
-    deps: [doctor]
-    cmds:
-      - bash "{{.SCRIPTS}}/install-updates.sh"
-
-  sync:
-    desc: "End-to-end: update → optional review → build → repo → optional install"
-    deps: [doctor]
-    cmds:
-      - task: update
-      - task: review
-      - task: build
-      - task: repo
-
-  sync-no-review:
-    desc: "End-to-end without interactive review"
-    deps: [doctor]
-    cmds:
-      - task: update
-      - task: build
-      - task: repo
