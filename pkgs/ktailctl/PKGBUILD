@@ -1,0 +1,105 @@
+# Maintainer: Okiki <okiki@thunderstrike.co>
+pkgname=ktailctl
+pkgver='0.21.5'
+pkgrel=1
+arch=(x86_64 aarch64)
+url='https://github.com/f-koehler/KTailctl'
+pkgdesc='GUI to monitor and manage Tailscale'
+license=(GPL-3.0-only)
+depends=(
+  gcc-libs
+  glibc
+  hicolor-icon-theme
+  kconfig
+  kcoreaddons
+  kdbusaddons
+  kguiaddons
+  ki18n
+  kirigami
+  kirigami-addons
+  knotifications
+  kwindowsystem
+  qqc2-desktop-style
+  qt6-base
+  qt6-declarative
+  qt6-svg
+  tailscale
+)
+makedepends=(
+  cmake
+  extra-cmake-modules
+  git
+  go
+  nlohmann-json
+)
+changelog=$pkgname.changelog
+install=$pkgname.install
+
+# use any of:
+#   gpg --keyserver keyserver.ubuntu.com --search-keys me@fkoehler.org
+#   gpg --recv-keys fingerprint_below
+#   gpg --import keys/pgp/*.asc
+validpgpkeys=(
+  # 'C5DC80511469AD81C84E3564D55A35AFB2900A11' # Fabian Köhler <me@fkoehler.org>
+)
+
+# git tag is used by the cmake script to determine app version
+source=(git+$url.git#tag=v$pkgver)
+sha256sums=('8a4f88156e9a7a2dea4c02c72c39faef87907194f4ce2b1987cd32f0dc09e6dd')
+
+_prepare_go_env() {
+  # Keep module downloads inside the build dir (avoid polluting ~/go)
+  export GOPATH="${srcdir}/.gopath"
+  export GOCACHE="${srcdir}/.gocache"
+  export GOMODCACHE="${srcdir}/.gomodcache"
+}
+
+prepare() {
+  cd KTailctl
+  _prepare_go_env
+  
+  # Vendor Go dependencies for reproducible builds
+  cd src/wrapper
+  go mod vendor
+}
+
+build() {
+  cd KTailctl
+  _prepare_go_env
+  
+  # CRITICAL: Export CGO flags for Go wrapper hardening
+  # Without these, the Go wrapper lacks RELRO and PIE protection
+  export CGO_CPPFLAGS="${CPPFLAGS}"
+  export CGO_CFLAGS="${CFLAGS}"
+  export CGO_CXXFLAGS="${CXXFLAGS}"
+  export CGO_LDFLAGS="${LDFLAGS}"
+  
+  # Configure CMake
+  cmake -B build -S . \
+    -DCMAKE_BUILD_TYPE=None \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DCMAKE_INSTALL_LIBDIR=lib \
+    -DKTAILCTL_FLATPAK_BUILD=OFF \
+    -Wno-dev
+
+  # Build with parallelization
+  cmake --build build --parallel
+}
+
+check() {
+  cd KTailctl
+  
+  # Run tests if available
+  # Currently disabled as upstream may not have comprehensive test suite
+  # ctest --test-dir build --output-on-failure || true
+}
+
+package() {
+  cd KTailctl
+  
+  # Install built files
+  DESTDIR="$pkgdir" cmake --install build
+  
+  # Install license
+  install -Dm644 LICENSE.txt -t "$pkgdir/usr/share/licenses/$pkgname/"
+}

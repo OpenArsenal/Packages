@@ -1,0 +1,42 @@
+# Maintainer: Your Name <you@example.com>
+
+pkgname=mcp
+pkgver=1.26.0
+pkgrel=1
+pkgdesc='Model Context Protocol CLI tools'
+arch=('any')
+url='https://github.com/modelcontextprotocol/python-sdk'
+license=('MIT')
+
+depends=(
+  "python-mcp=${pkgver}"
+  'python-typer'
+  'python-dotenv'
+)
+
+optdepends=(
+  'python-rich: nicer CLI output'
+  'python-websockets: websocket transport helpers'
+)
+
+package() {
+  # Console script wrapper for:
+  #   [project.scripts] mcp = "mcp.cli:app [cli]"
+  install -Dm755 /dev/stdin "${pkgdir}/usr/bin/mcp" <<'EOF'
+#!/usr/bin/python
+import re
+import sys
+
+def main() -> int:
+  from mcp.cli import app
+  sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
+  return app()
+
+if __name__ == "__main__":
+  raise SystemExit(main())
+EOF
+
+  # License: keep it simple and non-networked.
+  install -d "${pkgdir}/usr/share/licenses/${pkgname}"
+  ln -sf "/usr/share/licenses/python-mcp/LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

@@ -1,9 +1,0 @@
-# ignore all
-*
-
-# pkg
-!.gitignore
-!PKGBUILD
-!.SRCINFO
-!figma-linux.sh
-!figma-linux.desktop

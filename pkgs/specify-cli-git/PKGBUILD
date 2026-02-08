@@ -1,0 +1,48 @@
+# Maintainer: Okiki <okiki@thunderstrike.co>
+pkgname=specify-cli-git
+pkgver=0.0.0.r0.g0000000
+pkgrel=1
+pkgdesc="Spec Kit Specify CLI (git)"
+arch=('any')
+url='https://github.com/github/spec-kit'
+license=('MIT')
+conflicts=("${pkgname%-git}")
+replaces=("${pkgname%-git}")
+depends=(
+  'python>=3.12'
+  'python-typer'
+  'python-rich'
+  'python-httpx'
+  'python-platformdirs'
+  'python-readchar'
+  'python-truststore'
+  'python-socksio'
+)
+
+makedepends=(
+  'git'
+  'python-build'
+  'python-installer'
+  'python-wheel'
+  'python-hatchling'
+)
+
+source=('git+https://github.com/github/spec-kit.git')
+sha256sums=('SKIP')
+
+pkgver() {
+  cd spec-kit
+  # turns v0.0.90-12-gabcdef0 into 0.0.90.r12.gabcdef0
+  git describe --tags --long --abbrev=7 | sed -E 's/^v//; s/-([0-9]+)-g/.r\1.g/'
+}
+
+build() {
+  cd spec-kit
+  python -m build --wheel --no-isolation
+}
+
+package() {
+  cd spec-kit
+  python -m installer --destdir="$pkgdir" dist/*.whl
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

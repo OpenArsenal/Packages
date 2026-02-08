@@ -1,0 +1,195 @@
+# Maintainer: piernov <piernov@piernov.org>
+# Contributor: Stephan Düsterhaupt <me at stephanduesterhaupt dot de>
+# Contributor: Ivo Noack <ivo at insonic dot de>
+
+pkgname=cuda-12
+pkgver=12.9.1
+_driverver=575.57.08
+pkgrel=1
+pkgdesc="NVIDIA's GPU programming toolkit version 12 (Maxwell/Pascal/Volta support)"
+arch=('x86_64')
+url="https://developer.nvidia.com/cuda-zone"
+license=('custom')
+
+# CUDA’s toolchain expects a host compiler to exist for typical nvcc workflows.
+# If you intentionally want to avoid a hard runtime dep, move gcc to optdepends
+# and remove the /opt/cuda/bin/{gcc,g++} symlinks below.
+depends=('opencl-nvidia' 'nvidia-utils' 'gcc')
+
+conflicts=('cuda')
+replaces=('cuda-toolkit' 'cuda-sdk')
+
+# Versioned provides improve dependency resolution for consumers that use versioned deps.
+provides=("cuda=${pkgver}" "cuda-toolkit=${pkgver}" "cuda-sdk=${pkgver}")
+
+optdepends=(
+  'gdb: for cuda-gdb'
+  'jre-openjdk: for Nsight UI tools (when used)'
+)
+
+options=(!strip staticlibs)
+install=cuda.install
+
+# These are config-like files under /etc that users may edit.
+backup=(
+  'etc/profile.d/cuda.sh'
+  'etc/ld.so.conf.d/cuda.conf'
+)
+
+source=(
+  "http://developer.download.nvidia.com/compute/cuda/${pkgver}/local_installers/cuda_${pkgver}_${_driverver}_linux.run"
+  cuda.sh
+  cuda.conf
+  cuda-findgllib_mk.diff
+  accinj64.pc
+  cublas.pc
+  cuda.pc
+  cudart.pc
+  cufft.pc
+  cufftw.pc
+  cuinj64.pc
+  curand.pc
+  cusolver.pc
+  cusparse.pc
+  nppc.pc
+  nppial.pc
+  nppicc.pc
+  nppicom.pc
+  nppidei.pc
+  nppif.pc
+  nppig.pc
+  nppim.pc
+  nppi.pc
+  nppist.pc
+  nppisu.pc
+  nppitc.pc
+  npps.pc
+  nvgraph.pc
+  nvidia-ml.pc
+  nvjpeg.pc
+  nvrtc.pc
+  nvToolsExt.pc
+  fix-glibc241.patch
+  fix-glibc242.patch
+  4972.patch
+)
+
+# IMPORTANT:
+# Keep your existing sha512sums array EXACTLY as-is (same order, same count) from your current PKGBUILD.
+# If you change source URLs (e.g., http->https) you MUST regenerate sums with:
+#   makepkg -g
+sha256sums=('0f6d806ddd87230d2adbe8a6006a9d20144fdbda9de2d6acc677daa5d036417a'
+            'db1e96eaebde552942ca1f0bf550055d42e48207a8e3a55f552f4752f9c5a0dc'
+            'a65f7d96e2447eb40b1be9586b90eb0bd776a8938c93d21f9606d2880b548b28'
+            'b7c6dd5608baa3a5a724ef6a5212a8c4fcc65e7c241b13acc524f26759fd6d2f'
+            '219289fa22075a4e251c217d01f4eda764f4ad25ff0f4c8b192b754ae6954c70'
+            'e850884edb84fbcd66c4811065a747f970f932a6197ba97c1a76b7d521306106'
+            '66b5fc288dd664f9b9ab7d13e020a0abdb83b8b58afeaf7be0e7947433f6b600'
+            '43587560f6f3d2dc152b7c279b26e85b3bee82b9c3600032840c00a4ef2d763f'
+            '2a4a023a4ea26b47d67dc03774ccf38beb5017f419b0273016f8c8ff4b06e416'
+            '440b9f3db5cceedfe328b212a3950c62aa5af0846d2c2029300aa911366392c0'
+            'e0bc5c21d17eda26c6b55b128a3cda100866af1db8980f1cbb190514c9fdf5d0'
+            '5aac4934af121c8a9cc188ea0d5f1ab376aa1fccbf7e8529d0dc73d39740026c'
+            '17803435222eb579ac8e68b78fa104cec5b03d2c3d1eb1a65e47130109d24615'
+            '1b99a6c69ca3c1a9601317d9b7295d6c33999d9b2274394035033851e6d35112'
+            'dd9397ea4adee52bd823a0351bc032b80319d51ce3a223b1bf5628379e0bcf8e'
+            '68ac24264839fd7ae9daf8676532b952f94f2806af2133c4d039d47cc7a56682'
+            '161490a302336757a90ada1ca37c5b1ff69c4a81a1e50d44f99b65bdd6b1186a'
+            '10e2db3b379bb899b441faa1e9cf6b875ffa806a0e609fc381a7445ea031fe4b'
+            'd2fa1df2b71a339be0538d45a04e0db7263ae02bff30a9ea7b09ce8e1a034bcc'
+            'b0d3b92c30034716d95fcf6512dafede289337d611fdc3575db40680bde90a03'
+            '4643234c8555ff0f3b2353b87da764a1472eba80208d6b03a4ab7595f6652a48'
+            '164b407339e3b94cd9d3606ebc69c8cb617a2eaf420e214c1401bb8e384071a1'
+            'ead5d3fd246a79153133f5f8abaf5d39ac772e4df787b24b2e58825d77fac499'
+            '1e5f45f69ca6b4af9323d0bcb20e3c6089e24d95949090c735c5ae75d1259ba4'
+            '492b35d2a30ff54ee45ce1d31bfa1b3eb8b92f30230dc74c4ef07aa4b8fba908'
+            '34f293aeda2a8d3e5d92f7cdda43acf169ac6d0aff0194c5c2c45c48ad75806e'
+            '4f18d8a9447af77381e7ade8b484be6329fe53a42d04468a69f387ac0b08fcf0'
+            '953ad762952d832ede6bf7c5fe92e2ce352bcb12d9486e236bff4d2c3443535c'
+            'd83ef05671e14e39069263fcaed7378aca66a9a5f8a6125f3d67a6be154f8344'
+            'f94d1c0051e98800df146ef9782c61220ced8844798270ddd71ecd94aadb682d'
+            '0912f24dfb5fb5062846089aecd47a54c6d2e5298353a3baba87a14ba519bfa8'
+            '5e6eea80637b98957857e53582176e8da5f9c1f7634c005acadc25b26a871c79'
+            '516cc85e29c93ba926f125134a0d25fdfd621d8cc74a25c20a8160598e612b31'
+            'f61e8500a1a40cc026ddedf7ceed995820633bcf19f22a03fadc18d741bfc902'
+            'af2da6c6a28ff5f178cfab3fa757ff4ae70566d71a8b5feb63571789a36dfcdb')
+
+prepare() {
+  cd "${srcdir}"
+
+  chmod +x "cuda_${pkgver}_${_driverver}_linux.run"
+  sh "./cuda_${pkgver}_${_driverver}_linux.run" --target "${srcdir}" --noexec
+
+  # If you ever re-enable this, do it safely (spaces/newlines safe):
+  # while IFS= read -r -d '' f; do
+  #   patch --no-backup-if-mismatch "${f}" < "${srcdir}/cuda-findgllib_mk.diff"
+  # done < <(find "${srcdir}/builds/cuda_samples" -name findgllib.mk -print0)
+}
+
+package() {
+  cd "${srcdir}/builds"
+
+  # Remove extracted installer artifacts we do not want to ship.
+  rm -rf -- NVIDIA*.run bin
+
+  install -d "${pkgdir}/opt/cuda"
+  install -d "${pkgdir}/opt/cuda/extras"
+
+  # Move known top-level bundles into place (these are expected to exist).
+  mv -- integration nsight_compute nsight_systems EULA.txt "${pkgdir}/opt/cuda"
+
+  # Copy the rest of the extracted directory trees into /opt/cuda (robustly).
+  shopt -s nullglob dotglob
+  for d in *; do
+    [[ -d "${d}" ]] || continue
+    cp -a -- "${d}/." "${pkgdir}/opt/cuda/"
+  done
+  shopt -u nullglob dotglob
+
+  # Provide stable compiler paths for nvcc-host toolchain usage.
+  if [[ ! -e "${pkgdir}/opt/cuda/bin/gcc" ]]; then
+    ln -s /usr/bin/gcc "${pkgdir}/opt/cuda/bin/gcc"
+  fi
+  if [[ ! -e "${pkgdir}/opt/cuda/bin/g++" ]]; then
+    ln -s /usr/bin/g++ "${pkgdir}/opt/cuda/bin/g++"
+  fi
+
+  # Environment/profile + dynamic linker configuration.
+  install -Dm755 "${srcdir}/cuda.sh" "${pkgdir}/etc/profile.d/cuda.sh"
+  install -Dm644 "${srcdir}/cuda.conf" "${pkgdir}/etc/ld.so.conf.d/cuda.conf"
+
+  # pkg-config metadata.
+  install -d "${pkgdir}/usr/lib/pkgconfig"
+  shopt -s nullglob
+  for pc in "${srcdir}"/*.pc; do
+    install -Dm644 "${pc}" "${pkgdir}/usr/lib/pkgconfig/$(basename "${pc}")"
+  done
+  shopt -u nullglob
+
+  # Licenses: ship something under /usr/share/licenses (symlink is acceptable).
+  install -d "${pkgdir}/usr/share/licenses/${pkgname}"
+  ln -s /opt/cuda/doc/pdf/EULA.pdf "${pkgdir}/usr/share/licenses/${pkgname}/EULA.pdf"
+
+  # Allow newer host compilers (user choice; not officially supported by NVIDIA).
+  # Remove the hard failure checks.
+  sed -i "/.*unsupported GNU version.*/d" \
+    "${pkgdir}/opt/cuda/targets/x86_64-linux/include/crt/host_config.h"
+  sed -i "/.*unsupported clang version.*/d" \
+    "${pkgdir}/opt/cuda/targets/x86_64-linux/include/crt/host_config.h"
+
+  # Fix Makefile paths to CUDA install location (spaces/newlines safe).
+  while IFS= read -r -d '' f; do
+    sed -i "s|/usr/local/cuda|/opt/cuda|g" "${f}"
+  done < <(find "${pkgdir}/opt/cuda" -name Makefile -print0)
+
+  # Patch for compatibility with glibc 2.41
+  patch -p1 -d "${pkgdir}" -i "${srcdir}/fix-glibc241.patch" --no-backup-if-mismatch
+
+  # Patch for compatibility with glibc 2.42
+  patch -p1 -d "${pkgdir}" -i "${srcdir}/fix-glibc242.patch" --no-backup-if-mismatch
+
+  # Fix for https://github.com/NVIDIA/cccl/issues/4967
+  patch -p2 -d "${pkgdir}/opt/cuda/targets/x86_64-linux" -i "${srcdir}/4972.patch" --no-backup-if-mismatch
+}
+
+# vim:set ts=2 sw=2 et:

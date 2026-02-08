@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Figma Linux
+GenericName=Interface Design Tool
+Comment=Unofficial Electron-based Figma desktop client for Linux
+Exec=figma-linux %U
+Icon=figma-linux
+StartupWMClass=figma-linux
+Terminal=false
+StartupNotify=true
+Categories=Graphics;Design;VectorGraphics;
+MimeType=application/figma;x-scheme-handler/figma;

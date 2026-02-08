@@ -1,0 +1,107 @@
+# Maintainer: Rafael Dominiquini <rafaeldominiquini at gmail dot com>
+
+pkgbase=ollama-bin
+pkgname=(ollama-bin ollama-cuda12-bin ollama-cuda13-bin)
+pkgver='0.15.4'
+pkgrel=1
+pkgdesc="Create, run and share large language models (LLMs)"
+arch=('x86_64' 'aarch64')
+_barch=('amd64' 'arm64')
+url='https://github.com/ollama/ollama'
+_urlraw="https://raw.githubusercontent.com/ollama/ollama/v${pkgver}"
+license=('MIT')
+
+provides=("ollama")
+conflicts=("ollama")
+depends=("glibc" "gcc-libs")
+optdepends=("ollama-cuda: NVIDIA GPU Support")
+replaces=("${pkgname%-bin}")
+
+backup=('etc/ollama.conf')
+
+source=("LICENSE-${pkgver}::${_urlraw}/LICENSE"
+        "README-${pkgver}.md::${_urlraw}/README.md"
+        "ollama.conf"
+        "ollama.service"
+        "sysusers.conf"
+        "tmpfiles.d")
+source_x86_64=("ollama-${arch[0]}-${pkgver}.tzst::${url}/releases/download/v${pkgver}/ollama-linux-${_barch[0]}.tar.zst")
+source_aarch64=("ollama-${arch[1]}-${pkgver}.tzst::${url}/releases/download/v${pkgver}/ollama-linux-${_barch[1]}.tar.zst")
+sha256sums=('5934ed2ce0d15154bcdb9c85203210abac0da4314af34081e36df4599f90b226'
+            '290a1c17ed3c6690b9b2e36ed2d4dd983add70fcb9bc473fee9efb98b084bce7'
+            '2503546a6d26559bce06ba6c61100026d85864b4c49bd6e4c80c596c5d22e197'
+            '6693fc2d85bb74cb1e73915a1484062519f94a84cee5ec33377aee872162baab'
+            '7e2652a5dec03634a9ddc05e275f226b9bee9396fc8bcf75449d5044b2d842ed'
+            '751c56e0f285c47af5b63e7c6e100702e8ce7ed826e5b4d5ff3a67cdf24f0880')
+sha256sums_x86_64=('464e3de993cfc9854b91c9d9a067341b840a78920e2688903a3d0ea55e7c61c8')
+sha256sums_aarch64=('bd4ae4c1ba04bd2048e7ff7de3d5dbaaa454725d3989317777051a3bcb163793')
+
+
+package_ollama-bin() {
+    cd "${srcdir}/" || exit
+
+    install -Dm755 "./bin/ollama" "${pkgdir}/usr/bin/ollama"
+
+    for lib in 'libggml-base.so' \
+        'libggml-cpu-alderlake.so' \
+        'libggml-cpu-haswell.so' \
+        'libggml-cpu-icelake.so' \
+        'libggml-cpu-sandybridge.so' \
+        'libggml-cpu-skylakex.so' \
+        'libggml-cpu-sse42.so' \
+        'libggml-cpu-x64.so'
+    do
+        install -Dm755 "./lib/ollama/${lib}" "${pkgdir}/usr/lib/ollama/${lib}"
+    done
+
+    install -Dm644 "./ollama.conf" "${pkgdir}/etc/ollama.conf"
+
+    install -Dm644 "./ollama.service" "${pkgdir}/usr/lib/systemd/system/ollama.service"
+
+    install -Dm644 "./sysusers.conf" "${pkgdir}/usr/lib/sysusers.d/ollama.conf"
+    install -Dm644 "./tmpfiles.d" "${pkgdir}/usr/lib/tmpfiles.d/ollama.conf"
+
+    install -Dm644 "LICENSE-${pkgver}" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+
+    install -Dm644 "README-${pkgver}.md" "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+
+    install -dm755 "${pkgdir}/var/share"
+    install -dm755 "${pkgdir}/var/lib/ollama"
+    ln -s "${pkgdir}/var/lib/ollama" "${pkgdir}/usr/share/ollama"
+}
+
+package_ollama-cuda12-bin() {
+    pkgdesc='Create, run and share large language models (LLMs) with CUDA 12'
+
+    conflicts=("ollama-cuda" "ollama-cuda12" "ollama-cuda13")
+    provides=("ollama-cuda")
+    depends+=("ollama-bin")
+
+    cd "${srcdir}/" || exit
+
+    for lib in 'libggml-cuda.so' ; do
+        install -Dm755 "./lib/ollama/cuda_v12/${lib}" "${pkgdir}/usr/lib/ollama/${lib}"
+    done
+
+    for cudalib in 'libcublasLt' 'libcublas' 'libcudart' ; do
+        cp --preserve=links --no-dereference "./lib/ollama/cuda_v12/${cudalib}"* "${pkgdir}/usr/lib/ollama/"
+    done
+}
+
+package_ollama-cuda13-bin() {
+    pkgdesc='Create, run and share large language models (LLMs) with CUDA 13'
+
+    conflicts=("ollama-cuda" "ollama-cuda12" "ollama-cuda13")
+    provides=("ollama-cuda")
+    depends+=("ollama-bin")
+
+    cd "${srcdir}/" || exit
+
+    for lib in 'libggml-cuda.so' ; do
+        install -Dm755 "./lib/ollama/cuda_v13/${lib}" "${pkgdir}/usr/lib/ollama/${lib}"
+    done
+
+    for cudalib in 'libcublasLt' 'libcublas' 'libcudart' ; do
+        cp --preserve=links --no-dereference "./lib/ollama/cuda_v13/${cudalib}"* "${pkgdir}/usr/lib/ollama/"
+    done
+}

@@ -1,0 +1,7 @@
+*
+!PKGBUILD
+!.SRCINFO
+!.gitignore
+!share.tar.xz
+!*.patch
+!REUSE.toml
