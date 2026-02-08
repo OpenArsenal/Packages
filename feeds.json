@@ -334,7 +334,7 @@
       "channel": "stable"
     },
     {
-      "name": "plezy",
+      "name": "plezy-bin",
       "type": "github-release",
       "repo": "edde746/plezy",
       "channel": "stable"
