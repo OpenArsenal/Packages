@@ -1,0 +1,36 @@
+pkgbase = ktailctl
+	pkgdesc = GUI to monitor and manage Tailscale
+	pkgver = 0.21.5
+	pkgrel = 1
+	url = https://github.com/f-koehler/KTailctl
+	install = ktailctl.install
+	changelog = ktailctl.changelog
+	arch = x86_64
+	arch = aarch64
+	license = GPL-3.0-only
+	makedepends = cmake
+	makedepends = extra-cmake-modules
+	makedepends = git
+	makedepends = go
+	makedepends = nlohmann-json
+	depends = gcc-libs
+	depends = glibc
+	depends = hicolor-icon-theme
+	depends = kconfig
+	depends = kcoreaddons
+	depends = kdbusaddons
+	depends = kguiaddons
+	depends = ki18n
+	depends = kirigami
+	depends = kirigami-addons
+	depends = knotifications
+	depends = kwindowsystem
+	depends = qqc2-desktop-style
+	depends = qt6-base
+	depends = qt6-declarative
+	depends = qt6-svg
+	depends = tailscale
+	source = git+https://github.com/f-koehler/KTailctl.git#tag=v0.21.5
+	sha256sums = 8a4f88156e9a7a2dea4c02c72c39faef87907194f4ce2b1987cd32f0dc09e6dd
+
+pkgname = ktailctl

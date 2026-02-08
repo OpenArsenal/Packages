@@ -1,7 +1,7 @@
 # Maintainer: Okiki Ojo <okiki@thunderstrike.co>
 
 pkgname=calibre-bin
-pkgver='9.1.0'
+pkgver='9.2.1'
 pkgrel=1
 pkgdesc="Official binary version Calibre"
 arch=(x86_64 aarch64)
@@ -27,8 +27,8 @@ source_aarch64=("calibre-${pkgver}-aarch64.txz::https://github.com/kovidgoyal/ca
 
 # Checksums
 sha256sums=('c7aae61afba19c9cceed8bbafd2b39b5c4d6d683de0ccfc9c1fe2651857f757a')
-sha256sums_x86_64=('93a2d3104933366a50b03f8a2ff3889dc16b9c1d739ad22055e95ea35b03c1df')
-sha256sums_aarch64=('ca1261b71030390d6316fe6e3f722247f05670eec845bcefb62d8c0b1d1478cb')
+sha256sums_x86_64=('b1e44b06ff90a3ebaad784a0178343bb34a58e4745091a3165aa26206c674755')
+sha256sums_aarch64=('e41e25397086170d9c6c2ccfa3f3117049e9d5b0d448542bf00669a8466337fb')
 
 package() {
   install -dm755 "$pkgdir/usr/bin" "$pkgdir/opt/calibre"
