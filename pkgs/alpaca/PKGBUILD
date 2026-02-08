@@ -3,7 +3,7 @@
 
 pkgname=alpaca
 _pkgname=Alpaca
-pkgver='9.0.2'
+pkgver='9.0.5'
 pkgrel=1
 pkgdesc="An Ollama client. Chat with local AI models or connect to third party AI providers like ChatGPT, Gemini and more"
 arch=('any')
@@ -17,7 +17,7 @@ source=(
   "${pkgname}-${pkgver}.tar.gz::https://github.com/Jeffser/${_pkgname}/archive/refs/tags/${pkgver}.tar.gz"
 )
 
-b2sums=('de6bdc45c606ac6fd4966839b96c1ec3c08e5f0b449bc8a23eb12ec35c8c233061dc6669917f1cb673805e2fea978381ab367ed8689cf7ab2e9712b28387a93c')
+b2sums=('4ac633fe26774288a7f5abb3505794599eecc0a264292ad325a16cbe93180c9dbeaddc328059f454752de5f7980f358a37063fa424b1b21b393659f93b45dd32')
 
 depends=(
   dconf

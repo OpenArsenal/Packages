@@ -1,0 +1,25 @@
+pkgbase = cherry-studio-git
+	pkgdesc = 🍒 Cherry Studio is a desktop client that supports for multiple LLM providers.(Use system-wide electron)
+	pkgver = 1.7.9.r2.gb4aeced
+	pkgrel = 1
+	url = https://cherry-ai.com/
+	arch = any
+	license = LicenseRef-custom
+	makedepends = gendesk
+	makedepends = npm
+	makedepends = nvm
+	makedepends = git
+	makedepends = curl
+	makedepends = yarn
+	makedepends = gcc
+	makedepends = jq
+	depends = electron38
+	provides = cherry-studio=1.7.9
+	conflicts = cherry-studio
+	replaces = cherry-studio
+	source = cherry-studio.git::git+https://github.com/CherryHQ/cherry-studio
+	source = cherry-studio.sh
+	sha256sums = SKIP
+	sha256sums = 31ad33b633744f5361abd964be306cea53ae1050e760c787115f7eca60045ae6
+
+pkgname = cherry-studio-git
