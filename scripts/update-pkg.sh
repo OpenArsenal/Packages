@@ -10,6 +10,10 @@ set -uo pipefail
 #   - chrome, edge, vscode (browser/editor binaries)
 #   - github-release, github-release-filtered, github-tags-filtered
 #   - 1password-cli2, 1password-linux-stable, lmstudio
+#   - npm (Node.js packages from npmjs.org)
+#   - pypi (Python packages from PyPI)
+#   - snap (Snap packages from Snapcraft)
+#   - flutter (Flutter SDK from CHANGELOG.md)
 #   - vcs (VCS packages like -git, -hg, -svn)
 #   - manual (no auto-detection)
 #
@@ -60,6 +64,39 @@ fetch() {
   fi
 
   curl -sSL --max-time "$FETCH_TIMEOUT" -A "$PACKAGE_UPDATE_BOT_USER_AGENT" "$url" 2>/dev/null
+}
+
+fetch_effective_url() {
+  # Returns the final URL after redirects (prints nothing else).
+  # Uses HEAD first to avoid downloading binaries; falls back to a ranged GET if HEAD is unsupported.
+  local url="${1:-}"
+  [[ -z "$url" ]] && return 1
+
+  local effective=""
+
+  # HEAD + follow redirects
+  effective="$(
+    curl -sSIL --max-time "$FETCH_TIMEOUT" \
+      -A "$PACKAGE_UPDATE_BOT_USER_AGENT" \
+      -o /dev/null \
+      -w '%{url_effective}' \
+      "$url" 2>/dev/null
+  )" || true
+
+  if [[ -z "$effective" ]]; then
+    # Some servers dislike HEAD; do a tiny ranged GET instead.
+    effective="$(
+      curl -sSL --max-time "$FETCH_TIMEOUT" \
+        -A "$PACKAGE_UPDATE_BOT_USER_AGENT" \
+        -r 0-0 \
+        -o /dev/null \
+        -w '%{url_effective}' \
+        "$url" 2>/dev/null
+    )" || true
+  fi
+
+  [[ -z "$effective" ]] && return 1
+  printf '%s\n' "$effective"
 }
 
 # ============================================================================
@@ -463,35 +500,54 @@ get_1password_linux_stable_version() {
 }
 
 get_lmstudio_version() {
-  log_debug "get_lmstudio_version: Fetching from lmstudio.ai/download"
-  
-  local html
-  html="$(curl -sSL --max-time 5 "https://lmstudio.ai/download" 2>/dev/null)" || {
-    log_debug "Failed to fetch lmstudio.ai/download"
+  # Best source of truth: the "latest" redirect contains version+build in the path.
+  # Example final URL:
+  #   https://installers.lmstudio.ai/linux/x64/0.4.1-1/LM-Studio-0.4.1-1-x64.AppImage
+  #
+  # We convert 0.4.1-1 -> 0.4.1.1 for Arch pkgver convention.
+  local latest="https://lmstudio.ai/download/latest/linux/x64"
+
+  log_debug "get_lmstudio_version: Resolving latest via redirect: $latest"
+
+  local effective
+  effective="$(fetch_effective_url "$latest")" || {
+    log_debug "Failed to resolve effective URL for: $latest"
     return 1
   }
 
-  log_debug "HTML fetched, length: ${#html} bytes"
+  log_debug "Effective URL: $effective"
 
-  local result
-  result=$(printf '%s' "$html" | python3 - <<'PY' 2>/dev/null || true
-import re, sys
-html = sys.stdin.read()
-m = re.search(r'\\"linux\\":\{\\"x64\\":\{\\"version\\":\\"([0-9.]+)\\",\\"build\\":\\"([0-9]+)\\"', html)
-if not m:
-  sys.exit(2)
-print(f"{m.group(1)}.{m.group(2)}")
-PY
-)
-
-  if [[ -z "$result" && "${DEBUG:-false}" == "true" ]]; then
-    log_debug "Regex did not match. HTML snippet (first 500 chars):"
-    printf '%s' "$html" | head -c 500 | sed 's/^/  /' >&2
-    echo "" >&2
+  local slug=""
+  if [[ "$effective" =~ /linux/x64/([^/]+)/ ]]; then
+    slug="${BASH_REMATCH[1]}"
   fi
 
-  echo "$result"
+  if [[ -z "$slug" ]]; then
+    log_debug "Could not extract version slug from effective URL"
+    return 1
+  fi
+
+  # slug is usually like "0.4.1-1"
+  local base=""
+  local build=""
+
+  if [[ "$slug" =~ ^([0-9]+(\.[0-9]+){2,4})-([0-9]+)$ ]]; then
+    base="${BASH_REMATCH[1]}"
+    build="${BASH_REMATCH[3]}"
+    printf '%s\n' "${base}.${build}"
+    return 0
+  fi
+
+  # If upstream ever switches to "0.4.1.1" already
+  if [[ "$slug" =~ ^[0-9]+(\.[0-9]+){2,5}$ ]]; then
+    printf '%s\n' "$slug"
+    return 0
+  fi
+
+  log_debug "Unrecognized LM Studio slug format: $slug"
+  return 1
 }
+
 
 get_npm_version() {
   local package="${1:-}"
@@ -555,6 +611,74 @@ get_pypi_version() {
   echo "$version"
 }
 
+get_snap_version() {
+  local package="${1:-}"
+  local channel="${2:-stable}"
+  [[ -z "$package" ]] && return 1
+
+  log_debug "get_snap_version: package=$package, channel=$channel"
+
+  local url="https://api.snapcraft.io/v2/snaps/info/${package}"
+  log_debug "Fetching: $url"
+
+  # Snapcraft API requires the Snap-Device-Series header
+  local response
+  response="$(curl -sSL --max-time "$FETCH_TIMEOUT" \
+    -A "$PACKAGE_UPDATE_BOT_USER_AGENT" \
+    -H 'Snap-Device-Series: 16' \
+    "$url" 2>/dev/null)" || {
+    log_debug "Failed to fetch Snapcraft API"
+    return 1
+  }
+
+  # Extract version from the specified channel in channel-map
+  # Channel names: stable, candidate, beta, edge (and tracks like "latest/stable")
+  local version
+  version="$(echo "$response" | jq -r --arg ch "$channel" '
+    .["channel-map"][] | select(.channel.name == $ch) | .version // empty
+  ' | head -1)"
+
+  if [[ -z "$version" && "${DEBUG:-false}" == "true" ]]; then
+    log_debug "No version found for channel '$channel'"
+    log_debug "Available channels:"
+    echo "$response" | jq -r '.["channel-map"][].channel.name // empty' 2>/dev/null | sort -u | while read -r ch; do
+      log_debug "  - $ch"
+    done
+  fi
+
+  echo "$version"
+}
+
+get_flutter_version() {
+  # Parses the Flutter CHANGELOG.md to extract the latest stable version.
+  # The changelog lists versions in descending order with formats:
+  #   ### [3.38.9](https://github.com/flutter/flutter/releases/tag/3.38.9)
+  #   ### 3.38.0 (May 10, 2023)
+  local url="https://raw.githubusercontent.com/flutter/flutter/master/CHANGELOG.md"
+
+  log_debug "get_flutter_version: Fetching changelog from $url"
+
+  local changelog
+  changelog="$(fetch "$url")" || {
+    log_debug "Failed to fetch Flutter changelog"
+    return 1
+  }
+
+  # Extract version from first ### [X.Y.Z] or ### X.Y.Z pattern
+  # The first match is the latest version since changelog is in descending order
+  local version
+  version="$(echo "$changelog" \
+    | grep -E '^### \[?[0-9]+\.[0-9]+\.[0-9]+' \
+    | head -1 \
+    | sed -E 's/^### \[?([0-9]+\.[0-9]+\.[0-9]+).*/\1/')"
+
+  if [[ -z "$version" && "${DEBUG:-false}" == "true" ]]; then
+    log_debug "No version found in Flutter changelog"
+  fi
+
+  echo "$version"
+}
+
 # ============================================================================
 # Main Version Detection Dispatcher
 # ============================================================================
@@ -582,7 +706,7 @@ fetch_upstream_version_for_pkg() {
   case "$type" in
     github-release)
       local tag
-      tag="$(normalize_basic_tag_to_version "$(github_latest_release_tag "$repo" "$channel" 2>/dev/null)")"
+      tag="$(normalize_basic_tag_to_version "$(github_latest_release_tag "$repo" "$channel")")"
       if [[ -n "$tag" && -n "$version_regex" && -n "$version_format" ]]; then
         apply_version_regex "$tag" "$version_regex" "$version_format" 2>/dev/null || echo "$tag"
       else
@@ -591,7 +715,7 @@ fetch_upstream_version_for_pkg() {
       ;;
     github-release-filtered)
       local tag
-      tag="$(normalize_basic_tag_to_version "$(github_latest_release_tag_filtered "$repo" "$channel" "$tag_regex" 2>/dev/null)")"
+      tag="$(normalize_basic_tag_to_version "$(github_latest_release_tag_filtered "$repo" "$channel" "$tag_regex")")"
       if [[ -n "$tag" && -n "$version_regex" && -n "$version_format" ]]; then
         apply_version_regex "$tag" "$version_regex" "$version_format" 2>/dev/null || echo "$tag"
       else
@@ -600,14 +724,14 @@ fetch_upstream_version_for_pkg() {
       ;;
     github-tags-filtered)
       local versions
-      versions="$(github_tags_filtered_versions "$repo" "$tag_regex" "$version_regex" "$version_format" "$tag_prefix" 2>/dev/null)"
+      versions="$(github_tags_filtered_versions "$repo" "$tag_regex" "$version_regex" "$version_format" "$tag_prefix")"
       pick_max_version_list <<<"$versions"
       ;;
     vcs)
       # VCS packages: optionally check repo for latest tag
       if [[ -n "$repo" ]]; then
         local tag
-        tag="$(normalize_basic_tag_to_version "$(github_latest_release_tag "$repo" "stable" 2>/dev/null)")"
+        tag="$(normalize_basic_tag_to_version "$(github_latest_release_tag "$repo" "stable")")"
         if [[ -n "$tag" && -n "$version_regex" && -n "$version_format" ]]; then
           apply_version_regex "$tag" "$version_regex" "$version_format" 2>/dev/null || echo "$tag"
         else
@@ -618,22 +742,23 @@ fetch_upstream_version_for_pkg() {
       fi
       ;;
     chrome)
-      get_chrome_version_json "$channel" 2>/dev/null
+      get_chrome_version_json "$channel"
       ;;
     edge)
-      get_edge_version "$url" 2>/dev/null
+      get_edge_version "$url"
       ;;
     vscode)
-      get_vscode_version 2>/dev/null
+      get_vscode_version
       ;;
     1password-cli2)
-      get_1password_cli2_version_json "$url" 2>/dev/null
+      get_1password_cli2_version_json "$url"
       ;;
     1password-linux-stable)
-      get_1password_linux_stable_version "$url" 2>/dev/null
+      get_1password_linux_stable_version "$url"
       ;;
     lmstudio)
-      get_lmstudio_version 2>/dev/null
+      # Allow feeds.json to override the URL, default inside get_lmstudio_version is changelog anyway.
+      get_lmstudio_version "${url:-https://lmstudio.ai/changelog}"
       ;;
     npm)
       local package dist_tag
@@ -645,7 +770,7 @@ fetch_upstream_version_for_pkg() {
         echo ""
         return 0
       }
-      get_npm_version "$package" "$dist_tag" 2>/dev/null
+      get_npm_version "$package" "$dist_tag"
       ;;
     pypi)
       local project allow_prerelease
@@ -657,7 +782,21 @@ fetch_upstream_version_for_pkg() {
         echo ""
         return 0
       }
-      get_pypi_version "$project" "$allow_prerelease" 2>/dev/null
+      get_pypi_version "$project" "$allow_prerelease"
+      ;;
+    snap)
+      local package snap_channel
+      package="$(feeds_json_get_field "$feeds_json" "$pkg" "package")"
+      snap_channel="$channel"
+      [[ -z "$package" ]] && {
+        log_debug "snap: No 'package' field for $pkg"
+        echo ""
+        return 0
+      }
+      get_snap_version "$package" "$snap_channel"
+      ;;
+    flutter)
+      get_flutter_version
       ;;
     manual)
       echo ""
@@ -730,7 +869,7 @@ update_pkgbuild_version() {
 
 update_checksums() {
   local pkg_dir="${1:-}"
-  ( cd "$pkg_dir" && updpkgsums ) >/dev/null 2>&1
+  ( cd "$pkg_dir" && updpkgsums )
 }
 
 # ============================================================================
@@ -865,7 +1004,7 @@ Usage: $0 [OPTIONS] [packages...]
 Check which packages need updates (version detection only by default).
 Use --apply to actually update PKGBUILDs.
 
-This script does NOT build packages. Use build-packages.sh for building.
+This script does NOT build packages.
 
 OPTIONS:
   --feeds <path>        Path to feeds.json (default: $FEEDS_JSON)
@@ -877,6 +1016,36 @@ OPTIONS:
 
 If packages are specified, only those packages are checked.
 Otherwise, all packages in feeds.json are checked.
+
+SUPPORTED FEED TYPES:
+  github-release          GitHub releases API (latest release)
+  github-release-filtered GitHub releases with tag regex filter (paginated)
+  github-tags-filtered    GitHub tags with regex filter (paginated, supports tagPrefix)
+  chrome                  Google Chrome version API
+  edge                    Microsoft Edge repo
+  vscode                  VS Code releases
+  1password-cli2          1Password CLI v2 API
+  1password-linux-stable  1Password Linux stable
+  lmstudio                LM Studio download page
+  npm                     npmjs.org registry (uses 'package' field)
+  pypi                    PyPI registry (uses 'project' field)
+  snap                    Snapcraft store (uses 'package' field)
+  flutter                 Flutter SDK (parses CHANGELOG.md)
+  vcs                     VCS packages (-git, -hg, etc.)
+  manual                  Manual version management
+
+FEED CONFIGURATION FIELDS:
+  repo          GitHub owner/repo (e.g., "python/cpython")
+  channel       Release channel: stable, prerelease, any (default: stable)
+                For snap: stable, candidate, beta, edge
+  tagRegex      Regex to filter tags/releases
+  tagPrefix     Tag prefix for efficient GitHub matching-refs lookup
+  versionRegex  Regex to extract version from tag
+  versionFormat Format string with \$1, \$2, etc. placeholders
+  package       Package name (for type: npm, snap)
+  distTag       npm dist-tag (default: latest)
+  project       PyPI project name (for type: pypi)
+  url           Custom URL for some feed types
 
 EXAMPLES:
   # Check all packages (dry-run)
@@ -891,12 +1060,13 @@ EXAMPLES:
   # Update specific packages
   $0 --apply ktailctl ollama
 
-  # Get list for piping to build-packages.sh
-  $0 --list-outdated | xargs ./build-packages.sh
-
-  # Full workflow
-  $0 --apply
-  $0 --list-outdated | xargs ./build-packages.sh
+SNAP FEED EXAMPLE (feeds.json):
+  {
+    "name": "plex-desktop",
+    "type": "snap",
+    "package": "plex-desktop",
+    "channel": "stable"
+  }
 EOF
 }
 
@@ -1121,7 +1291,6 @@ check_all_packages() {
         log_success "No packages needed updating"
       else
         log_success "Updated $updated_count package(s)"
-        log_info "Build with: ./build-packages.sh --list-outdated | xargs ./build-packages.sh"
       fi
     else
       if [[ $outdated_count -eq 0 ]]; then
@@ -1129,7 +1298,6 @@ check_all_packages() {
       else
         log_info "$outdated_count package(s) need updates"
         log_info "Apply updates: $0 --apply"
-        log_info "Then build: ./build-packages.sh --all"
       fi
     fi
   fi
