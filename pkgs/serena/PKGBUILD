@@ -1,0 +1,92 @@
+# Maintainer: Carl <you@example.com>
+# Upstream: https://github.com/oraios/serena
+
+pkgname=serena
+pkgver=0.1.4
+pkgrel=1
+arch=('any')
+pkgdesc="Serena MCP server + CLI for project-based symbolic editing workflows"
+arch=('x86_64')
+url="https://github.com/oraios/serena"
+license=('MIT')
+
+# Notes:
+# - Upstream PyPI metadata says Requires-Python: <3.12,>=3.11.
+#   Arch system python is newer, so we relax the metadata in prepare().
+# - Some deps below may be [extra]/[community]/AUR depending on your system.
+
+depends=(
+  'python'
+  'python-beautifulsoup4'
+  'python-sensai-utils'
+  'python-dotenv'
+  'python-joblib'
+  'python-overrides'
+  'python-pathspec'
+  'python-psutil'
+  'python-pydantic'
+  'python-requests'
+  'python-ruamel-yaml'
+  'python-tqdm'
+  'python-yaml'
+  'python-jinja'
+  'python-flask'
+  'python-tiktoken'
+  'python-anthropic'
+  'python-mcp'
+  'python-types-pyyaml'
+  'pyright'
+  'fortls'
+)
+
+makedepends=(
+  'python-build'
+  'python-installer'
+  'python-wheel'
+  'python-hatchling'
+)
+
+# PyPI sdist (v0.1.4)
+# Prefer GitHub release asset sdist (or keep your PyPI URL if you prefer)
+source=(
+  "serena_agent-${pkgver}.tar.gz::https://github.com/oraios/serena/releases/download/v${pkgver}/serena_agent-${pkgver}.tar.gz"
+)
+
+sha256sums=('8bb79a964a4bd09d5e5b86115d5436d9229dc80e6a3e0f176415e34294531a84')
+
+prepare() {
+  cd "${srcdir}/serena_agent-${pkgver}"
+
+  # If (and only if) you decide to override upstream's python constraint on Arch:
+  sed -i 's/^requires-python = ">=3\.11, <3\.12"$/requires-python = ">=3.11"/' pyproject.toml
+}
+
+build() {
+  cd "${srcdir}/serena_agent-${pkgver}"
+  python -m build --wheel --no-isolation
+}
+
+check() {
+  cd "${srcdir}/serena_agent-${pkgver}"
+
+  python -m installer --destdir="${srcdir}/_check" dist/*.whl
+
+  local _pyver
+  _pyver="$(python -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+
+  local _site="${srcdir}/_check/usr/lib/python${_pyver}/site-packages"
+  local _bin="${srcdir}/_check/usr/bin"
+
+  # 1) Import smoke test (from staged site-packages)
+  PYTHONPATH="${_site}" python -c 'import serena; import serena.cli; print("serena import ok")'
+
+  # 2) Console script smoke test (also pointing at staged site-packages)
+  PYTHONPATH="${_site}" PATH="${_bin}:${PATH}" serena --help >/dev/null
+}
+
+package() {
+  cd "${srcdir}/serena_agent-${pkgver}"
+  python -m installer --destdir="${pkgdir}" dist/*.whl
+
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

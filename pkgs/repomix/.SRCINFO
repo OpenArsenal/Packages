@@ -1,0 +1,16 @@
+pkgbase = repomix
+	pkgdesc = Pack a repository into a single AI-friendly file (CLI)
+	pkgver = 1.11.1
+	pkgrel = 1
+	url = https://repomix.com/
+	arch = any
+	license = MIT
+	makedepends = npm
+	makedepends = jq
+	depends = nodejs>=20
+	optdepends = git: pack remote repositories
+	conflicts = repomix-git
+	source = repomix-1.11.1.tgz::https://registry.npmjs.org/repomix/-/repomix-1.11.1.tgz
+	sha256sums = 011c9a566f3373288d2139078e3713cc0bcda1cff33fa704949f085a83cb16d5
+
+pkgname = repomix

@@ -1,0 +1,16 @@
+pkgbase = omnictl-bin
+	pkgdesc = CLI for Omni - SaaS-simple deployment of Kubernetes on your own hardware
+	pkgver = 1.4.7
+	pkgrel = 1
+	url = https://omni.siderolabs.com/
+	arch = x86_64
+	arch = aarch64
+	license = BUSL-1.1
+	replaces = omnictl
+	options = !strip
+	source_x86_64 = omnictl-linux-amd64-v1.4.7::https://github.com/siderolabs/omni/releases/download/v1.4.7/omnictl-linux-amd64
+	sha256sums_x86_64 = f8d8c7679e0d5c2c17c5fd611d8b9ed9e7f202fe7d958b6402ae2864c3a433a9
+	source_aarch64 = omnictl-linux-arm64-v1.4.7::https://github.com/siderolabs/omni/releases/download/v1.4.7/omnictl-linux-arm64
+	sha256sums_aarch64 = 33baeb7a541c8de6d583a5100050962b1f1de7f291d94508e99389ecf9176dc9
+
+pkgname = omnictl-bin

@@ -1,0 +1,124 @@
+# Maintainer: Okiki <okiki@thunderstrike.co>
+
+pkgbase=electron-wayland
+
+# Some pkgnames are commented out; this means that no `wayland`
+# package is required for those. Instead, create a flags file in
+# `~/.config` (or in `XDG_CONFIG_HOME`), and add the necessary flags
+# to that file. The name of the flags file varies per package.
+# Using a flags file is much simpler than a `wayland` package.
+pkgname=(
+  '1password-wayland'
+  # 'code' -- create a `code-flags.conf` file instead
+  # 'discord' -- create a `discord-flags.conf` file instead
+  'electron-fiddle-wayland'
+  'element-desktop-wayland'
+  'rambox-pro-bin-wayland'
+  'signal-desktop-wayland'
+  # 'spotify' -- create a `spotify-flags.conf` file instead, but
+  #   use `--ozone-platform=wayland`, not `--ozone-platform-hint=auto`,
+  #   due to the legacy Electron version vendored with the Spotify app
+)
+
+pkgver=0.1.6
+pkgrel=1
+pkgdesc='Auto-enable Wayland (ozone) for apps that come with a vendored Electron'
+arch=('any')
+url='https://aur.archlinux.org/pkgbase/electron-wayland'
+license=('Apache')
+options=('!strip')
+
+source=(
+  "${pkgbase}.hook"
+  "${pkgbase}-patch.sh"
+  "${pkgbase}-unpatch.sh"
+  'electron-flags.conf'
+  'electron-launcher.sh'
+)
+
+sha512sums=('87bf89a7df9acf2bdc14a43597bda9fe411c3478c9c92c6094ba1b1f18e588105b28db7ebc4a5a4ceb36fcc723ff3f2a44670e7d64f5ad04b4866f54049a47c8'
+            '723e199194d1a000ed8a4802e7db14dee10bc34f55c10c89630ae9d84be9086b2ec6beb2a5bd805335a13384896b542e71a15c7e0a1b507862ce2c6ada1e46de'
+            'f9bed1185af1a409d6dfef9d9b46c5765ce9ac168385934be52d7e7fe4dd8f688116cc5dc7bf8f09c2620f229bd8fd696959748e0d044928ff281a4ef023be67'
+            'd24eedac69f293f51a23e9d998b880b849554eb150777809c5f041009493aa99282b2c458fff71c9e14e6bd75b34d85c61cee3f3b9b62573faf411be157d0148'
+            'fe94d357a5da3333beaa88d1dc9a02b75c6d07ab83d32029f8ac216e783cfc8a90f4bdad2b6e01a10d796228acface0896240528811def3cfee70c13d40807d1')
+
+_pkgdesc() {
+  printf 'Auto-enable Wayland (ozone) for %s' "${pkgname%-wayland}"
+}
+
+# shellcheck disable=SC2128 # during execution, pkgname is a string
+_package() {
+  local _executable
+  _executable="${1?}"
+  install="${pkgname}.install"
+
+  mkdir -p \
+    "${pkgdir}/usr/share/${pkgname}" \
+    "${pkgdir}/usr/share/libalpm/hooks" \
+    "${pkgdir}/usr/share/libalpm/scripts"
+
+  install -D -m 644 -T \
+    "${srcdir}/electron-flags.conf" \
+    "${pkgdir}/etc/${pkgname%-wayland}-flags.conf"
+
+  sed \
+    -e "s/{{basename}}/${pkgname%-wayland}/g" \
+    -e "s#{{executable}}#${_executable}#g" \
+    "${srcdir}/electron-launcher.sh" \
+    > "${pkgdir}/usr/share/${pkgname}/${_executable##*/}-launcher.sh"
+  sed \
+    -e "s#{{launcher}}#/usr/share/${pkgname}/${_executable##*/}-launcher.sh#g" \
+    -e "s#{{backup}}#${_executable}#g" \
+    -e "s#{{target}}#/usr/bin/${_executable##*/}#g" \
+    "${srcdir}/${pkgbase}-patch.sh" \
+    > "${pkgdir}/usr/share/libalpm/scripts/${pkgname}-patch"
+  sed \
+    -e "s#{{executable}}#${_executable}#g" \
+    -e "s#{{pkgname}}#${pkgname}#g" \
+    -e "s#{{target}}#/usr/bin/${_executable##*/}#g" \
+    "${srcdir}/${pkgbase}-unpatch.sh" \
+    > "${pkgdir}/usr/share/libalpm/scripts/${pkgname}-unpatch"
+
+  chmod 755 "${pkgdir}/usr/share/libalpm/scripts/${pkgname}-patch"
+  chmod 755 "${pkgdir}/usr/share/libalpm/scripts/${pkgname}-unpatch"
+  chmod 755 "${pkgdir}/usr/share/${pkgname}/${_executable##*/}-launcher.sh"
+
+  sed \
+    -e "s/{{basename}}/${pkgname%-wayland}/g" \
+    "${srcdir}/${pkgbase}.hook" \
+    > "${pkgdir}/usr/share/libalpm/hooks/${pkgname}.hook"
+}
+
+package_1password-wayland() {
+  depends=("${pkgname%-wayland}")
+  pkgdesc="$(_pkgdesc '1Password')"
+  _package '/opt/1Password/1password'
+}
+
+# shellcheck disable=SC2128 # during execution, pkgname is a string
+package_electron-fiddle-wayland() {
+  depends=("${pkgname%-wayland}")
+  pkgdesc="$(_pkgdesc 'Electron Fiddle')"
+  # Original package has no symlink, so make a backup at patch time
+  _package "/usr/lib/${pkgname}/original/electron-fiddle"
+}
+
+# shellcheck disable=SC2128 # during execution, pkgname is a string
+package_element-desktop-wayland() {
+  depends=("${pkgname%-wayland}")
+  pkgdesc="$(_pkgdesc 'Element Desktop')"
+  # Original package has no symlink, so make a backup at patch time
+  _package "/usr/lib/${pkgname}/original/element-desktop"
+}
+
+package_rambox-pro-bin-wayland() {
+  depends=("${pkgname%-wayland}")
+  pkgdesc="$(_pkgdesc 'Rambox Pro')"
+  _package '/opt/rambox/rambox'
+}
+
+package_signal-desktop-wayland() {
+  depends=("${pkgname%-wayland}")
+  pkgdesc="$(_pkgdesc 'Signal Desktop')"
+  _package '/usr/lib/signal-desktop/signal-desktop'
+}

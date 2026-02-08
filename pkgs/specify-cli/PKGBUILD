@@ -1,0 +1,42 @@
+# Maintainer: Okiki <okiki@thunderstrike.co>
+pkgname=specify-cli
+pkgver=0.0.90
+pkgrel=1
+pkgdesc="Spec Kit Specify CLI (spec-driven development workflow)"
+arch=('any')
+url='https://github.com/github/spec-kit'
+license=('MIT')
+
+depends=(
+  'python>=3.12'
+  'python-typer'
+  'python-rich'
+  'python-httpx'
+  'python-platformdirs'
+  'python-readchar'
+  'python-truststore'
+  'python-socksio'
+)
+
+makedepends=(
+  'python-build'
+  'python-installer'
+  'python-wheel'
+  'python-hatchling'
+)
+
+source=("$pkgname-$pkgver.tar.gz::https://github.com/github/spec-kit/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('851b78b9a3c117f5299935e36fc76b73e6dd1910194bc36c376d82da4c84704f')
+
+build() {
+  cd "spec-kit-$pkgver"
+  python -m build --wheel --no-isolation
+}
+
+package() {
+  cd "spec-kit-$pkgver"
+  python -m installer --destdir="$pkgdir" dist/*.whl
+
+  # license file location is conventional for Arch packages
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

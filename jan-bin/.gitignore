@@ -1,4 +1,0 @@
-*/
-*.pkg.tar.zst
-!PKGBUILD
-!.gitignore

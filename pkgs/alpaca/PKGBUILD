@@ -1,0 +1,100 @@
+# Maintainer: Pedro dev <pedrolucasinvestidor.github@gmail.com>
+# Old Maintainer: Radiolin <anton.osi2011@gmail.com>
+
+pkgname=alpaca
+_pkgname=Alpaca
+pkgver='9.0.2'
+pkgrel=1
+pkgdesc="An Ollama client. Chat with local AI models or connect to third party AI providers like ChatGPT, Gemini and more"
+arch=('any')
+url="https://github.com/Jeffser/${_pkgname}"
+license=('GPL-3.0-or-later')
+
+provides=("alpaca=${pkgver}")
+conflicts=('alpaca' 'alpaca-git' 'alpaca-ai')
+
+source=(
+  "${pkgname}-${pkgver}.tar.gz::https://github.com/Jeffser/${_pkgname}/archive/refs/tags/${pkgver}.tar.gz"
+)
+
+b2sums=('de6bdc45c606ac6fd4966839b96c1ec3c08e5f0b449bc8a23eb12ec35c8c233061dc6669917f1cb673805e2fea978381ab367ed8689cf7ab2e9712b28387a93c')
+
+depends=(
+  dconf
+  gdk-pixbuf2
+  glib2
+  gtk4
+  gtksourceview5
+  hicolor-icon-theme
+  libadwaita
+  libportal
+  libspelling
+  pango
+  vte4
+  webkitgtk-6.0
+
+  # spellchecking backends (libspelling uses these)
+  libvoikko
+  nuspell
+  hspell
+
+  # core runtime
+  python
+  python-gobject
+  python-cairo
+
+  # attachments + tools/features (some are repo, some are AUR; PKGBUILD should declare either way)
+  python-html2text
+  python-matplotlib
+  python-odfpy
+  python-openai
+  python-pillow
+  python-pydantic
+  python-pydbus
+  python-pyicu
+  python-pypdf
+  python-requests
+  python-pytube
+  python-youtube-transcript-api
+  python-opencv
+  python-duckduckgo-search
+
+  # markitdown + converters
+  python-markitdown
+  python-markdownify
+  python-mammoth
+  python-pptx
+  python-pathvalidate
+  python-cobble
+  python-magika
+
+  # audio/speech
+  python-pydub
+  python-pyaudio
+  python-speechrecognition
+  python-openai-whisper
+  gst-plugin-pipewire
+
+  # local backend
+  ollama
+)
+
+makedepends=(
+  appstream
+  blueprint-compiler
+  desktop-file-utils
+  gettext
+  gobject-introspection
+  meson
+)
+
+build() {
+  cd "${_pkgname}-${pkgver}"
+  arch-meson . build
+  meson compile -C build
+}
+
+package() {
+  cd "${_pkgname}-${pkgver}"
+  meson install -C build --destdir "${pkgdir}"
+}

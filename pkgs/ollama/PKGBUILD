@@ -1,0 +1,257 @@
+# Maintainer: Alexander F. Rødseth <xyproto@archlinux.org>
+# Maintainer: Sven-Hendrik Haase <svenstaro@archlinux.org>
+# Contributor: Steven Allen <steven@stebalien.com>
+# Contributor: Matt Harrison <matt@harrison.us.com>
+# Contributor: Kainoa Kanter <kainoa@t1c.dev>
+
+# NOTE: This PKGBUILD detects your installed CUDA version at /opt/cuda and builds the matching variant:
+# - cuda-12.9 (AUR) → builds ollama-cuda12 (Maxwell through Hopper GPUs)
+#   * Requires gcc14 package (cuda-12.9 dependency)
+# - cuda (official) → builds ollama-cuda13 (Ampere through Blackwell GPUs)
+# You cannot have both installed - they conflict.
+
+pkgbase=ollama
+pkgname=(ollama ollama-rocm ollama-vulkan ollama-docs)
+pkgver='0.15.4'
+pkgrel=1
+pkgdesc='Create, run and share large language models (LLMs)'
+arch=(x86_64)
+url='https://github.com/ollama/ollama'
+license=(MIT)
+options=('!lto')
+depends=(gcc-libs glibc)
+makedepends=(cmake
+             ninja
+             git
+             go
+             gcc14
+             rocm-toolchain
+             rocm-hip-sdk
+             hipblas
+             cuda
+             clblast
+             vulkan-headers
+             vulkan-icd-loader
+             shaderc)
+source=(git+https://github.com/ollama/ollama#tag=v$pkgver
+        ollama-ld.conf
+        ollama.service
+        sysusers.conf
+        tmpfiles.d)
+b2sums=('2dfd5e897d374799e70e8796d77c7913460f1638aaa0d7633eba8f0fe0f959e537850b72ffa54e20a470716111c41aa418fa843bd414049d62f69d011d74a2a7'
+        '121a7854b5a7ffb60226aaf22eed1f56311ab7d0a5630579525211d5c096040edbcfd2608169a4b6d83e8b4e4855dbb22f8ebf3d52de78a34ea3d4631b7eff36'
+        '031e0809a7f564de87017401c83956d43ac29bd0e988b250585af728b952a27d139b3cad0ab1e43750e2cd3b617287d3b81efc4a70ddd61709127f68bd15eabd'
+        '68622ac2e20c1d4f9741c57d2567695ec7b5204ab43356d164483cd3bc9da79fad72489bb33c8a17c2e5cb3b142353ed5f466ce857b0f46965426d16fb388632'
+        'e8f2b19e2474f30a4f984b45787950012668bf0acb5ad1ebb25cd9776925ab4a6aa927f8131ed53e35b1c71b32c504c700fe5b5145ecd25c7a8284373bb951ed')
+
+# Detect CUDA version at /opt/cuda
+_cuda_variant=""
+_cuda_build_dir=""
+
+_detect_cuda() {
+  if [[ -x "/opt/cuda/bin/nvcc" ]]; then
+    _cuda_major=$(/opt/cuda/bin/nvcc --version | grep "release" | sed -n 's/.*release \([0-9]*\)\..*/\1/p')
+    echo "==> Detected CUDA version: $_cuda_major at /opt/cuda"
+    
+    if [[ "$_cuda_major" -eq 12 ]]; then
+      _cuda_variant="cuda12"
+      _cuda_build_dir="build-cuda12"
+      pkgname+=(ollama-cuda12)
+      echo "==> Will build: ollama-cuda12 (Maxwell, Pascal, Volta, Turing, Ampere, Hopper)"
+    elif [[ "$_cuda_major" -ge 13 ]]; then
+      _cuda_variant="cuda13"
+      _cuda_build_dir="build-cuda13"
+      pkgname+=(ollama-cuda13)
+      echo "==> Will build: ollama-cuda13 (Ampere, Ada Lovelace, Hopper, Blackwell)"
+    else
+      echo "==> WARNING: CUDA version $_cuda_major is not supported. Skipping CUDA build."
+    fi
+  else
+    echo "==> WARNING: nvcc not found at /opt/cuda."
+    echo "==> WARNING: Install 'cuda' (13.x) or 'cuda-12.9' (AUR) to build CUDA support."
+  fi
+}
+
+build() {
+  export CGO_CPPFLAGS="${CPPFLAGS}"
+  export CGO_CFLAGS="${CFLAGS}"
+  export CGO_CXXFLAGS="${CXXFLAGS}"
+  export CGO_LDFLAGS="${LDFLAGS}"
+  export GOPATH="${srcdir}"
+  export GOFLAGS="-buildmode=pie -mod=readonly -modcacherw '-ldflags=-linkmode=external -compressdwarf=false -X=github.com/ollama/ollama/version.Version=$pkgver -X=github.com/ollama/ollama/server.mode=release'"
+
+  _detect_cuda
+
+  # Add CUDA to environment if detected
+  if [[ -n "$_cuda_variant" ]]; then
+    export PATH="/opt/cuda/bin:${PATH}"
+    export CUDA_PATH="/opt/cuda"
+    export LD_LIBRARY_PATH="/opt/cuda/lib64:${LD_LIBRARY_PATH}"
+    
+    # CUDA 12.9 requires GCC 14 (doesn't support GCC 15)
+    if [[ "$_cuda_variant" == "cuda12" ]]; then
+      if command -v gcc-14 >/dev/null 2>&1; then
+        export CC=gcc-14
+        export CXX=g++-14
+        export CUDAHOSTCXX=g++-14
+        msg2 "Using GCC 14 for CUDA 12 compatibility"
+      else
+        error "CUDA 12 requires gcc14 but it's not installed!"
+        error "Install with: sudo pacman -S gcc14"
+        return 1
+      fi
+    fi
+    
+    # Check for CCCL headers (required for cuda-12.9)
+    if [[ "$_cuda_variant" == "cuda12" ]]; then
+      if [[ ! -d "/opt/cuda/targets/x86_64-linux/include/thrust" ]]; then
+        error "CCCL headers are missing from cuda-12.9 installation!"
+        error ""
+        error "The cuda-12.9 AUR package is missing required CCCL headers."
+        error "To fix this, run the following commands as root:"
+        error ""
+        error "  cd /tmp"
+        error "  git clone --depth 1 --branch v2.9.0 https://github.com/NVIDIA/cccl.git"
+        error "  sudo cp -r cccl/thrust /opt/cuda/targets/x86_64-linux/include/"
+        error "  sudo cp -r cccl/cub /opt/cuda/targets/x86_64-linux/include/"
+        error "  sudo cp -r cccl/libcudacxx /opt/cuda/targets/x86_64-linux/include/"
+        error ""
+        error "Then rebuild this package."
+        return 1
+      fi
+    fi
+  fi
+
+  cd ollama
+
+  # Remove the runtime dependencies from installation so CMake doesn't install
+  # lots of system dependencies into the target path.
+  sed -i 's/PRE_INCLUDE_REGEXES.*/PRE_INCLUDE_REGEXES = ""/' CMakeLists.txt
+
+  # Common CMake options
+  local cmake_base_options=(
+    -G Ninja
+    -W no-dev
+    -D CMAKE_BUILD_TYPE=Release
+    -D CMAKE_INSTALL_PREFIX=/usr
+    -D AMDGPU_TARGETS="$(rocm-supported-gfx)"
+    -D GPU_TARGETS="$(rocm-supported-gfx)"
+  )
+
+  # Build CUDA variant based on detected version
+  if [[ "$_cuda_variant" == "cuda12" ]]; then
+    msg2 "Building CUDA 12 variant..."
+    msg2 "Architectures: 50 (Maxwell), 52, 53, 60 (Pascal), 61, 62, 70 (Volta), 72, 75 (Turing), 80 (Ampere), 86, 87, 89, 90 (Hopper), 90a"
+    
+    local cmake_cuda_options=(
+      "${cmake_base_options[@]}"
+      -B "$_cuda_build_dir"
+      -D CMAKE_CUDA_COMPILER=/opt/cuda/bin/nvcc
+      -D CMAKE_CUDA_ARCHITECTURES="50;52;53;60;61;62;70;72;75;80;86;87;89;90;90a"
+      -D CMAKE_CUDA_FLAGS="-Wno-deprecated-gpu-targets"
+    )
+    cmake "${cmake_cuda_options[@]}"
+    cmake --build "$_cuda_build_dir"
+    
+  elif [[ "$_cuda_variant" == "cuda13" ]]; then
+    msg2 "Building CUDA 13 variant..."
+    msg2 "Architectures: 75 (Turing), 80 (Ampere), 86, 87, 88, 89 (Ada), 90 (Hopper), 100, 103, 110, 120 (Blackwell), 121"
+    
+    local cmake_cuda_options=(
+      "${cmake_base_options[@]}"
+      -B "$_cuda_build_dir"
+      -D CMAKE_CUDA_COMPILER=/opt/cuda/bin/nvcc
+      -D CMAKE_CUDA_ARCHITECTURES="75;80;86;87;88;89;90;100;103;110;120;121;121-virtual"
+    )
+    cmake "${cmake_cuda_options[@]}"
+    cmake --build "$_cuda_build_dir"
+  fi
+
+  # Build main ollama binary
+  go build .
+}
+
+check() {
+  ollama/ollama --version > /dev/null
+  cd ollama
+  go test .
+}
+
+package_ollama() {
+  # Install CPU components from whichever build directory exists
+  local build_dir=""
+  if [[ -n "$_cuda_build_dir" && -d "ollama/$_cuda_build_dir" ]]; then
+    build_dir="ollama/$_cuda_build_dir"
+  else
+    error "No build directory found! Install 'cuda' or 'cuda-12.9' package."
+    return 1
+  fi
+  
+  DESTDIR="$pkgdir" cmake --install "$build_dir" --component CPU
+
+  install -Dm755 $pkgname/ollama "$pkgdir/usr/bin/ollama"
+  install -dm755 "$pkgdir/var/lib/ollama"
+  install -Dm644 ollama.service "$pkgdir/usr/lib/systemd/system/ollama.service"
+  install -Dm644 sysusers.conf "$pkgdir/usr/lib/sysusers.d/ollama.conf"
+  install -Dm644 tmpfiles.d "$pkgdir/usr/lib/tmpfiles.d/ollama.conf"
+  install -Dm644 ollama/LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+
+  ln -s /var/lib/ollama "$pkgdir/usr/share/ollama"
+}
+
+package_ollama-rocm() {
+  pkgdesc='Create, run and share large language models (LLMs) with ROCm'
+  depends+=(ollama hipblas)
+
+  local build_dir=""
+  if [[ -n "$_cuda_build_dir" && -d "ollama/$_cuda_build_dir" ]]; then
+    build_dir="ollama/$_cuda_build_dir"
+  else
+    error "No build directory found!"
+    return 1
+  fi
+  
+  DESTDIR="$pkgdir" cmake --install "$build_dir" --component HIP
+  rm -rf "$pkgdir"/usr/lib/ollama/rocm/rocblas/library
+}
+
+package_ollama-cuda12() {
+  pkgdesc='CUDA 12 support for Ollama (Maxwell, Pascal, Volta, Turing, Ampere, Hopper)'
+  depends=(ollama cuda)
+  provides=(ollama-cuda)
+  conflicts=(ollama-cuda13)
+
+  DESTDIR="$pkgdir" cmake --install "ollama/$_cuda_build_dir" --component CUDA
+}
+
+package_ollama-cuda13() {
+  pkgdesc='CUDA 13 support for Ollama (Ampere, Ada Lovelace, Hopper, Blackwell)'
+  depends=(ollama cuda)
+  provides=(ollama-cuda)
+  conflicts=(ollama-cuda12)
+
+  DESTDIR="$pkgdir" cmake --install "ollama/$_cuda_build_dir" --component CUDA
+}
+
+package_ollama-vulkan() {
+  pkgdesc='Create, run and share large language models (LLMs) with Vulkan'
+  depends=(ollama vulkan-icd-loader)
+
+  local build_dir=""
+  if [[ -n "$_cuda_build_dir" && -d "ollama/$_cuda_build_dir" ]]; then
+    build_dir="ollama/$_cuda_build_dir"
+  else
+    error "No build directory found!"
+    return 1
+  fi
+  
+  DESTDIR="$pkgdir" cmake --install "$build_dir" --component Vulkan
+}
+
+package_ollama-docs() {
+  pkgdesc='Documentation for Ollama'
+
+  install -d "$pkgdir/usr/share/doc"
+  cp -r ollama/docs "$pkgdir/usr/share/doc/ollama"
+  install -Dm644 ollama/LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
