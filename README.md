@@ -25,41 +25,6 @@ direnv allow
 
 ---
 
-## Local Testing
-
-Build a package:
-
-```bash
-./scripts/build-local.sh package-name
-```
-
-Build + install:
-
-```bash
-./scripts/build-local.sh 1password -sci
-```
-
----
-
-## Adding Packages
-
-```bash
-./scripts/add-package.sh my-package
-# edit PKGBUILD
-./scripts/build-local.sh my-package
-```
-
----
-
-## Updating Packages
-
-```bash
-./scripts/update-package.sh 1password 8.11.5
-./scripts/build-local.sh 1password
-```
-
----
-
 # Repository Environment
 
 This repo uses a **repo-local makepkg environment** loaded via `direnv`.
@@ -247,6 +212,25 @@ Verify:
 ```bash
 sudo -u alpm ls -l /home/$USER/Projects/Packages/repo/x86_64/
 sudo pacman -Sy
+```
+
+### Building Package
+
+```sh
+paru -B ./pkgs/{folder-name}
+
+# e.g. for 1Password CLI:
+paru -B ./pkgs/1password-cli-bin
+```
+
+### Adding Package to Repo
+
+After building, add the package to the repo:
+
+```sh
+repo-add --remove --prevent-downgrade \
+        "$PKGDEST/openarsenal.db.tar.zst" \
+        "$PKGDEST"/*.pkg.tar.*
 ```
 
 ---
