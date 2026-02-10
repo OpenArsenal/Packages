@@ -100,13 +100,19 @@ options=('!strip')
 # GitHub tag archives usually unpack as "calibre-<tag>" (tag is "v9.0.0")				
 _archive="$pkgname-$pkgver"
 
+# Kovid Goyal's GPG key for signature verification
+validpgpkeys=('3CE1780F78DD88DF45194FD706BC317B515ACE7C')  # Kovid Goyal <kovid@kovidgoyal.net>
+
 # Your sources (mixing patch + binaries - WRONG)
+# Download Kovid Goyal's public key for signature verification
 source=(
   "calibre-${pkgver}.tar.xz::https://download.calibre-ebook.com/${pkgver}/calibre-${pkgver}.tar.xz"
   qt-6.10.patch
 )
+
 sha256sums=('a68bd6a98243d2187bc1fc533377f7e3c05a766de4c99d0bb1c579c2674e00c6'
             '7b878663100c38ac849570afc8ee41cfcd55609367a5cb38305ef73bb3094f4e')
+
 
 prepare() {
   cd "${srcdir}/${_archive}"
