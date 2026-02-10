@@ -15,20 +15,32 @@ provides=(calibre)
 options=('!strip')
 replaces=("${pkgname%-bin}")
 
+# Kovid Goyal's GPG key for signature verification
+validpgpkeys=('3CE1780F78DD88DF45194FD706BC317B515ACE7C')  # Kovid Goyal <kovid@kovidgoyal.net>
+
 # Sources
 #   Since there doesn't seem to be a simple way to generate desktop
 #   integration files without building calibre from source,
 #   we'll provide them here
 source=(share.tar.xz)
 
-# Arch-per-arch sources (prebuilt upstream binaries)
-source_x86_64=("calibre-${pkgver}-x86_64.txz::https://github.com/kovidgoyal/calibre/releases/download/v${pkgver}/calibre-${pkgver}-x86_64.txz")
-source_aarch64=("calibre-${pkgver}-aarch64.txz::https://github.com/kovidgoyal/calibre/releases/download/v${pkgver}/calibre-${pkgver}-arm64.txz")
+# Arch-per-arch sources (prebuilt upstream binaries from calibre.com with GPG signatures)
+source_x86_64=(
+  "calibre-${pkgver}-x86_64.txz::https://download.calibre-ebook.com/${pkgver}/calibre-${pkgver}-x86_64.txz"
+  "calibre-${pkgver}-x86_64.txz.sig::https://calibre-ebook.com/signatures/calibre-${pkgver}-x86_64.txz.sig"
+)
+source_aarch64=(
+  "calibre-${pkgver}-aarch64.txz::https://download.calibre-ebook.com/${pkgver}/calibre-${pkgver}-arm64.txz"
+  "calibre-${pkgver}-aarch64.txz.sig::https://calibre-ebook.com/signatures/calibre-${pkgver}-arm64.txz.sig"
+)
 
-# Checksums
-sha256sums=('c7aae61afba19c9cceed8bbafd2b39b5c4d6d683de0ccfc9c1fe2651857f757a')
-sha256sums_x86_64=('b1e44b06ff90a3ebaad784a0178343bb34a58e4745091a3165aa26206c674755')
-sha256sums_aarch64=('e41e25397086170d9c6c2ccfa3f3117049e9d5b0d448542bf00669a8466337fb')
+# Checksums (using SHA-512 as provided by calibre)
+sha512sums=('f998af4d431d95149528691daf7d43c75052e6586c54b4d5595a6a8886d7d0b97ff355a1e25b64e6a606b679b096c49d6048a82ff1061611ad87ed0bb587e147'
+            'ca081a89522c0d719f0fe8209735a23fc778d870681c4d1cbcb6654fa685e36f1ced6640284ba6608570dce88289d3f5ea35cdc19b902abfcc8c3d9e0a2e2148')
+sha512sums_x86_64=('5148aceed1b051a08aa2088ac655d50e79471d64ff6b9bc247947afde3e2c37f019334d71baf20ab692db25420372802d51930afb1f8be547265f9aca8eb76bb'
+                   'SKIP')
+sha512sums_aarch64=('f9b362b63a355a7ddc4b170c2d3850e7b1e0f504ca352268d0514be2f990605a55549e7e236fbbce2a84c998ae0a97c4302fd7c4b3876c8449e76d05e609c7f0'
+                    'SKIP')
 
 package() {
   install -dm755 "$pkgdir/usr/bin" "$pkgdir/opt/calibre"
