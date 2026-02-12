@@ -8,7 +8,8 @@ arch=('x86_64' 'i686' 'arm' 'armv6h' 'aarch64')
 url="https://app-updates.agilebits.com/product_history/CLI2"
 license=('custom')
 options=('!strip' '!emptydirs')
-depends=('polkit' '1password')
+depends=('polkit')
+optdepends=('1password: desktop app integration')
 install=${pkgname}.install
 replaces=("${pkgname%-bin}")
 
