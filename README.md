@@ -46,6 +46,46 @@ echo $GNUPGHOME
 
 ---
 
+# Creating Chroots
+
+```sh
+sudo install -d -m 0755 /etc/devtools
+sudo cp /etc/pacman.conf /etc/devtools/pacman-cachyos-chroot.conf
+```
+
+
+```sh
+sudo rm -rf "$CHROOT_BASE"
+sudo mkdir -p "$CHROOT_BASE"
+
+sudo mkarchroot \
+  -C /etc/devtools/pacman-cachyos-chroot.conf \
+  -f /etc/pacman.d/cachyos-v3-mirrorlist:/etc/pacman.d/cachyos-v3-mirrorlist \
+  -f /etc/pacman.d/cachyos-mirrorlist:/etc/pacman.d/cachyos-mirrorlist \
+  -f /etc/pacman.d/mirrorlist:/etc/pacman.d/mirrorlist \
+  "$CHROOT_BASE/root" \
+  base-devel
+```
+
+
+## If you also want your chroot to see *your* local repo
+
+The Arch-standard way is still the same: **edit the chroot pacman config** (the one you made above) and add your repo stanza at the bottom:
+
+```ini
+[openarsenal]
+SigLevel = Optional TrustAll
+Server = file:///home/okiki/Projects/Packages/repo/$arch
+```
+
+Build packages inside the chroot:
+
+```sh
+sudo makechrootpkg -r "$CHROOT_BASE" -c -u -- --syncdeps  --noconfirm --log --holdver --skipinteg
+```
+
+---
+
 # Repo-Local GPG Keyring
 
 ## Why this exists
