@@ -5,7 +5,7 @@
 pkgbase=flutter
 _group=flutter
 groups=("$_group")
-pkgver='3.38.9'
+pkgver='3.41.0'
 _enginever=b5990e5ccc5e325fd24f0746e7d6689bbebc7c65
 _materialfontsver=3012db47f3130e62f7cc0beabff968a33cbec8d8
 _gradlewver=fd5c1f2c013565a3bea56ada6df9d2b8e96d56aa
@@ -174,7 +174,7 @@ noextract=(
   "dart-sdk-arm64-${_enginever}.zip"
 )
 
-sha256sums=('02ed5df35a676254eced5a3c46f6cf10ce67af2ece98498db9b3fb660c73e95c'
+sha256sums=('11df8aff44a59d1889afab6e4ba1f2881e219993bc80941121f4f56a632d320c'
             'e56fa8e9bb4589fde964be3de451f3e5b251e4a1eafb1dc98d94add034dd5a86'
             '31e9428baf1a2b2f485f1110c5899f852649b33d46a2e9b07f9d17752d50190a'
             '73e3593d3fea1a91b1cc2fa5052e7bae989a5188a61a95fa265beb87846d89cd'
