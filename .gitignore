@@ -8,6 +8,8 @@
 pkg/
 src/
 
+*.pkg.tar.zst
+
 # Local repo / build outputs
 
 repo/
@@ -52,6 +54,7 @@ test-builds/
 
 *~
 PKGBUILD.backup
+
 
 # Repo-local environment
 
