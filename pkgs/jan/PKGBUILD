@@ -26,7 +26,6 @@ optdepends=(
 makedepends=(
 	'git'
 	'nvm'
-	'yarn'
 	'cargo'
 	'libappindicator-gtk3'
 )
@@ -34,13 +33,16 @@ makedepends=(
 _ensure_local_nvm() {
 	which nvm >/dev/null 2>&1 && nvm deactivate && nvm unload
 	export NVM_DIR="${srcdir}/.nvm"
+	export COREPACK_HOME="${srcdir}/.corepack"
 	source /usr/share/nvm/init-nvm.sh || [[ $? != 1 ]]
 }
 
 prepare() {
 	cd "$_pkgbase"
 	_ensure_local_nvm
-	nvm install 20
+	nvm install 24
+	corepack enable
+	corepack prepare --activate
 	[ -f package.json ] && sed -i '/"build:tauri:linux"/ s/\.\/[^ ]*\.sh//g; /"build:tauri:linux"/ s/&& "/--bundles deb"/g' package.json
 }
 
