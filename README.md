@@ -57,14 +57,13 @@ sudo cp /etc/pacman.conf /etc/devtools/pacman-cachyos-chroot.conf
 ```sh
 sudo rm -rf "$CHROOT_BASE"
 sudo mkdir -p "$CHROOT_BASE"
-
+  
 sudo mkarchroot \
-  -C /etc/devtools/pacman-cachyos-chroot.conf \
-  -f /etc/pacman.d/cachyos-v3-mirrorlist:/etc/pacman.d/cachyos-v3-mirrorlist \
-  -f /etc/pacman.d/cachyos-mirrorlist:/etc/pacman.d/cachyos-mirrorlist \
-  -f /etc/pacman.d/mirrorlist:/etc/pacman.d/mirrorlist \
+  -C /etc/pacman.conf \
   "$CHROOT_BASE/root" \
-  base-devel
+  base-devel git \
+  archlinux-keyring cachyos-keyring \
+  cachyos-mirrorlist cachyos-v3-mirrorlist 
 ```
 
 
@@ -81,7 +80,9 @@ Server = file:///home/okiki/Projects/Packages/repo/$arch
 Build packages inside the chroot:
 
 ```sh
-sudo makechrootpkg -r "$CHROOT_BASE" -c -u -- --syncdeps  --noconfirm --log --holdver --skipinteg
+sudo makechrootpkg -r "$CHROOT_BASE" \
+  -D $PKGBUILDS_ROOT/repo \
+  -c -u -- --syncdeps  --noconfirm --log --holdver --skipinteg
 ```
 
 ---
