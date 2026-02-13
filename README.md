@@ -80,9 +80,11 @@ Server = file:///home/okiki/Projects/Packages/repo/$arch
 Build packages inside the chroot:
 
 ```sh
-sudo makechrootpkg -r "$CHROOT_BASE" \
-  -D $PKGBUILDS_ROOT/repo \
-  -c -u -- --syncdeps  --noconfirm --log --holdver --skipinteg
+sudo --preserve-env=PKGDEST,SRCPKGDEST,SRCDEST,BUILDDIR,LOGDEST,GNUPGHOME,PACKAGER,SOURCE_DATE_EPOCH \
+  makechrootpkg -r "$CHROOT_BASE" \
+  -D $PKGBUILDS_ROOT/repo -c -u -- \
+  --syncdeps --noconfirm --log --holdver --skipinteg
+
 ```
 
 ---
