@@ -1,0 +1,80 @@
+[env]
+_.file = ".env"
+
+# Workspace root
+PKGBUILDS_ROOT = "{{config_root}}"
+
+# Repo metadata
+REPO_NAME = "{{ get_env(name='REPO_NAME', default='openarsenal') }}"
+REPO_DIR = "{{ get_env(name='REPO_DIR', default='/srv/pacman/repos') }}"
+REPO_ROOT = "{{ get_env(name='REPO_ROOT',default=env.REPO_DIR ~ '/' ~ env.REPO_NAME) }}"
+REPO_DB = "{{ get_env(name='REPO_DB', default=env.REPO_ROOT ~ '/' ~ env.REPO_NAME ~ '.db.tar.gz') }}"
+PKG_REPO_ARCH = "{{ get_env(name='CARCH', default=exec(command='uname -m')) }}"
+
+# Signing
+GNUPGHOME = "{{env.PKGBUILDS_ROOT}}/.gnupg"
+
+# Scripts
+SCRIPTS = "{{env.PKGBUILDS_ROOT}}/scripts"
+
+# Repo automation inputs
+FEEDS_JSON = "{{env.PKGBUILDS_ROOT}}/feeds.json"
+AURDEST    = "{{env.PKGBUILDS_ROOT}}"
+
+# Packager metadata
+PACKAGER = "{{ get_env(name='PACKAGER', default='OpenArsenal Contributors <cachyos(at)openarsenal(dot)com>') }}"
+
+# Reproducible timestamps
+# (mimics: git log -1 --format=%ct || date -u +%s)
+SOURCE_DATE_EPOCH = """
+{{ exec(command=
+  'sh -lc "git -C \\"' ~ env.PKGBUILDS_ROOT ~ '\\" log -1 --format=%ct 2>/dev/null || date -u +%s"'
+) | trim }}
+"""
+
+[tasks.default]
+description = "List available tasks"
+run = "mise tasks"
+
+[tasks."repo:provision"]
+description = "Provisions system repo directory under /srv for PKGDEST"
+run = 'bash "{{env.SCRIPTS}}/provision-repo.sh"'
+
+[tasks."repo:add-user"]
+description = "Adds user to system repo directory for PKGDEST"
+# usage is the recommended way to document/validate args :contentReference[oaicite:1]{index=1}
+usage = '''
+arg "<user>"
+'''
+run = 'bash "{{env.SCRIPTS}}/repo-group-add-user.sh" {{arg(name="user")}}'
+
+[tasks."repo:deprovision"]
+description = "Deprovisions system repo directory under /srv for PKGDEST"
+run = 'bash "{{env.SCRIPTS}}/deprovision-repo.sh"'
+
+[tasks."aur:import"]
+description = "Clone a package from the AUR and add it to the feeds.json file for updates"
+run = 'bash "{{env.SCRIPTS}}/aur-imports.sh"'
+
+[tasks.cleanup]
+description = "Cleanup repo artifacts / old packages"
+run = "git clean -fdx"
+
+[tasks.update]
+description = "Update PKGBUILDs (feeds/AUR/etc) without building"
+run = 'bash "{{env.SCRIPTS}}/update-pkg.sh"'
+
+[tasks.doctor]
+description = "Check required tools are installed"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+need() { command -v "$1" >/dev/null || { echo "Missing: $1"; exit 1; }; }
+need bash
+need git
+need makepkg
+need repo-add
+need mkarchroota
+need makechrootpkg
+echo "OK"
+'''
