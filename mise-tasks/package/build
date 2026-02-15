@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+#MISE description="Build a package in a clean chroot"
+#MISE dir="{{cwd}}"
+
+makechrootpkg -r "$CHROOT_DIR" -c -u -- --syncdeps --noconfirm --log

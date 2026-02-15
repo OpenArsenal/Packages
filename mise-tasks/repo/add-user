@@ -1,0 +1,133 @@
+#!/usr/bin/env bash
+#MISE description="Adds user to system repo directory for PKGDEST"
+#MISE depends=["run0"]
+#USAGE arg "[user]" help="User to add (defaults to $USER)"
+
+set -euo pipefail
+
+# Repo group selection: allow override, else fall back to REPO_NAME
+REPO_GROUP="${REPO_GROUP:-${REPO_NAME:-}}"
+TARGET_USER="${usage_user:-}"
+
+[[ -n "${REPO_GROUP}" ]] || { echo "error: REPO_GROUP or REPO_NAME must be set" >&2; exit 1; }
+[[ -n "${TARGET_USER}" ]] || { echo "error: No user provided and \$USER is empty" >&2; exit 1; }
+
+
+group_exists() {
+  getent group "$1" >/dev/null 2>&1
+}
+
+ensure_group_exists() {
+  local group="$1"
+
+  group_exists "$group" && return 0
+
+  echo "Creating group: $group"
+  if run0 groupadd "$group"; then
+    return 0
+  fi
+
+  if group_exists "$group"; then
+    echo "Group '$group' already exists (detected after groupadd); continuing."
+    return 0
+  fi
+
+  echo "error: Failed to create group '$group'." >&2
+  echo "error: Try: run0 groupadd '$group'" >&2
+  exit 1
+}
+
+is_homed_user() {
+  command -v homectl >/dev/null 2>&1 || return 1
+  homectl inspect "$1" >/dev/null 2>&1
+}
+
+homed_aux_groups() {
+  local user="$1"
+
+  homectl inspect "$user" | awk '
+    BEGIN { in_section=0; saw=0 }
+    /^[[:space:]]*Aux\.[[:space:]]Groups:/ {
+      in_section=1; saw=1
+      sub(/^[[:space:]]*Aux\.[[:space:]]Groups:[[:space:]]*/, "", $0)
+      if (length($0)) print $0
+      next
+    }
+    in_section==1 && /^[[:space:]]*[A-Z][A-Za-z[:space:]]*:/ { in_section=0 }
+    in_section==1 {
+      gsub(/^[[:space:]]+/, "", $0)
+      if (length($0)) print $0
+    }
+    END { if (saw==0) exit 3 }
+  ' | sed '/^$/d' | sort -u
+}
+
+list_contains() { grep -qxF "$1"; }
+
+member_of_from_aux_plus() {
+  local group="$1"
+  { cat; printf '%s\n' "$group"; } \
+    | sed '/^$/d' \
+    | sort -u \
+    | paste -sd, -
+}
+
+add_user_non_homed() {
+  local user="$1"
+  local group="$2"
+
+  echo "Adding '$user' to group '$group' using usermod..."
+  run0 usermod -aG "$group" "$user"
+}
+
+add_user_homed() {
+  local user="$1"
+  local group="$2"
+
+  local aux
+  if ! aux="$(homed_aux_groups "$user")"; then
+    echo "error: Failed to parse Aux. Groups for homed user '$user'." >&2
+    echo "error: Run: homectl inspect \"$user\"" >&2
+    exit 1
+  fi
+
+  if printf '%s\n' "$aux" | list_contains "$group"; then
+    echo "Homed user '$user' already in '$group'; nothing to do."
+    return 0
+  fi
+
+  local member_of
+  member_of="$(printf '%s\n' "$aux" | member_of_from_aux_plus "$group")"
+
+  echo "Adding homed user '$user' to '$group' via homectl..."
+  set +e
+  run0 homectl update "$user" --member-of="$member_of"
+  local rc=$?
+  set -e
+
+  aux="$(homed_aux_groups "$user" || true)"
+  if printf '%s\n' "$aux" | list_contains "$group"; then
+    [[ $rc -ne 0 ]] && echo "homectl returned rc=$rc but membership is present."
+    echo "OK. '$user' is now in '$group' (systemd-homed)."
+    echo "Note: some sessions may require re-login."
+    return 0
+  fi
+
+  echo "error: Failed to add '$user' to '$group'." >&2
+  exit 1
+}
+
+ensure_group_exists "$REPO_GROUP"
+
+if is_homed_user "$TARGET_USER"; then
+  command -v homectl >/dev/null 2>&1 || {
+    echo "error: homectl is required for systemd-homed users but was not found." >&2
+    exit 127
+  }
+  add_user_homed "$TARGET_USER" "$REPO_GROUP"
+else
+  add_user_non_homed "$TARGET_USER" "$REPO_GROUP"
+fi
+
+echo "OK. Group entry now:"
+getent group "$REPO_GROUP" || true

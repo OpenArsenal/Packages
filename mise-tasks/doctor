@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+#MISE description="Check required tools are installed"
+
+set -euo pipefail
+
+need_bins=(
+  bash
+  git
+  makepkg
+  repo-add
+  mkarchroot
+  makechrootpkg
+)
+
+missing=0
+for bin in "${need_bins[@]}"; do
+  if ! command -v "$bin" >/dev/null 2>&1; then
+    echo "Missing: $bin"
+    missing=1
+  fi
+done
+
+if [ "$missing" -ne 0 ]; then
+  exit 1
+fi
+
+echo "OK"
