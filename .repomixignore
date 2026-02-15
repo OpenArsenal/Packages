@@ -2,4 +2,14 @@
 # Example:
 # *.log
 # tmp/
-!
+
+# Sensitive / local
+.gnupg/
+.cache/
+
+# GitHub workflows
+.github/workflows/
+
+# Repomix output/config (safe to ignore)
+repomix.config.json
+repomix-output.xml

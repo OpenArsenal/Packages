@@ -17,7 +17,7 @@
     "showLineNumbers": false,
     "truncateBase64": true,
     "copyToClipboard": false,
-    "includeFullDirectoryStructure": false,
+    "includeFullDirectoryStructure": true,
     "tokenCountTree": false,
     "git": {
       "sortByChanges": true,
@@ -32,7 +32,14 @@
     "useGitignore": true,
     "useDotIgnore": true,
     "useDefaultPatterns": true,
-    "customPatterns": []
+    "customPatterns": [
+      "pkgs/*/*.md",
+      "pkgs/*/*.html",
+      "pkgs/*/*.json",
+      "pkgs/*/*.changelog",
+      "pkgs/*/LICENSE*",
+      "pkgs/*/.gitignore"
+    ]
   },
   "security": {
     "enableSecurityCheck": true
