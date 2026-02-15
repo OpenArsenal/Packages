@@ -2,6 +2,4 @@
 #MISE description="Build a package in a clean chroot"
 #MISE dir="{{cwd}}"
 
-makechrootpkg -r "$CHROOT_DIR" -c -u \
-  -d "${REPO_DIR}:${REPO_DIR}" \
-  -- --syncdeps --noconfirm --log
+makechrootpkg -r "$CHROOT_DIR" -c -u -- --syncdeps --noconfirm --log
