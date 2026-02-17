@@ -1,6 +1,6 @@
 # Maintainer: Okiki <okiki@thunderstrike.co>
 pkgname=specify-cli
-pkgver='0.0.95'
+pkgver='0.0.96'
 pkgrel=1
 pkgdesc="Spec Kit Specify CLI (spec-driven development workflow)"
 arch=('any')
@@ -26,7 +26,7 @@ makedepends=(
 )
 
 source=("$pkgname-$pkgver.tar.gz::https://github.com/github/spec-kit/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('ff0366679e0ffe776fdfc845f30fc919269d70b3aab80457618bcda9e1e03851')
+sha256sums=('374baf8754fef6d25e4d8c76e3abb46b8c6ed42482440de978b71161f2292c7b')
 
 build() {
   cd "spec-kit-$pkgver"
