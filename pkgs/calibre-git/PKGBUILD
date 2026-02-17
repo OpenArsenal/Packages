@@ -1,7 +1,7 @@
 # Maintainer: Alex Potapenko <opotapenko@gmail.com>
 
 pkgname=calibre-git
-pkgver=9.1.0.r2.gbdb6839a76
+pkgver=9.2.1.r62.g103bf48d66
 pkgrel=1
 pkgdesc='Ebook management application'
 arch=(x86_64 aarch64 i686)
