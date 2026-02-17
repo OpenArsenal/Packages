@@ -1,9 +1,11 @@
 [Desktop Entry]
+Type=Application
 Name=Plezy
 Comment=A beautiful Plex media server client
 Exec=env GTK_THEME=Adwaita:dark /opt/plezy/plezy
 Icon=plezy
 Terminal=false
-Type=Application
 Categories=AudioVideo;Video;Player;
+Keywords=plex;media;streaming;video;
+StartupWMClass=plezy
 StartupNotify=true
