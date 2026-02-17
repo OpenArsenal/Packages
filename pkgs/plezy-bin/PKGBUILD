@@ -2,67 +2,57 @@
 
 pkgname=plezy-bin
 _pkgname=plezy
-pkgver='1.16.1'
+pkgver='1.17.0'
 pkgrel=1
 pkgdesc="Modern Plex client built with Flutter (prebuilt binary)"
-arch=('x86_64')
+arch=('x86_64' 'aarch64')
 url="https://github.com/edde746/plezy"
 license=('GPL-3.0-or-later')
 
-depends=(
-  'gtk3'
-  'glib2'
-  'libepoxy'
-  'libkeybinder3'
-  'alsa-lib'
-  'mpv'
-)
+depends=('libkeybinder3' 'mpv')
 
 provides=("$_pkgname")
 conflicts=("$_pkgname" "${_pkgname}-git")
-replaces=("${pkgname%-bin}")
+replaces=("$_pkgname")
 
 # Prebuilt binaries are often already stripped and may contain weird sections.
 options=(!strip)
 
 source=(
-  "$pkgname-$pkgver.tar.gz::https://github.com/edde746/plezy/releases/download/${pkgver}/plezy-linux.tar.gz"
-  # Pull license from upstream tag so /usr/share/licenses is correct.
-  "LICENSE-$pkgver::https://raw.githubusercontent.com/edde746/plezy/${pkgver}/LICENSE"
+  "${pkgname%-bin}.desktop"
+)
+source_x86_64=(
+  "$pkgname-$pkgver-x86_64.tar.gz::https://github.com/edde746/plezy/releases/download/${pkgver}/plezy-linux-x64.tar.gz"
+)
+source_aarch64=(
+  "$pkgname-$pkgver-aarch64.tar.gz::https://github.com/edde746/plezy/releases/download/${pkgver}/plezy-linux-arm64.tar.gz"
 )
 
-sha256sums=('7004ac457469ffe9c4db33742f815042cf21e8c9b8ef400143a091d4a7d88ba7'
-            '3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986')
+sha256sums=('b8e991c52d0c3b4a703d9232985c6ffd8bddee2120cba9743f4484a82008f050')
+sha256sums_x86_64=('e27be48e690681193f4fe6d5cc8ffcccf96d746c567ce121af5e71ad8aff5c67')
+sha256sums_aarch64=('9191fd0ec63d75cfb9cc3258b11bae2bb7ceeea619181ae467864c5acab5187a')
 
 package() {
-  cd "$srcdir"
+    cd "${srcdir}"
 
-  install -dm755 "$pkgdir/opt/$_pkgname"
-  cp -a data lib plezy "$pkgdir/opt/$_pkgname/"
+    # Install main application
+    install -dm755 "${pkgdir}/opt/${pkgname%-bin}"
+    cp -r data lib plezy "${pkgdir}/opt/${pkgname%-bin}/"
 
-  # Wrapper: fixes CWD-dependent Flutter bundle behavior.
-  install -Dm755 /dev/stdin "$pkgdir/usr/bin/$_pkgname" <<'EOF'
-#!/usr/bin/env bash
-cd /opt/plezy
-exec ./plezy "$@"
-EOF
+    # Make executable
+    chmod +x "${pkgdir}/opt/${pkgname%-bin}/plezy"
 
-  # Desktop entry (generate it so Exec/Icon are guaranteed correct)
-  install -Dm644 /dev/stdin "$pkgdir/usr/share/applications/com.edde746.plezy.desktop" <<'EOF'
-[Desktop Entry]
-Type=Application
-Name=Plezy
-Comment=Modern Plex media client
-Exec=plezy %U
-Icon=plezy
-Terminal=false
-Categories=AudioVideo;Video;Player;
-StartupWMClass=plezy
-EOF
+    # Create symlink for command-line access
+    install -dm755 "${pkgdir}/usr/bin"
+    ln -s "/opt/${pkgname%-bin}/plezy" "${pkgdir}/usr/bin/${pkgname%-bin}"
 
-  # Icon: install one canonical size (don’t lie about multiple sizes).
-  install -Dm644 "data/flutter_assets/assets/plezy.png" \
-    "$pkgdir/usr/share/icons/hicolor/512x512/apps/plezy.png"
+    # Install icons in multiple sizes
+    for size in 1024x1024 512x512 256x256; do
+        install -Dm644 "data/flutter_assets/assets/plezy.png" \
+            "${pkgdir}/usr/share/icons/hicolor/${size}/apps/${pkgname%-bin}.png"
+    done
 
-  install -Dm644 "LICENSE-$pkgver" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    # Install desktop entry
+    install -Dm644 "${srcdir}/${pkgname%-bin}.desktop" \
+        "${pkgdir}/usr/share/applications/com.edde746.plezy.desktop"
 }
