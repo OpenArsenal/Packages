@@ -3,13 +3,13 @@
 #MISE dir="{{cwd}}"
 #USAGE arg "[package]" help="Package name (defaults to current directory name)"
 #USAGE flag "--build"         help="Build unbuilt local deps in order, then build the package"
-#USAGE flag "--regen-srcinfo" help="Regenerate .SRCINFO files before resolving"
+#USAGE flag "--refresh"       help="Regenerate .SRCINFO files before resolving"
 #USAGE flag "--dry-run"       help="With --build: print what would be built without building"
-#USAGE flag "--all-deps"      help="Show all dependency kinds from all origins (local, repos, AUR)"
-#USAGE flag "--all-origins"   help="Show deps from all origins (default hides repo deps)"
-#USAGE flag "--runtime-only"  help="Show only runtime dependencies (depends)"
-#USAGE flag "--make-only"     help="Show only make dependencies (makedepends)"
-#USAGE flag "--check-only"    help="Show only check dependencies (checkdepends)"
+#USAGE flag "--all"           help="Show all dependency kinds from all origins (local, repos, AUR)"
+#USAGE flag "--show-repos"       help="Show deps from all origins (default hides repo deps)"
+#USAGE flag "--scope <type>"     help="Show only specific dependency type: runtime, make, or check"
+#USAGE flag "--filter <type>"    help="Show only specific origin: local, aur, or repo"
+#USAGE flag "--hide-dependents"  help="Hide 'required by' section (shown by default)"
 
 set -euo pipefail
 
@@ -32,25 +32,43 @@ fi
 
 DEP_SCOPE="all"
 ORIGIN_SCOPE="local-aur"
+ORIGIN_FILTER=""
+SHOW_REVERSE="true"
 
-kind_flags=0
-[[ "${usage_runtime_only:-false}" == "true" ]] && { DEP_SCOPE="runtime"; kind_flags=$((kind_flags + 1)); }
-[[ "${usage_make_only:-false}" == "true" ]] && { DEP_SCOPE="make"; kind_flags=$((kind_flags + 1)); }
-[[ "${usage_check_only:-false}" == "true" ]] && { DEP_SCOPE="check"; kind_flags=$((kind_flags + 1)); }
-
-if [[ "$kind_flags" -gt 1 ]]; then
-  echo "error: use only one of --runtime-only, --make-only, --check-only" >&2
-  exit 1
+if [[ -n "${usage_scope:-}" ]]; then
+  case "${usage_scope}" in
+    runtime|make|check)
+      DEP_SCOPE="${usage_scope}"
+      ;;
+    *)
+      echo "error: --scope must be one of: runtime, make, check" >&2
+      exit 1
+      ;;
+  esac
 fi
 
-if [[ "${usage_all_origins:-false}" == "true" ]]; then
+if [[ -n "${usage_filter:-}" ]]; then
+  case "${usage_filter}" in
+    local|aur|repo)
+      ORIGIN_FILTER="${usage_filter}"
+      ;;
+    *)
+      echo "error: --filter must be one of: local, aur, repo" >&2
+      exit 1
+      ;;
+  esac
+fi
+
+if [[ "${usage_show_repos:-false}" == "true" ]]; then
   ORIGIN_SCOPE="all"
 fi
 
-if [[ "${usage_all_deps:-false}" == "true" ]]; then
+if [[ "${usage_all:-false}" == "true" ]]; then
   DEP_SCOPE="all"
   ORIGIN_SCOPE="all"
 fi
+
+[[ "${usage_hide_dependents:-false}" == "true" ]] && SHOW_REVERSE="false"
 
 # Resolve package: explicit arg or infer from cwd
 if [[ -n "${usage_package:-}" ]]; then
@@ -66,7 +84,7 @@ fi
 
 # --- .SRCINFO generation ---
 
-if [[ "${usage_regen_srcinfo:-false}" == "true" ]]; then
+if [[ "${usage_refresh:-false}" == "true" ]]; then
   echo "==> Regenerating .SRCINFO files..."
   find "$PKGS_DIR" -mindepth 2 -maxdepth 2 -name PKGBUILD \
     -execdir sh -c 'makepkg --printsrcinfo > .SRCINFO' \;
@@ -316,8 +334,28 @@ annotate() {
   fi
 }
 
+get_origin_type() {
+  local pkg="$1"
+  if [[ "${local_pkgs[$pkg]+_}" ]]; then
+    echo "local"
+  elif [[ "${repo_of_pkg[$pkg]+_}" ]]; then
+    echo "repo"
+  else
+    echo "aur"
+  fi
+}
+
+should_show_by_origin_filter() {
+  local pkg="$1"
+  [[ -z "$ORIGIN_FILTER" ]] && return 0
+  local origin="$(get_origin_type "$pkg")"
+  [[ "$origin" == "$ORIGIN_FILTER" ]]
+}
+
 declare -A visited=()
 declare -A aur_pkgs_seen=()
+declare -A current_path=()
+declare -A cycles_detected=()
 hidden_kind_count=0
 hidden_origin_count=0
 
@@ -350,6 +388,10 @@ print_tree() {
       continue
     fi
 
+    if [[ -n "$ORIGIN_FILTER" ]] && ! should_show_by_origin_filter "$dep"; then
+      continue
+    fi
+
     if [[ "$note" == "$AUR_LABEL" ]]; then
       aur_pkgs_seen["$dep"]=1
     fi
@@ -362,28 +404,52 @@ print_tree() {
       child_prefix="${prefix}│   "
     fi
 
-    if [[ "${visited[$dep]+_}" ]]; then
+    if [[ "${current_path[$dep]+_}" ]]; then
+      cycles_detected["${pkg}->${dep}"]=1
+      printf "%s%s%s  %s [CYCLE DETECTED]\n" "$prefix" "$connector" "$dep" "$note"
+    elif [[ "${visited[$dep]+_}" ]]; then
       printf "%s%s%s  %s (see above)\n" "$prefix" "$connector" "$dep" "$note"
     else
       visited["$dep"]=1
+      current_path["$dep"]=1
       printf "%s%s%s  %s\n" "$prefix" "$connector" "$dep" "$note"
       print_tree "$dep" "$child_prefix"
+      unset current_path["$dep"]
     fi
   done
 }
+
+# --- Build reverse dependency map ---
+
+declare -A reverse_deps=()
+for src in "${!deps_of_full[@]}"; do
+  for dep in ${deps_of_full[$src]}; do
+    reverse_deps["$dep"]="$(append_unique_word "${reverse_deps[$dep]-}" "$src")"
+  done
+done
 
 # --- Print graph ---
 
 printf "%s  %s\n" "$PKG" "$(annotate "$PKG")"
 visited["$PKG"]=1
+current_path["$PKG"]=1
 print_tree "$PKG" ""
+unset current_path["$PKG"]
 
 if [[ "$ORIGIN_SCOPE" == "local-aur" ]]; then
   hidden_total=$((hidden_kind_count + hidden_origin_count))
   if [[ "$hidden_total" -gt 0 ]]; then
     echo ""
-    echo "(hidden $hidden_total deps to reduce noise; use --all-deps or --all-origins to show repo deps)"
+    echo "(hidden $hidden_total deps to reduce noise; use --all or --show-repos to show repo deps)"
   fi
+fi
+
+if [[ "${#cycles_detected[@]}" -gt 0 ]]; then
+  echo ""
+  echo "$WARN_PREFIX ${#cycles_detected[@]} dependency cycle(s) detected:"
+  for cycle in "${!cycles_detected[@]}"; do
+    echo "  - $cycle"
+  done
 fi
 
 if [[ "${#aur_pkgs_seen[@]}" -gt 0 ]]; then
@@ -396,6 +462,58 @@ if [[ "${#aur_pkgs_seen[@]}" -gt 0 ]]; then
   for p in "${aur_list[@]}"; do
     echo "  - $p"
   done
+fi
+
+if [[ "$SHOW_REVERSE" == "true" ]]; then
+  echo ""
+  echo "==> Required by:"
+  
+  if [[ -z "${reverse_deps[$PKG]:-}" ]]; then
+    echo "  (no packages require $PKG)"
+  else
+    declare -A rdep_visited=()
+    
+    print_dependents() {
+      local pkg="$1"
+      local prefix="$2"
+      
+      [[ -z "${reverse_deps[$pkg]:-}" ]] && return 0
+      
+      local -a rdeps
+      read -r -a rdeps <<< "${reverse_deps[$pkg]}"
+      local count="${#rdeps[@]}"
+      
+      for i in "${!rdeps[@]}"; do
+        local rdep="${rdeps[$i]}"
+        local connector child_prefix
+        local note
+        
+        if [[ -n "$ORIGIN_FILTER" ]] && ! should_show_by_origin_filter "$rdep"; then
+          continue
+        fi
+        
+        note="$(annotate "$rdep")"
+        
+        if [[ $((i + 1)) -eq $count ]]; then
+          connector="└── "
+          child_prefix="${prefix}    "
+        else
+          connector="├── "
+          child_prefix="${prefix}│   "
+        fi
+        
+        if [[ "${rdep_visited[$rdep]+_}" ]]; then
+          printf "%s%s%s  %s (see above)\n" "$prefix" "$connector" "$rdep" "$note"
+        else
+          rdep_visited["$rdep"]=1
+          printf "%s%s%s  %s\n" "$prefix" "$connector" "$rdep" "$note"
+          print_dependents "$rdep" "$child_prefix"
+        fi
+      done
+    }
+    
+    print_dependents "$PKG" ""
+  fi
 fi
 
 [[ "${usage_build:-false}" == "true" ]] || exit 0
