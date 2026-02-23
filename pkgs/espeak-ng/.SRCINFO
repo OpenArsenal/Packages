@@ -1,14 +1,23 @@
 pkgbase = espeak-ng
 	pkgdesc = Multi-lingual software speech synthesizer
-	pkgver = 1.49.2
-	pkgrel = 1
+	pkgver = 1.52.0
+	pkgrel = 2
 	url = https://github.com/espeak-ng/espeak-ng
 	arch = x86_64
-	license = GPL3
+	license = GPL-3.0-or-later
+	checkdepends = python
+	makedepends = cmake
+	makedepends = git
+	makedepends = ruby-ronn-ng
 	depends = pcaudiolib
+	depends = libsonic
+	provides = espeak-ng-espeak
+	conflicts = espeak-ng-espeak
 	conflicts = espeak
-	source = https://github.com/espeak-ng/espeak-ng/releases/download/1.49.2/espeak-ng-1.49.2.tar.gz
-	sha512sums = 521220113cb4e2a4a03e29f2c0edad6239170fec95ba67077ccae46d32167f6b72b7a357d73e48abf21fdb0334bf9f010ee1b8325f6520ec4893c48f2a2676ca
+	replaces = espeak-ng-espeak
+	source = git+https://github.com/espeak-ng/espeak-ng.git#tag=1.52.0
+	source = piper-terminator.patch::https://github.com/espeak-ng/espeak-ng/commit/2108b1e8ae02f49cc909894a1024efdfde6682fd.patch
+	b2sums = f934eb948035222de2c6b5c7d8c9e104e0326ceb1052859598ed6f0010fd975bc3e1ef26ac60f77c3b6d1a4aa567b4b7d3c75639dca89eef2508be2a680f7c2b
+	b2sums = 4d4235bfc48af03d2503f475e126998be79e81a30ee02096cdb1cd542df95fab2421098367ae59e3e253a9dd85382df6571c143f8512e3a60021d784e394c197
 
 pkgname = espeak-ng
-

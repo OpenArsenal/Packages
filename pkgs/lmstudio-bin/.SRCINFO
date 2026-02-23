@@ -1,6 +1,6 @@
 pkgbase = lmstudio-bin
 	pkgdesc = Discover, download, and run local LLMs
-	pkgver = 0.4.1.1
+	pkgver = 0.4.3.2
 	pkgrel = 1
 	url = https://lmstudio.ai/
 	arch = x86_64
@@ -12,10 +12,10 @@ pkgbase = lmstudio-bin
 	depends = fuse2
 	depends = clblast
 	replaces = lmstudio
-	noextract = lmstudio-bin-0.4.1.1.AppImage
+	noextract = lmstudio-bin-0.4.3.2.AppImage
 	options = !strip
 	options = !debug
-	source = lmstudio-bin-0.4.1.1.AppImage::https://installers.lmstudio.ai/linux/x64/0.4.1-1/LM-Studio-0.4.1-1-x64.AppImage
-	sha256sums = d18e178cadef7d6798f19e6d41f33a297e26a1d285091cbc30da8252d18a46f0
+	source = lmstudio-bin-0.4.3.2.AppImage::https://installers.lmstudio.ai/linux/x64/0.4.3-2/LM-Studio-0.4.3-2-x64.AppImage
+	sha256sums = 91441c6bae87220e727ed7d0943edc56a8c94d0de044dad7a29b95ea76bf9a47
 
 pkgname = lmstudio-bin

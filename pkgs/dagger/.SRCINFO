@@ -1,16 +1,23 @@
 pkgbase = dagger
 	pkgdesc = Dagger CLI: programmable CI/CD engine that runs pipelines in containers
-	pkgver = 0.19.10
+	pkgver = 0.19.11
 	pkgrel = 1
 	url = https://dagger.io
 	arch = x86_64
 	arch = aarch64
+	arch = armv7h
 	license = Apache-2.0
 	makedepends = go
 	depends = glibc
+	optdepends = git: enable Git-based Dagger workflows
 	optdepends = docker: container runtime used to run the Dagger Engine
 	optdepends = podman: alternative container runtime
-	source = dagger-0.19.10.tar.gz::https://github.com/dagger/dagger/archive/refs/tags/v0.19.10.tar.gz
-	sha256sums = 8e4e8e2227fb62c0a75907fbc0cdbc1bcfd39bf205dab5394249657ce701c83d
+	provides = dagger
+	conflicts = dagger-git
+	conflicts = dagger-bin
+	options = !lto
+	options = !debug
+	source = dagger::git+https://github.com/dagger/dagger.git#tag=v0.19.11
+	sha256sums = 93c05fd620306e1a6eccf30ac06f061751ab60be70a411428420cc2aff74cdcd
 
 pkgname = dagger

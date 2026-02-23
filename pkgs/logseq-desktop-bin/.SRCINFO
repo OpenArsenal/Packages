@@ -9,6 +9,7 @@ pkgbase = logseq-desktop-bin
 	license = AGPL-3.0-or-later
 	provides = logseq-desktop
 	conflicts = logseq-desktop
+	replaces = logseq-desktop
 	options = !debug
 	options = !strip
 	source_x86_64 = https://github.com/logseq/logseq/releases/download/0.10.15/Logseq-linux-x64-0.10.15.zip
