@@ -14,6 +14,7 @@
 set -euo pipefail
 
 PKGS_DIR="${PKGBUILDS_ROOT}/pkgs"
+CACHE_DIR="${CACHE_DIR:-.cache/graph}"
 
 AUR_LABEL="[AUR]"
 LOCAL_BUILT_LABEL="[local: built]"
@@ -107,6 +108,31 @@ collect_srcinfo_files() {
 
 progress() {
   echo "==> $*" >&2
+}
+
+is_cache_valid() {
+  [[ ! -d "$CACHE_DIR" ]] && return 1
+  
+  # Check if cache dir is newer than all .SRCINFO files
+  local cache_time
+  cache_time=$(stat -c %Y "$CACHE_DIR" 2>/dev/null || echo 0)
+  while IFS= read -r -d '' f; do
+    local mtime
+    mtime=$(stat -c %Y "$f" 2>/dev/null || echo 0)
+    [[ "$mtime" -gt "$cache_time" ]] && return 1
+  done < <(find "$PKGS_DIR" -mindepth 2 -maxdepth 2 -name .SRCINFO -print0)
+  
+  # Check package count hasn't changed
+  local current_count
+  current_count=$(find "$PKGS_DIR" -mindepth 1 -maxdepth 1 -type d | wc -l)
+  local cached_count
+  cached_count=$(cat "$CACHE_DIR/.package_count" 2>/dev/null || echo 0)
+  [[ "$current_count" == "$cached_count" ]]
+}
+
+save_cache() {
+  mkdir -p "$CACHE_DIR"
+  find "$PKGS_DIR" -mindepth 1 -maxdepth 1 -type d | wc -l > "$CACHE_DIR/.package_count"
 }
 
 normalize_dep_name() {
@@ -278,10 +304,6 @@ while IFS= read -r line; do
   [[ -n "$pkg" ]] && repo_pkgs["$pkg"]=1
 done < <(pacman -Sl "$REPO_NAME" 2>/dev/null || true)
 
-# --- Sync repo provider map (package -> repo name) ---
-
-declare -A repo_of_pkg=()
-
 # --- Initial graph build ---
 
 declare -a srcinfo_files=()
@@ -293,10 +315,31 @@ collect_srcinfo_files
   exit 1
 }
 
-declare -A deps_of_full=()
-declare -A dep_kinds=()
-build_deps_of
-resolve_dep_origins
+# Check if we can use cached graph
+if is_cache_valid && [[ "${usage_refresh:-false}" != "true" ]]; then
+  progress "Loading cached dependency graph..."
+  declare -A deps_of_full=()
+  declare -A dep_kinds=()
+  declare -A repo_of_pkg=()
+  
+  # Source cache files if they exist
+  [[ -f "${CACHE_DIR}/deps_of_full.cache" ]] && source <(cat "${CACHE_DIR}/deps_of_full.cache")
+  [[ -f "${CACHE_DIR}/dep_kinds.cache" ]] && source <(cat "${CACHE_DIR}/dep_kinds.cache")
+  [[ -f "${CACHE_DIR}/repo_of_pkg.cache" ]] && source <(cat "${CACHE_DIR}/repo_of_pkg.cache")
+else
+  declare -A deps_of_full=()
+  declare -A dep_kinds=()
+  declare -A repo_of_pkg=()
+  build_deps_of
+  resolve_dep_origins
+  
+  # Save cache files and metadata
+  mkdir -p "$CACHE_DIR"
+  declare -p deps_of_full > "${CACHE_DIR}/deps_of_full.cache"
+  declare -p dep_kinds > "${CACHE_DIR}/dep_kinds.cache"
+  declare -p repo_of_pkg > "${CACHE_DIR}/repo_of_pkg.cache"
+  save_cache
+fi
 
 # For any local dep that appeared in the graph but is missing its .SRCINFO,
 # generate it now and rebuild — this resolves the chicken-and-egg problem where
