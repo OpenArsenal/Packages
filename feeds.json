@@ -504,6 +504,17 @@
       "type": "manual",
       "repo": "LadybirdBrowser/ladybird",
       "channel": "stable"
+    },
+    {
+      "name": "ntfsprogs-plus-git",
+      "type": "manual",
+      "channel": "stable"
+    },
+    {
+      "name": "ntfsplus-udev-git",
+      "type": "vcs",
+      "repo": "namjaejeon/linux-ntfs",
+      "channel": "stable"
     }
   ]
 }
