@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+#MISE description="Provisions chroot environment"
+#MISE depends=["run0"]
+#USAGE flag "--root <dir>" help="Chroot root directory (e.g., /srv/chroot/root)" env="CHROOT_ROOT"
+#USAGE flag "--pacman-conf <file>" help="Pacman config to use" env="CHROOT_PACMAN_CONF"
+#USAGE flag "--mirrorlist-v4 <file>" help="Optional mirrorlist v4 file to copy into chroot" env="CHROOT_MIRRORLIST_V4"
+#USAGE flag "--mirrorlist-v3 <file>" help="Optional mirrorlist file to copy into chroot" env="CHROOT_MIRRORLIST_V3"
+#USAGE flag "--mirrorlist <file>" help="Optional mirrorlist file to copy into chroot" env="CHROOT_MIRRORLIST"
+#USAGE flag "--arch-mirrorlist <file>" help="Optional arch mirrorlist file to copy into chroot" env="CHROOT_ARCH_MIRRORLIST"
+
+set -euo pipefail
+
+CHROOT_ROOT="${usage_root:-${CHROOT_ROOT:-}}"
+CHROOT_PACMAN_CONF="${usage_pacman_conf:-${CHROOT_PACMAN_CONF:-}}"
+CHROOT_MIRRORLIST_V4="${usage_mirrorlist_v4:-${CHROOT_MIRRORLIST_V4:-}}"
+CHROOT_MIRRORLIST_V3="${usage_mirrorlist_v3:-${CHROOT_MIRRORLIST_V3:-}}"
+CHROOT_MIRRORLIST="${usage_mirrorlist:-${CHROOT_MIRRORLIST:-}}"
+CHROOT_ARCH_MIRRORLIST="${usage_arch_mirrorlist:-${CHROOT_ARCH_MIRRORLIST:-}}"
+
+[[ -n "${CHROOT_ROOT}" ]] || { echo "error: CHROOT_ROOT is required (or use --root)" >&2; exit 1; }
+[[ -n "${CHROOT_PACMAN_CONF}" ]] || { echo "error: CHROOT_PACMAN_CONF is required (or use --pacman-conf)" >&2; exit 1; }
+[[ -f "${CHROOT_PACMAN_CONF}" ]] || { echo "error: Pacman config does not exist: ${CHROOT_PACMAN_CONF}" >&2; exit 1; }
+
+case "${CHROOT_ROOT}" in
+  "/" | ".")
+    echo "error: Refusing to use CHROOT_ROOT=${CHROOT_ROOT}" >&2
+    exit 1
+    ;;
+esac
+
+mkarchroot_args=()
+mkarchroot_args+=(-C "$CHROOT_PACMAN_CONF")
+
+if [[ -n "${CHROOT_MIRRORLIST_V4}" ]]; then
+  [[ -f "${CHROOT_MIRRORLIST_V4}" ]] || { echo "error: Mirrorlist file does not exist: ${CHROOT_MIRRORLIST_V4}" >&2; exit 1; }
+  mkarchroot_args+=(-f "${CHROOT_MIRRORLIST_V4}:/etc/pacman.d/cachyos-v4-mirrorlist")
+fi
+
+if [[ -n "${CHROOT_MIRRORLIST_V3}" ]]; then
+  [[ -f "${CHROOT_MIRRORLIST_V3}" ]] || { echo "error: Mirrorlist file does not exist: ${CHROOT_MIRRORLIST_V3}" >&2; exit 1; }
+  mkarchroot_args+=(-f "${CHROOT_MIRRORLIST_V3}:/etc/pacman.d/cachyos-v3-mirrorlist")
+fi
+
+if [[ -n "${CHROOT_MIRRORLIST}" ]]; then
+  [[ -f "${CHROOT_MIRRORLIST}" ]] || { echo "error: Mirrorlist file does not exist: ${CHROOT_MIRRORLIST}" >&2; exit 1; }
+  mkarchroot_args+=(-f "${CHROOT_MIRRORLIST}:/etc/pacman.d/cachyos-mirrorlist")
+fi
+
+if [[ -n "${CHROOT_ARCH_MIRRORLIST}" ]]; then
+  [[ -f "${CHROOT_ARCH_MIRRORLIST}" ]] || { echo "error: Mirrorlist file does not exist: ${CHROOT_ARCH_MIRRORLIST}" >&2; exit 1; }
+  mkarchroot_args+=(-f "${CHROOT_ARCH_MIRRORLIST}:/etc/pacman.d/mirrorlist")
+fi
+
+run0 mkdir -p -- "$CHROOT_ROOT"
+run0 mkarchroot "${mkarchroot_args[@]}" "$CHROOT_ROOT" base-devel
+run0 cp "$CHROOT_PACMAN_CONF" "$CHROOT_ROOT/etc/pacman.conf"
