@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+#MISE description="Build all packages that need building in dependency order"
+#MISE dir="{{cwd}}"
+#USAGE flag "--parallel" help="Build up to N packages in parallel (default: sequential)"
+#USAGE flag "--parallel <num>" help="Build up to N packages in parallel"
+#USAGE flag "--dry-run" help="Show what would be built without building"
+
+set -euo pipefail
+
+PKGS_DIR="${PKGBUILDS_ROOT}/pkgs"
+PARALLEL=1
+
+if [[ -n "${usage_parallel:-}" ]]; then
+  if [[ "$usage_parallel" =~ ^[0-9]+$ ]]; then
+    PARALLEL="$usage_parallel"
+  else
+    PARALLEL=$(nproc)
+  fi
+fi
+
+DRY_RUN_FLAG=""
+[[ "${usage_dry_run:-false}" == "true" ]] && DRY_RUN_FLAG="--dry-run"
+
+# Get all packages and build them
+declare -a pids=()
+declare -a pkg_names=()
+declare -i active=0
+
+echo "==> Building all packages (parallel=$PARALLEL)..."
+echo ""
+
+while IFS= read -r -d '' pkg_dir; do
+  pkg_name="$(basename "$pkg_dir")"
+  
+  # Wait if we've hit the parallel limit
+  while [[ "$active" -ge "$PARALLEL" ]]; do
+    for i in "${!pids[@]}"; do
+      if ! kill -0 "${pids[$i]}" 2>/dev/null; then
+        wait "${pids[$i]}" 2>/dev/null || true
+        unset "pids[$i]"
+        unset "pkg_names[$i]"
+        active=$((active - 1))
+      fi
+    done
+    pids=("${pids[@]}")
+    pkg_names=("${pkg_names[@]}")
+    sleep 0.5
+  done
+  
+  # Start build in background
+  echo "[$(date +%H:%M:%S)] Starting: $pkg_name"
+  (
+    cd "$pkg_dir"
+    if mise run package:graph $DRY_RUN_FLAG --build >/dev/null 2>&1; then
+      echo "[$(date +%H:%M:%S)] ✓ $pkg_name"
+    else
+      echo "[$(date +%H:%M:%S)] ✗ $pkg_name (failed)"
+      exit 1
+    fi
+  ) &
+  
+  pids+=($!)
+  pkg_names+=("$pkg_name")
+  active=$((active + 1))
+done < <(find "$PKGS_DIR" -mindepth 1 -maxdepth 1 -type d -print0 | sort -z)
+
+# Wait for all remaining builds
+echo ""
+echo "==> Waiting for builds to complete..."
+failed=0
+for i in "${!pids[@]}"; do
+  if wait "${pids[$i]}" 2>/dev/null; then
+    : # success
+  else
+    failed=$((failed + 1))
+  fi
+done
+
+echo ""
+if [[ "$failed" -eq 0 ]]; then
+  echo "==> All packages built successfully ✓"
+  exit 0
+else
+  echo "==> $failed package(s) failed ✗"
+  exit 1
+fi
