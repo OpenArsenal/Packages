@@ -488,7 +488,16 @@
       "name": "python-sensai-utils",
       "type": "pypi",
       "project": "sensai-utils"
+    },
+    {
+      "name": "python-youtube-transcript-api",
+      "type": "pypi",
+      "project": "youtube-transcript-api"
+    },
+    {
+      "name": "electron30",
+      "type": "manual",
+      "channel": "stable"
     }
-
   ]
 }
