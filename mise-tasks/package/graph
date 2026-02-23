@@ -1,0 +1,197 @@
+#!/usr/bin/env bash
+#MISE description="Show dependency tree for a package; optionally build unbuilt local deps"
+#MISE dir="{{cwd}}"
+#USAGE arg "[package]" help="Package name (defaults to current directory name)"
+#USAGE flag "--build"          help="Build unbuilt local deps in order, then build the package"
+#USAGE flag "--regen-srcinfo"  help="Regenerate .SRCINFO files before resolving"
+#USAGE flag "--dry-run"        help="With --build: print what would be built without building"
+
+set -euo pipefail
+
+PKGS_DIR="${PKGBUILDS_ROOT}/pkgs"
+
+# Resolve package: explicit arg or infer from cwd
+if [[ -n "${usage_package:-}" ]]; then
+  PKG="${usage_package}"
+else
+  PKG="$(basename "$PWD")"
+fi
+
+[[ -d "$PKGS_DIR/$PKG" ]] || {
+  echo "error: No package directory found: $PKGS_DIR/$PKG" >&2
+  exit 1
+}
+
+if [[ "${usage_regen_srcinfo:-false}" == "true" ]]; then
+  echo "==> Regenerating .SRCINFO files..."
+  find "$PKGS_DIR" -mindepth 2 -maxdepth 2 -name PKGBUILD \
+    -execdir sh -c 'makepkg --printsrcinfo > .SRCINFO 2>/dev/null' \;
+fi
+
+srcinfo_files=()
+while IFS= read -r -d '' f; do
+  srcinfo_files+=("$f")
+done < <(find "$PKGS_DIR" -mindepth 2 -maxdepth 2 -name .SRCINFO -print0)
+
+[[ "${#srcinfo_files[@]}" -gt 0 ]] || {
+  echo "error: No .SRCINFO files found under $PKGS_DIR" >&2
+  echo "       Run with --regen-srcinfo or generate them first:" >&2
+  echo "         find pkgs -mindepth 2 -maxdepth 2 -name PKGBUILD -execdir sh -c 'makepkg --printsrcinfo > .SRCINFO' \\;" >&2
+  exit 1
+}
+
+# Local package directories
+declare -A local_pkgs=()
+while IFS= read -r -d '' d; do
+  local_pkgs["$(basename "$d")"]=1
+done < <(find "$PKGS_DIR" -mindepth 1 -maxdepth 1 -type d -print0)
+
+# Packages already indexed in the local repo
+declare -A repo_pkgs=()
+while IFS= read -r line; do
+  pkg="$(awk '{print $2}' <<< "$line")"
+  [[ -n "$pkg" ]] && repo_pkgs["$pkg"]=1
+done < <(pacman -Sl "$REPO_NAME" 2>/dev/null || true)
+
+# Full dep graph from aur graph (edge list: "src dep" per line)
+declare -A deps_of=()
+while read -r src dep; do
+  [[ -z "$src" || -z "$dep" ]] && continue
+  [[ "$src" == "$dep" ]] && continue  # skip self-referential edges
+  deps_of["$src"]+="${dep} "
+done < <(cat "${srcinfo_files[@]}" | aur graph 2>/dev/null)
+
+# Deduplicate deps per package (aur graph emits one edge per dep type)
+for pkg in "${!deps_of[@]}"; do
+  deps_of["$pkg"]="$(printf '%s\n' ${deps_of[$pkg]} | sort -u | tr '\n' ' ')"
+done
+
+annotate() {
+  local pkg="$1"
+  if [[ "${local_pkgs[$pkg]+_}" ]]; then
+    [[ "${repo_pkgs[$pkg]+_}" ]] && echo "[local: built]" || echo "[local: not built]"
+  else
+    echo "[external]"
+  fi
+}
+
+# Print tree
+declare -A visited=()
+
+print_tree() {
+  local pkg="$1"
+  local prefix="$2"
+
+  [[ "${deps_of[$pkg]+_}" ]] || return 0
+
+  local -a deps
+  read -r -a deps <<< "${deps_of[$pkg]}"
+  local count="${#deps[@]}"
+
+  for i in "${!deps[@]}"; do
+    local dep="${deps[$i]}"
+    local connector child_prefix
+
+    if [[ $((i + 1)) -eq $count ]]; then
+      connector="└── "
+      child_prefix="${prefix}    "
+    else
+      connector="├── "
+      child_prefix="${prefix}│   "
+    fi
+
+    if [[ "${visited[$dep]+_}" ]]; then
+      printf "%s%s%s  %s (see above)\n" "$prefix" "$connector" "$dep" "$(annotate "$dep")"
+    else
+      visited["$dep"]=1
+      printf "%s%s%s  %s\n" "$prefix" "$connector" "$dep" "$(annotate "$dep")"
+      print_tree "$dep" "$child_prefix"
+    fi
+  done
+}
+
+printf "%s  %s\n" "$PKG" "$(annotate "$PKG")"
+visited["$PKG"]=1
+print_tree "$PKG" ""
+
+[[ "${usage_build:-false}" == "true" ]] || exit 0
+
+# --- Build mode ---
+
+# Collect all packages reachable from PKG via DFS
+declare -A reachable=()
+
+collect_reachable() {
+  local pkg="$1"
+  [[ "${deps_of[$pkg]+_}" ]] || return 0
+  local -a deps
+  read -r -a deps <<< "${deps_of[$pkg]}"
+  for dep in "${deps[@]}"; do
+    [[ "${reachable[$dep]+_}" ]] && continue
+    reachable["$dep"]=1
+    collect_reachable "$dep"
+  done
+}
+
+collect_reachable "$PKG"
+
+# Get globally sorted order and filter to: local + reachable + not already in repo + not PKG itself
+mapfile -t sorted_all < <(cat "${srcinfo_files[@]}" | aur graph | tsort | tac)
+
+build_order=()
+for p in "${sorted_all[@]}"; do
+  [[ "$p" == "$PKG" ]] && continue
+  [[ "${reachable[$p]+_}" ]]  || continue
+  [[ "${local_pkgs[$p]+_}" ]] || continue
+  [[ "${repo_pkgs[$p]+_}" ]]  && continue  # already in repo, skip
+  build_order+=("$p")
+done
+
+echo ""
+if [[ "${#build_order[@]}" -gt 0 ]]; then
+  echo "==> Local deps to build (${#build_order[@]}):"
+  for i in "${!build_order[@]}"; do
+    printf '    %d. %s\n' "$((i+1))" "${build_order[$i]}"
+  done
+else
+  echo "==> No local deps need building."
+fi
+
+# Skip PKG itself if already in repo
+if [[ "${repo_pkgs[$PKG]+_}" ]]; then
+  echo "==> $PKG is already in repo, skipping."
+  exit 0
+fi
+
+echo "==> Then building: $PKG"
+
+if [[ "${usage_dry_run:-false}" == "true" ]]; then
+  echo "(dry-run -- exiting)"
+  exit 0
+fi
+
+echo ""
+for p in "${build_order[@]}"; do
+  echo "==> Building dep: $p"
+  if (cd "$PKGS_DIR/$p" && mise run package:build); then
+    shopt -s nullglob
+    all_pkgs=( "$REPO_DIR"/*.pkg.tar.* )
+    shopt -u nullglob
+    [[ "${#all_pkgs[@]}" -gt 0 ]] && repo-add --new "$REPO_DB" "${all_pkgs[@]}"
+  else
+    echo "error: Build failed for dep: $p" >&2
+    exit 1
+  fi
+  echo ""
+done
+
+echo "==> Building: $PKG"
+(cd "$PKGS_DIR/$PKG" && mise run package:build)
+
+shopt -s nullglob
+all_pkgs=( "$REPO_DIR"/*.pkg.tar.* )
+shopt -u nullglob
+[[ "${#all_pkgs[@]}" -gt 0 ]] && repo-add --new "$REPO_DB" "${all_pkgs[@]}"
+
+echo ""
+echo "Done: $PKG"
