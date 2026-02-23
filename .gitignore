@@ -12,7 +12,6 @@ src/
 
 # Local repo / build outputs
 
-repo/
 packages/
 artifacts/
 test-builds/

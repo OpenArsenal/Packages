@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Cleanup repo artifacts / old packages"
+
+git clean -fdx

@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+#MISE description="Provisions chroot environment"
+
+run0 rm -rf "$CHROOT_DIR"

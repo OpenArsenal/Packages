@@ -38,7 +38,8 @@
       "pkgs/*/*.json",
       "pkgs/*/*.changelog",
       "pkgs/*/LICENSE*",
-      "pkgs/*/.gitignore"
+      "pkgs/*/.gitignore",
+      "pkgs/*/.SRCINFO"
     ]
   },
   "security": {

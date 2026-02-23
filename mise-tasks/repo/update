@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+#MISE description="Update pacman repository database"
+#USAGE flag "-n --new" help="Only add packages not already present"
+#USAGE flag "-p --prevent-downgrade" help="Skip if newer version already exists"
+#USAGE flag "--include-sigs" help="Include PGP signatures if available"
+
+set -euo pipefail
+
+pushd "${REPO_DIR:?REPO_DIR not set}" >/dev/null
+trap 'popd >/dev/null' EXIT
+
+args=()
+[ "${usage_new:-false}" = "true" ] && args+=("--new")
+[ "${usage_prevent_downgrade:-false}" = "true" ] && args+=("--prevent-downgrade")
+[ "${usage_include_sigs:-false}" = "true" ] && args+=("--include-sigs")
+
+shopt -s nullglob
+pkgs=( ./*.pkg.tar.* )
+shopt -u nullglob
+
+if [ "${#pkgs[@]}" -eq 0 ]; then
+  echo "No package files found in $REPO_DIR"
+  exit 1
+fi
+
+repo-add "${args[@]}" "${REPO_DB:?REPO_DB not set}" "${pkgs[@]}"

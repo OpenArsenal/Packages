@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+#MISE description="Build a package in a clean chroot"
+#MISE dir="{{cwd}}"
+
+export PKGDEST="${REPO_DIR}"
+
+makechrootpkg -r "$CHROOT_DIR" -c -u \
+  -- --syncdeps --noconfirm --log

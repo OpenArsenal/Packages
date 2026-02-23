@@ -13,3 +13,5 @@
 # Repomix output/config (safe to ignore)
 repomix.config.json
 repomix-output.xml
+
+pkgs/*
