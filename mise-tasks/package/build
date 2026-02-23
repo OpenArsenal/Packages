@@ -5,5 +5,4 @@
 export PKGDEST="${REPO_DIR}"
 
 makechrootpkg -r "$CHROOT_DIR" -c -u \
-  -d "${REPO_DIR}:${REPO_DIR}" \
   -- --syncdeps --noconfirm --log
