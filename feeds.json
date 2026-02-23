@@ -498,6 +498,12 @@
       "name": "electron30",
       "type": "manual",
       "channel": "stable"
+    },
+    {
+      "name": "ladybird-git",
+      "type": "manual",
+      "repo": "LadybirdBrowser/ladybird",
+      "channel": "stable"
     }
   ]
 }
