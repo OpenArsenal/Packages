@@ -45,10 +45,8 @@ source=(
   "serena_agent-${pkgver}.tar.gz::https://files.pythonhosted.org/packages/56/31/b5e1d0d55ce5669b60df3a20af45dc81ed0aa173eb735f35fe6712e9be74/serena_agent-0.1.4.tar.gz"
 )
 
-sha256sums=(
-  'af8cccc17cf64c991eccbdbde7b64f512e6c15052524041a1547c410d450c148'
-  '8bb79a964a4bd09d5e5b86115d5436d9229dc80e6a3e0f176415e34294531a84'
-)
+sha256sums=('af8cccc17cf64c991eccbdbde7b64f512e6c15052524041a1547c410d450c148'
+            '8bb79a964a4bd09d5e5b86115d5436d9229dc80e6a3e0f176415e34294531a84')
 
 package() {
   cd "${srcdir}"
