@@ -2,7 +2,7 @@
 
 pkgname=plezy-git
 _pkgname=plezy
-pkgver=1.16.1.r1.g358824f
+pkgver=1.19.0.r11.g26ff55e
 pkgrel=1
 pkgdesc="Modern Plex client built with Flutter (git)"
 arch=('x86_64')
@@ -13,6 +13,7 @@ depends=(
   'gtk3'
   'glib2'
   'libepoxy'
+  'libevdev'
   'libkeybinder3'
   'alsa-lib'
   'mpv'
@@ -40,10 +41,8 @@ source=(
   "flutter_linux_${_flutter_ver}-stable.tar.xz::https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${_flutter_ver}-stable.tar.xz"
 )
 
-sha256sums=(
-  'SKIP'
-  'SKIP'
-)
+sha256sums=('SKIP'
+            'a70e3b829f53acd013aae65995755db0f421457b5ab754afa5a344cd5ec4d8d5')
 
 pkgver() {
   cd "$srcdir/$_pkgname"
