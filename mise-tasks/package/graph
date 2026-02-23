@@ -2,13 +2,55 @@
 #MISE description="Show dependency tree for a package; optionally build unbuilt local deps"
 #MISE dir="{{cwd}}"
 #USAGE arg "[package]" help="Package name (defaults to current directory name)"
-#USAGE flag "--build"          help="Build unbuilt local deps in order, then build the package"
-#USAGE flag "--regen-srcinfo"  help="Regenerate .SRCINFO files before resolving"
-#USAGE flag "--dry-run"        help="With --build: print what would be built without building"
+#USAGE flag "--build"         help="Build unbuilt local deps in order, then build the package"
+#USAGE flag "--regen-srcinfo" help="Regenerate .SRCINFO files before resolving"
+#USAGE flag "--dry-run"       help="With --build: print what would be built without building"
+#USAGE flag "--all-deps"      help="Show all dependency kinds from all origins (local, repos, AUR)"
+#USAGE flag "--all-origins"   help="Show deps from all origins (default hides repo deps)"
+#USAGE flag "--runtime-only"  help="Show only runtime dependencies (depends)"
+#USAGE flag "--make-only"     help="Show only make dependencies (makedepends)"
+#USAGE flag "--check-only"    help="Show only check dependencies (checkdepends)"
 
 set -euo pipefail
 
 PKGS_DIR="${PKGBUILDS_ROOT}/pkgs"
+
+AUR_LABEL="[AUR]"
+LOCAL_BUILT_LABEL="[local: built]"
+LOCAL_NOT_BUILT_LABEL="[local: not built]"
+REPO_LABEL_PREFIX="["
+REPO_LABEL_SUFFIX="]"
+WARN_PREFIX="warning:"
+if [[ -t 1 && -z "${NO_COLOR:-}" ]]; then
+  AUR_LABEL=$'\033[1;35m[AUR]\033[0m'
+  LOCAL_BUILT_LABEL=$'\033[1;32m[local: built]\033[0m'
+  LOCAL_NOT_BUILT_LABEL=$'\033[38;5;180m[local: not built]\033[0m'
+  REPO_LABEL_PREFIX=$'\033[2;37m['
+  REPO_LABEL_SUFFIX=$']\033[0m'
+  WARN_PREFIX=$'\033[1;33mwarning:\033[0m'
+fi
+
+DEP_SCOPE="all"
+ORIGIN_SCOPE="local-aur"
+
+kind_flags=0
+[[ "${usage_runtime_only:-false}" == "true" ]] && { DEP_SCOPE="runtime"; kind_flags=$((kind_flags + 1)); }
+[[ "${usage_make_only:-false}" == "true" ]] && { DEP_SCOPE="make"; kind_flags=$((kind_flags + 1)); }
+[[ "${usage_check_only:-false}" == "true" ]] && { DEP_SCOPE="check"; kind_flags=$((kind_flags + 1)); }
+
+if [[ "$kind_flags" -gt 1 ]]; then
+  echo "error: use only one of --runtime-only, --make-only, --check-only" >&2
+  exit 1
+fi
+
+if [[ "${usage_all_origins:-false}" == "true" ]]; then
+  ORIGIN_SCOPE="all"
+fi
+
+if [[ "${usage_all_deps:-false}" == "true" ]]; then
+  DEP_SCOPE="all"
+  ORIGIN_SCOPE="all"
+fi
 
 # Resolve package: explicit arg or infer from cwd
 if [[ -n "${usage_package:-}" ]]; then
@@ -22,75 +64,295 @@ fi
   exit 1
 }
 
+# --- .SRCINFO generation ---
+
 if [[ "${usage_regen_srcinfo:-false}" == "true" ]]; then
   echo "==> Regenerating .SRCINFO files..."
   find "$PKGS_DIR" -mindepth 2 -maxdepth 2 -name PKGBUILD \
-    -execdir sh -c 'makepkg --printsrcinfo > .SRCINFO 2>/dev/null' \;
+    -execdir sh -c 'makepkg --printsrcinfo > .SRCINFO' \;
 fi
 
-srcinfo_files=()
-while IFS= read -r -d '' f; do
-  srcinfo_files+=("$f")
-done < <(find "$PKGS_DIR" -mindepth 2 -maxdepth 2 -name .SRCINFO -print0)
+# Ensure the target package has a .SRCINFO — generate it on the spot if not
+if [[ ! -f "$PKGS_DIR/$PKG/.SRCINFO" ]]; then
+  echo "==> Generating missing .SRCINFO for $PKG..."
+  (cd "$PKGS_DIR/$PKG" && makepkg --printsrcinfo > .SRCINFO)
+fi
 
-[[ "${#srcinfo_files[@]}" -gt 0 ]] || {
-  echo "error: No .SRCINFO files found under $PKGS_DIR" >&2
-  echo "       Run with --regen-srcinfo or generate them first:" >&2
-  echo "         find pkgs -mindepth 2 -maxdepth 2 -name PKGBUILD -execdir sh -c 'makepkg --printsrcinfo > .SRCINFO' \\;" >&2
-  exit 1
+# --- Helpers ---
+
+collect_srcinfo_files() {
+  srcinfo_files=()
+  while IFS= read -r -d '' f; do
+    srcinfo_files+=("$f")
+  done < <(find "$PKGS_DIR" -mindepth 2 -maxdepth 2 -name .SRCINFO -print0)
 }
 
-# Local package directories
+progress() {
+  echo "==> $*" >&2
+}
+
+normalize_dep_name() {
+  local dep="$1"
+  dep="${dep%%:*}"
+  dep="${dep%%[<>=]*}"
+  dep="${dep%%:*}"
+  dep="${dep// /}"
+  printf '%s\n' "$dep"
+}
+
+append_unique_word() {
+  local current="$1"
+  local word="$2"
+  local token
+  for token in $current; do
+    [[ "$token" == "$word" ]] && {
+      printf '%s\n' "$current"
+      return 0
+    }
+  done
+  if [[ -z "$current" ]]; then
+    printf '%s\n' "$word"
+  else
+    printf '%s %s\n' "$current" "$word"
+  fi
+}
+
+has_word() {
+  local current="$1"
+  local word="$2"
+  local token
+  for token in $current; do
+    [[ "$token" == "$word" ]] && return 0
+  done
+  return 1
+}
+
+add_edge() {
+  local src="$1"
+  local dep="$2"
+  local kind="$3"
+  local key="${src}|${dep}"
+  [[ -z "$src" || -z "$dep" || "$src" == "$dep" ]] && return 0
+  deps_of_full["$src"]="$(append_unique_word "${deps_of_full[$src]-}" "$dep")"
+  dep_kinds["$key"]="$(append_unique_word "${dep_kinds[$key]-}" "$kind")"
+}
+
+srcinfo_pkgname() {
+  local srcinfo="$1"
+  local line
+  local trimmed
+  while IFS= read -r line; do
+    trimmed="${line#${line%%[![:space:]]*}}"
+    case "$trimmed" in
+      pkgname\ =\ *)
+        printf '%s\n' "${trimmed#pkgname = }"
+        return 0
+        ;;
+    esac
+  done < "$srcinfo"
+  return 1
+}
+
+srcinfo_emit_deps_by_kind() {
+  local srcinfo="$1"
+  local line
+  local trimmed
+  local value
+
+  while IFS= read -r line; do
+    trimmed="${line#${line%%[![:space:]]*}}"
+    case "$trimmed" in
+      depends\ =\ *)
+        [[ "$DEP_SCOPE" == "all" || "$DEP_SCOPE" == "runtime" ]] || continue
+        value="${trimmed#depends = }"
+        printf 'runtime\t%s\n' "$value"
+        ;;
+      makedepends\ =\ *)
+        [[ "$DEP_SCOPE" == "all" || "$DEP_SCOPE" == "make" ]] || continue
+        value="${trimmed#makedepends = }"
+        printf 'make\t%s\n' "$value"
+        ;;
+      checkdepends\ =\ *)
+        [[ "$DEP_SCOPE" == "all" || "$DEP_SCOPE" == "check" ]] || continue
+        value="${trimmed#checkdepends = }"
+        printf 'check\t%s\n' "$value"
+        ;;
+    esac
+  done < "$srcinfo"
+}
+
+build_deps_of() {
+  deps_of_full=()
+  dep_kinds=()
+
+  progress "Parsing dependencies from ${#srcinfo_files[@]} .SRCINFO files..."
+
+  for srcinfo in "${srcinfo_files[@]}"; do
+    local pkg
+    local kind
+    local dep
+    local raw_dep
+    pkg="$(srcinfo_pkgname "$srcinfo" || true)"
+    [[ -n "$pkg" ]] || continue
+
+    while IFS=$'\t' read -r kind raw_dep; do
+      dep="$(normalize_dep_name "$raw_dep")"
+      add_edge "$pkg" "$dep" "$kind"
+    done < <(
+      srcinfo_emit_deps_by_kind "$srcinfo"
+    )
+  done
+}
+
+resolve_dep_origins() {
+  local dep
+  local src
+  local ext_count=0
+  local -a unresolved=()
+  local -a chunk=()
+  local line
+  local pkg
+  local repo
+  local i
+  local chunk_size=200
+
+  declare -A ext_seen=()
+
+  for src in "${!deps_of_full[@]}"; do
+    for dep in ${deps_of_full[$src]}; do
+      [[ "${local_pkgs[$dep]+_}" ]] && continue
+      [[ "${ext_seen[$dep]+_}" ]] && continue
+      ext_seen["$dep"]=1
+      unresolved+=("$dep")
+      ext_count=$((ext_count + 1))
+    done
+  done
+
+  [[ "$ext_count" -gt 0 ]] || return 0
+  progress "Resolving origins for $ext_count external dependencies..."
+
+  i=0
+  while [[ "$i" -lt "${#unresolved[@]}" ]]; do
+    chunk=()
+    while [[ "$i" -lt "${#unresolved[@]}" && "${#chunk[@]}" -lt "$chunk_size" ]]; do
+      chunk+=("${unresolved[$i]}")
+      i=$((i + 1))
+    done
+
+    while IFS=$'\t' read -r pkg repo; do
+      [[ -n "$pkg" && -n "$repo" && -z "${repo_of_pkg[$pkg]+_}" ]] && repo_of_pkg["$pkg"]="$repo"
+    done < <(expac -S '%n\t%r' "${chunk[@]}" 2>/dev/null || true)
+  done
+}
+
+# --- Local package directories ---
+
 declare -A local_pkgs=()
 while IFS= read -r -d '' d; do
   local_pkgs["$(basename "$d")"]=1
 done < <(find "$PKGS_DIR" -mindepth 1 -maxdepth 1 -type d -print0)
 
-# Packages already indexed in the local repo
+# --- Packages already indexed in the local repo ---
+
 declare -A repo_pkgs=()
 while IFS= read -r line; do
   pkg="$(awk '{print $2}' <<< "$line")"
   [[ -n "$pkg" ]] && repo_pkgs["$pkg"]=1
 done < <(pacman -Sl "$REPO_NAME" 2>/dev/null || true)
 
-# Full dep graph from aur graph (edge list: "src dep" per line)
-declare -A deps_of=()
-while read -r src dep; do
-  [[ -z "$src" || -z "$dep" ]] && continue
-  [[ "$src" == "$dep" ]] && continue  # skip self-referential edges
-  deps_of["$src"]+="${dep} "
-done < <(cat "${srcinfo_files[@]}" | aur graph 2>/dev/null)
+# --- Sync repo provider map (package -> repo name) ---
 
-# Deduplicate deps per package (aur graph emits one edge per dep type)
-for pkg in "${!deps_of[@]}"; do
-  deps_of["$pkg"]="$(printf '%s\n' ${deps_of[$pkg]} | sort -u | tr '\n' ' ')"
-done
+declare -A repo_of_pkg=()
+
+# --- Initial graph build ---
+
+declare -a srcinfo_files=()
+progress "Collecting .SRCINFO files..."
+collect_srcinfo_files
+
+[[ "${#srcinfo_files[@]}" -gt 0 ]] || {
+  echo "error: No .SRCINFO files found under $PKGS_DIR" >&2
+  exit 1
+}
+
+declare -A deps_of_full=()
+declare -A dep_kinds=()
+build_deps_of
+resolve_dep_origins
+
+# For any local dep that appeared in the graph but is missing its .SRCINFO,
+# generate it now and rebuild — this resolves the chicken-and-egg problem where
+# a dep's subtree is invisible because it was never fed into aur graph
+if [[ "${deps_of_full[$PKG]+_}" ]]; then
+  needs_regen=()
+  read -r -a check_deps <<< "${deps_of_full[$PKG]}"
+  for dep in "${check_deps[@]}"; do
+    [[ "${local_pkgs[$dep]+_}" ]] || continue
+    [[ -f "$PKGS_DIR/$dep/.SRCINFO" ]] && continue
+    needs_regen+=("$dep")
+  done
+
+  if [[ "${#needs_regen[@]}" -gt 0 ]]; then
+    echo "==> Generating missing .SRCINFO for local deps: ${needs_regen[*]}"
+    for dep in "${needs_regen[@]}"; do
+      (cd "$PKGS_DIR/$dep" && makepkg --printsrcinfo > .SRCINFO)
+    done
+    collect_srcinfo_files
+    build_deps_of
+    resolve_dep_origins
+  fi
+fi
+
+# --- Tree printer ---
 
 annotate() {
   local pkg="$1"
   if [[ "${local_pkgs[$pkg]+_}" ]]; then
-    [[ "${repo_pkgs[$pkg]+_}" ]] && echo "[local: built]" || echo "[local: not built]"
+    [[ "${repo_pkgs[$pkg]+_}" ]] && echo "$LOCAL_BUILT_LABEL" || echo "$LOCAL_NOT_BUILT_LABEL"
+  elif [[ "${repo_of_pkg[$pkg]+_}" ]]; then
+    echo "${REPO_LABEL_PREFIX}repo:${repo_of_pkg[$pkg]}${REPO_LABEL_SUFFIX}"
   else
-    echo "[external]"
+    echo "$AUR_LABEL"
   fi
 }
 
-# Print tree
 declare -A visited=()
+declare -A aur_pkgs_seen=()
+hidden_kind_count=0
+hidden_origin_count=0
 
 print_tree() {
   local pkg="$1"
   local prefix="$2"
 
-  [[ "${deps_of[$pkg]+_}" ]] || return 0
+  [[ "${deps_of_full[$pkg]+_}" ]] || return 0
 
   local -a deps
-  read -r -a deps <<< "${deps_of[$pkg]}"
+  read -r -a deps <<< "${deps_of_full[$pkg]}"
   local count="${#deps[@]}"
 
   for i in "${!deps[@]}"; do
     local dep="${deps[$i]}"
     local connector child_prefix
+    local note
+    local key
+
+    note="$(annotate "$dep")"
+    key="${pkg}|${dep}"
+
+    if [[ "$DEP_SCOPE" != "all" ]] && ! has_word "${dep_kinds[$key]-}" "$DEP_SCOPE"; then
+      hidden_kind_count=$((hidden_kind_count + 1))
+      continue
+    fi
+
+    if [[ "$ORIGIN_SCOPE" == "local-aur" ]] && [[ "$note" != "$LOCAL_BUILT_LABEL" && "$note" != "$LOCAL_NOT_BUILT_LABEL" && "$note" != "$AUR_LABEL" ]]; then
+      hidden_origin_count=$((hidden_origin_count + 1))
+      continue
+    fi
+
+    if [[ "$note" == "$AUR_LABEL" ]]; then
+      aur_pkgs_seen["$dep"]=1
+    fi
 
     if [[ $((i + 1)) -eq $count ]]; then
       connector="└── "
@@ -101,31 +363,53 @@ print_tree() {
     fi
 
     if [[ "${visited[$dep]+_}" ]]; then
-      printf "%s%s%s  %s (see above)\n" "$prefix" "$connector" "$dep" "$(annotate "$dep")"
+      printf "%s%s%s  %s (see above)\n" "$prefix" "$connector" "$dep" "$note"
     else
       visited["$dep"]=1
-      printf "%s%s%s  %s\n" "$prefix" "$connector" "$dep" "$(annotate "$dep")"
+      printf "%s%s%s  %s\n" "$prefix" "$connector" "$dep" "$note"
       print_tree "$dep" "$child_prefix"
     fi
   done
 }
 
+# --- Print graph ---
+
 printf "%s  %s\n" "$PKG" "$(annotate "$PKG")"
 visited["$PKG"]=1
 print_tree "$PKG" ""
+
+if [[ "$ORIGIN_SCOPE" == "local-aur" ]]; then
+  hidden_total=$((hidden_kind_count + hidden_origin_count))
+  if [[ "$hidden_total" -gt 0 ]]; then
+    echo ""
+    echo "(hidden $hidden_total deps to reduce noise; use --all-deps or --all-origins to show repo deps)"
+  fi
+fi
+
+if [[ "${#aur_pkgs_seen[@]}" -gt 0 ]]; then
+  mapfile -t aur_list < <(printf '%s\n' "${!aur_pkgs_seen[@]}" | sort)
+  echo ""
+  echo "$WARN_PREFIX ${#aur_list[@]} AUR package(s) detected in dependency graph."
+  echo "$WARN_PREFIX import them into local PKGBUILDs before building."
+  echo "$WARN_PREFIX example: mise run aur:import <package>"
+  echo "$WARN_PREFIX detected AUR deps:"
+  for p in "${aur_list[@]}"; do
+    echo "  - $p"
+  done
+fi
 
 [[ "${usage_build:-false}" == "true" ]] || exit 0
 
 # --- Build mode ---
 
-# Collect all packages reachable from PKG via DFS
+# Collect all packages transitively reachable from PKG
 declare -A reachable=()
 
 collect_reachable() {
   local pkg="$1"
-  [[ "${deps_of[$pkg]+_}" ]] || return 0
+  [[ "${deps_of_full[$pkg]+_}" ]] || return 0
   local -a deps
-  read -r -a deps <<< "${deps_of[$pkg]}"
+  read -r -a deps <<< "${deps_of_full[$pkg]}"
   for dep in "${deps[@]}"; do
     [[ "${reachable[$dep]+_}" ]] && continue
     reachable["$dep"]=1
@@ -135,7 +419,7 @@ collect_reachable() {
 
 collect_reachable "$PKG"
 
-# Get globally sorted order and filter to: local + reachable + not already in repo + not PKG itself
+# Get globally sorted order filtered to: local + reachable + not in repo + not PKG itself
 mapfile -t sorted_all < <(cat "${srcinfo_files[@]}" | aur graph | tsort | tac)
 
 build_order=()
@@ -143,7 +427,7 @@ for p in "${sorted_all[@]}"; do
   [[ "$p" == "$PKG" ]] && continue
   [[ "${reachable[$p]+_}" ]]  || continue
   [[ "${local_pkgs[$p]+_}" ]] || continue
-  [[ "${repo_pkgs[$p]+_}" ]]  && continue  # already in repo, skip
+  [[ "${repo_pkgs[$p]+_}" ]]  && continue
   build_order+=("$p")
 done
 
@@ -157,7 +441,6 @@ else
   echo "==> No local deps need building."
 fi
 
-# Skip PKG itself if already in repo
 if [[ "${repo_pkgs[$PKG]+_}" ]]; then
   echo "==> $PKG is already in repo, skipping."
   exit 0
