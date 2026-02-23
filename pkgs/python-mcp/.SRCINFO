@@ -1,5 +1,5 @@
 pkgbase = python-mcp
-	pkgdesc = Model Context Protocol SDK.
+	pkgdesc = Model Context Protocol SDK (Python library)
 	pkgver = 1.26.0
 	pkgrel = 1
 	url = https://github.com/modelcontextprotocol/python-sdk
@@ -16,7 +16,6 @@ pkgbase = python-mcp
 	checkdepends = python-dotenv
 	checkdepends = python-websockets
 	checkdepends = python-requests
-	checkdepends = uv
 	checkdepends = ruff
 	makedepends = python-hatchling
 	makedepends = python-uv-dynamic-versioning
@@ -39,10 +38,7 @@ pkgbase = python-mcp
 	depends = python-cryptography
 	depends = python-typing_extensions
 	depends = python-typing-inspection
-	optdepends = python-rich: rich
-	optdepends = python-typer: cli
-	optdepends = python-dotenv: cli
-	optdepends = python-websockets: ws
+	optdepends = mcp: install the MCP CLI tools
 	source = mcp::git+https://github.com/modelcontextprotocol/python-sdk.git#tag=v1.26.0
 	source = https://github.com/modelcontextprotocol/python-sdk/pull/1834.patch
 	sha256sums = eb63712c1da8d41ec45b3290a9ca488e78d99ef913f735514aa058c5b973c634
