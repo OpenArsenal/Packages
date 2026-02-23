@@ -11,12 +11,15 @@ pkgbase = arch-mcp
 	makedepends = python-build
 	makedepends = python-installer
 	makedepends = python-wheel
-	depends = python>=3.11
+	makedepends = python-uv-build
+	depends = python
 	depends = python-beautifulsoup4
 	depends = python-httpx
 	depends = python-lxml
 	depends = python-markdownify
 	depends = python-mcp
+	optdepends = python-starlette: enable HTTP/SSE transport (arch-ops-server-http)
+	optdepends = uvicorn: run HTTP/SSE transport server (arch-ops-server-http)
 	source = arch-mcp-3.3.6.tar.gz::https://github.com/nihalxkumar/arch-mcp/archive/refs/tags/v3.3.6.tar.gz
 	sha256sums = 787fa93d6d1b3ac643fbd06e969b3e8b1c15472191fada58e650706d97a86b83
 

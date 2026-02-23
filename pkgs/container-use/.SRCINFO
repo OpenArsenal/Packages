@@ -7,12 +7,14 @@ pkgbase = container-use
 	arch = aarch64
 	license = Apache-2.0
 	makedepends = go
-	makedepends = git
 	depends = glibc
-	depends = git
+	optdepends = git: enable Git-based Container Use workflows
 	optdepends = docker: container runtime for environments
 	optdepends = podman: alternative container runtime
-	source = git+https://github.com/dagger/container-use.git#tag=v0.4.2
-	sha256sums = SKIP
+	provides = container-use
+	conflicts = container-use-git
+	conflicts = container-use-bin
+	source = container-use::git+https://github.com/dagger/container-use.git#tag=v0.4.2
+	sha256sums = d4692a5187fe25fe7e7484eeb6bf98582e85904419cd9f0271ec31dd6b52bd34
 
 pkgname = container-use

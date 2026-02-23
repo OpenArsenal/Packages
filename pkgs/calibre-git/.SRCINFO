@@ -1,6 +1,6 @@
 pkgbase = calibre-git
 	pkgdesc = Ebook management application
-	pkgver = 8.16.2.r309.gef29a57a03
+	pkgver = 9.2.1.r62.g103bf48d66
 	pkgrel = 1
 	url = https://calibre-ebook.com
 	arch = x86_64
@@ -83,7 +83,7 @@ pkgbase = calibre-git
 	optdepends = poppler: required for converting pdf to html
 	optdepends = python-fonttools: required for font subset feature in epub editor
 	optdepends = speech-dispatcher: TTS support in the viewer
-	provides = calibre=8.16.2.r309.gef29a57a03
+	provides = calibre=9.2.1.r62.g103bf48d66
 	conflicts = calibre
 	conflicts = calibre-common
 	conflicts = calibre-python3

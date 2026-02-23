@@ -1,6 +1,6 @@
 pkgbase = onnxruntime
-	pkgver = 1.23.2
-	pkgrel = 4
+	pkgver = 1.24.2
+	pkgrel = 1
 	url = https://github.com/microsoft/onnxruntime
 	arch = x86_64
 	license = MIT
@@ -38,14 +38,14 @@ pkgbase = onnxruntime
 	makedepends = python-packaging
 	depends = abseil-cpp
 	depends = boost-libs
-	source = git+https://github.com/microsoft/onnxruntime#tag=v1.23.2
+	source = git+https://github.com/microsoft/onnxruntime#tag=v1.24.2
 	source = onnxruntime-install-orttraining-files.patch
 	source = onnxruntime-system-dnnl.patch
 	source = onnxruntime-system-flatbuffers.patch
 	source = fix-gcc-15.patch
 	source = deps-cutlass-4.2.0.patch
 	source = fix-thrust-api.patch
-	b2sums = ba28fe6c0ee88f151c0df386c42155b5a70bf0593691c8584b7f8314de148f10b22d509a7b201a684233b7a3a01e5f07752121e40678fb8021e99270f769b6dd
+	b2sums = 2bccc3469511273503644b29e742d890873d7aedc2c2c8d47a6e0e29f48921a51db4ead1a04fa8cdda1fcfa83baae67f891aebbd9457e61512257cdaed2ca970
 	b2sums = af5a5524dd9b5fe0052d2d0da232de7f219d4abffb37a7a321145b428d06fcb2901ab4e76b6754440146c223fc761bcbdfeee230167d33aa4434b82a1ebad5c0
 	b2sums = 57c79382537f5bd25a891de3a99415a6dd8f490676df213016e897040c88e28fb5f5a5c3a8a98057e3f6630edb3ddcaeae36dcc47d5354abaafafc36e579f731
 	b2sums = 207f020f310a7b447b4dc2fac74819f80099f088fdad6e42d67d0f01aa35bb5b9475bd006d9bec318127ae2db3d7ae3df33382fa16339d936c1dfb3832010837
@@ -55,7 +55,7 @@ pkgbase = onnxruntime
 
 pkgname = onnxruntime-cpu
 	pkgdesc = Cross-platform, high performance scoring engine for ML models (CPU only)
-	provides = onnxruntime=1.23.2
+	provides = onnxruntime=1.24.2
 	conflicts = onnxruntime
 
 pkgname = onnxruntime-cuda
@@ -66,7 +66,7 @@ pkgname = onnxruntime-cuda
 	depends = cudnn
 	depends = nccl
 	depends = onednn
-	provides = onnxruntime=1.23.2
+	provides = onnxruntime=1.24.2
 	conflicts = onnxruntime
 	replaces = onnxruntime
 
@@ -78,7 +78,7 @@ pkgname = onnxruntime-opt-cuda
 	depends = cudnn
 	depends = nccl
 	depends = onednn
-	provides = onnxruntime=1.23.2
+	provides = onnxruntime=1.24.2
 	conflicts = onnxruntime
 	replaces = onnxruntime-opt
 
@@ -90,7 +90,7 @@ pkgname = onnxruntime-rocm
 	depends = roctracer
 	depends = rccl
 	depends = migraphx
-	provides = onnxruntime=1.23.2
+	provides = onnxruntime=1.24.2
 	conflicts = onnxruntime
 
 pkgname = onnxruntime-opt-rocm
@@ -101,7 +101,7 @@ pkgname = onnxruntime-opt-rocm
 	depends = roctracer
 	depends = rccl
 	depends = migraphx
-	provides = onnxruntime=1.23.2
+	provides = onnxruntime=1.24.2
 	conflicts = onnxruntime
 
 pkgname = python-onnxruntime-cpu
@@ -119,7 +119,7 @@ pkgname = python-onnxruntime-cpu
 	depends = python-flatbuffers
 	depends = python-protobuf
 	depends = python-packaging
-	provides = python-onnxruntime=1.23.2
+	provides = python-onnxruntime=1.24.2
 	conflicts = python-onnxruntime
 
 pkgname = python-onnxruntime-cuda
@@ -137,7 +137,7 @@ pkgname = python-onnxruntime-cuda
 	depends = python-flatbuffers
 	depends = python-protobuf
 	depends = python-packaging
-	provides = python-onnxruntime=1.23.2
+	provides = python-onnxruntime=1.24.2
 	conflicts = python-onnxruntime
 	replaces = python-onnxruntime
 
@@ -156,7 +156,7 @@ pkgname = python-onnxruntime-opt-cuda
 	depends = python-flatbuffers
 	depends = python-protobuf
 	depends = python-packaging
-	provides = python-onnxruntime=1.23.2
+	provides = python-onnxruntime=1.24.2
 	conflicts = python-onnxruntime
 	replaces = python-onnxruntime-opt
 
@@ -175,7 +175,7 @@ pkgname = python-onnxruntime-rocm
 	depends = python-flatbuffers
 	depends = python-protobuf
 	depends = python-packaging
-	provides = python-onnxruntime=1.23.2
+	provides = python-onnxruntime=1.24.2
 	conflicts = python-onnxruntime
 
 pkgname = python-onnxruntime-opt-rocm
@@ -193,5 +193,5 @@ pkgname = python-onnxruntime-opt-rocm
 	depends = python-flatbuffers
 	depends = python-protobuf
 	depends = python-packaging
-	provides = python-onnxruntime=1.23.2
+	provides = python-onnxruntime=1.24.2
 	conflicts = python-onnxruntime
