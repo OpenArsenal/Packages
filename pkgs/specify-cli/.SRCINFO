@@ -1,6 +1,6 @@
 pkgbase = specify-cli
 	pkgdesc = Spec Kit Specify CLI (spec-driven development workflow)
-	pkgver = 0.0.90
+	pkgver = 0.1.5
 	pkgrel = 1
 	url = https://github.com/github/spec-kit
 	arch = any
@@ -15,7 +15,9 @@ pkgbase = specify-cli
 	depends = python-httpx
 	depends = python-platformdirs
 	depends = python-readchar
-	source = specify-cli-0.0.90.tar.gz::https://github.com/github/spec-kit/archive/refs/tags/v0.0.90.tar.gz
-	sha256sums = 851b78b9a3c117f5299935e36fc76b73e6dd1910194bc36c376d82da4c84704f
+	depends = python-truststore
+	depends = python-socksio
+	source = specify-cli-0.1.5.tar.gz::https://github.com/github/spec-kit/archive/refs/tags/v0.1.5.tar.gz
+	sha256sums = 1eac4c4a9b168a576a6feac7e9376da74c1ea7c7e46b755211d6b7f71e9c1d55
 
 pkgname = specify-cli
