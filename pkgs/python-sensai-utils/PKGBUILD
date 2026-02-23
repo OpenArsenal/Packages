@@ -30,9 +30,7 @@ source=(
   "sensai_utils-${pkgver}.tar.gz::https://pypi.io/packages/source/s/${_pkgname}/sensai_utils-${pkgver}.tar.gz"
 )
 
-sha256sums=(
-  'e50ae6bbd7c62a961f25b98e55b29029450efd66444678931b3b9c43e9bf9e95'
-)
+sha256sums=('e50ae6bbd7c62a961f25b98e55b29029450efd66444678931b3b9c43e9bf9e95')
 
 prepare() {
   cd "${srcdir}/sensai_utils-${pkgver}"
