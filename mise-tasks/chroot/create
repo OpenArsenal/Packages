@@ -33,17 +33,17 @@ mkarchroot_args+=(-C "$CHROOT_PACMAN_CONF")
 
 if [[ -n "${CHROOT_MIRRORLIST_V4}" ]]; then
   [[ -f "${CHROOT_MIRRORLIST_V4}" ]] || { echo "error: Mirrorlist file does not exist: ${CHROOT_MIRRORLIST_V4}" >&2; exit 1; }
-  mkarchroot_args+=(-f "${CHROOT_MIRRORLIST_V4}:/etc/pacman.d/mirrorlist")
+  mkarchroot_args+=(-f "${CHROOT_MIRRORLIST_V4}:/etc/pacman.d/cachyos-v4-mirrorlist")
 fi
 
 if [[ -n "${CHROOT_MIRRORLIST_V3}" ]]; then
   [[ -f "${CHROOT_MIRRORLIST_V3}" ]] || { echo "error: Mirrorlist file does not exist: ${CHROOT_MIRRORLIST_V3}" >&2; exit 1; }
-  mkarchroot_args+=(-f "${CHROOT_MIRRORLIST_V3}:/etc/pacman.d/mirrorlist")
+  mkarchroot_args+=(-f "${CHROOT_MIRRORLIST_V3}:/etc/pacman.d/cachyos-v3-mirrorlist")
 fi
 
 if [[ -n "${CHROOT_MIRRORLIST}" ]]; then
   [[ -f "${CHROOT_MIRRORLIST}" ]] || { echo "error: Mirrorlist file does not exist: ${CHROOT_MIRRORLIST}" >&2; exit 1; }
-  mkarchroot_args+=(-f "${CHROOT_MIRRORLIST}:/etc/pacman.d/mirrorlist")
+  mkarchroot_args+=(-f "${CHROOT_MIRRORLIST}:/etc/pacman.d/cachyos-mirrorlist")
 fi
 
 if [[ -n "${CHROOT_ARCH_MIRRORLIST}" ]]; then
@@ -53,3 +53,4 @@ fi
 
 run0 mkdir -p -- "$CHROOT_ROOT"
 run0 mkarchroot "${mkarchroot_args[@]}" "$CHROOT_ROOT" base-devel
+run0 cp "$CHROOT_PACMAN_CONF" "$CHROOT_ROOT/etc/pacman.conf"
