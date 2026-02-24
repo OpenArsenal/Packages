@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 #MISE description="Provisions chroot environment"
-#MISE depends=["run0"]
 #USAGE flag "--root <dir>" help="Chroot root directory (e.g., /srv/chroot/root)" env="CHROOT_ROOT"
 #USAGE flag "--pacman-conf <file>" help="Pacman config to use" env="CHROOT_PACMAN_CONF"
 #USAGE flag "--mirrorlist-v4 <file>" help="Optional mirrorlist v4 file to copy into chroot" env="CHROOT_MIRRORLIST_V4"

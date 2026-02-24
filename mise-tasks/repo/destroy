@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 #MISE description="Deprovisions system repo directory under /srv for PKGDEST"
-#MISE depends=["run0"]
 #USAGE flag "--dir <dir>" help="Parent repo directory to remove if empty (e.g., /srv/repo)" env="REPO_DIR"
 #USAGE flag "--db <file>" help="Repo DB file path (e.g., /srv/repo/repo.db.tar.gz)" env="REPO_DB"
 #USAGE flag "--group <grp>" help="Group to delete if unused (default: REPO_NAME)" env="REPO_GROUP"

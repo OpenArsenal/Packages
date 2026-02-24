@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 #MISE description="Adds user to system repo directory for PKGDEST"
-#MISE depends=["run0"]
 #USAGE arg "[user]" help="User to add (defaults to $USER)"
 
 set -euo pipefail
