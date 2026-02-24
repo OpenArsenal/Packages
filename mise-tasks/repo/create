@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 #MISE description="Provisions system repo directory under /srv for PKGDEST"
-#MISE depends=["run0"]
 #USAGE flag "--dir <dir>"   help="Repo directory path (e.g., /srv/repo)" env="REPO_DIR"
 #USAGE flag "--db <file>"   help="Path to repo DB file (e.g., /srv/repo/repo.db.tar.gz)" env="REPO_DB"
 #USAGE flag "--group <grp>" help="Group for repo dir (default: REPO_NAME)" env="REPO_GROUP"
