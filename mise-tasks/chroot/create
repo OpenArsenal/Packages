@@ -52,4 +52,3 @@ fi
 
 run0 mkdir -p -- "$CHROOT_ROOT"
 run0 mkarchroot "${mkarchroot_args[@]}" "$CHROOT_ROOT" base-devel
-run0 cp "$CHROOT_PACMAN_CONF" "$CHROOT_ROOT/etc/pacman.conf"
