@@ -518,13 +518,13 @@
     },
     {
       "name": "supabase",
-      "type": "vcs",
+      "type": "github-release",
       "repo": "supabase/cli",
       "channel": "stable"
     },
     {
       "name": "supabase-bin",
-      "type": "vcs",
+      "type": "github-release",
       "repo": "supabase/cli",
       "channel": "stable"
     },
