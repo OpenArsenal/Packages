@@ -515,6 +515,24 @@
       "type": "vcs",
       "repo": "namjaejeon/linux-ntfs",
       "channel": "stable"
+    },
+    {
+      "name": "supabase",
+      "type": "vcs",
+      "repo": "supabase/cli",
+      "channel": "stable"
+    },
+    {
+      "name": "supabase-bin",
+      "type": "vcs",
+      "repo": "supabase/cli",
+      "channel": "stable"
+    },
+    {
+      "name": "supabase-git",
+      "type": "vcs",
+      "repo": "supabase/cli",
+      "channel": "stable"
     }
   ]
 }
