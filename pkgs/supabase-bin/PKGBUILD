@@ -1,0 +1,47 @@
+# Maintainer: Pierre Chapuis <arch@catwell.info>
+# Contributor:  Vitalii Kuzhdin <vitaliikuzhdin@gmail.com>
+# Contributor: Angelo Verlain  <hey@vixalien.com>
+
+pkgname=supabase-bin
+pkgver=2.75.0
+pkgrel=1
+pkgdesc="CLI for Supabase, an open source Firebase alternative"
+arch=(aarch64 x86_64)
+url="https://supabase.com/docs/reference/cli/about"
+_url="https://github.com/supabase/cli"
+license=(MIT)
+depends=(glibc)
+provides=(supabase)
+conflicts=(supabase supabase-git)
+
+source_x86_64=("supabase-$pkgver-x86_64.tar.gz::$_url/releases/download/v$pkgver/supabase_linux_amd64.tar.gz")
+source_aarch64=("supabase-$pkgver-aarch64.tar.gz::$_url/releases/download/v$pkgver/supabase_linux_arm64.tar.gz")
+
+sha256sums_x86_64=("e5597462f865d5ac72af0453358e37ecb0d85962ad6914a114a53de847303bde")
+sha256sums_aarch64=("b551c2f8e03715be428d2592765200a9e371168fc36ec2646a84ecc530d3120e")
+
+prepare() {
+  cd "$srcdir"
+  mkdir -p completions
+  chmod +x ./supabase
+}
+
+build() {
+  cd "$srcdir"
+  for _sh in bash fish zsh powershell; do
+    ./"supabase" completion "$_sh" > "completions/supabase.$_sh"
+  done
+}
+
+package() {
+  cd "$srcdir"
+  install -vDm755 "supabase" "$pkgdir/usr/bin/supabase"
+  install -vDm644 "README.md" "$pkgdir/usr/share/doc/supabase/README.md"
+  install -vDm644 "LICENSE" "$pkgdir/usr/share/licenses/supabase-bin/LICENSE"
+
+  cd "completions"
+  install -vDm644 "supabase.bash" "$pkgdir/usr/share/bash-completion/completions/supabase"
+  install -vDm644 "supabase.fish" "$pkgdir/usr/share/fish/vendor_completions.d/supabase.fish"
+  install -vDm644 "supabase.zsh" "$pkgdir/usr/share/zsh/site-functions/_supabase"
+  install -vDm644 "supabase.powershell" "$pkgdir/usr/share/powershell/Modules/supabase/supabase.ps1"
+}
