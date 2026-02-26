@@ -3,7 +3,7 @@
 # Contributor: Fernando Nogueira <mrfernando2509@gmail.com>
 
 pkgname=supabase-git
-pkgver=2.75.0.r0.gaa6a512
+pkgver=2.76.15.r4.g6258d35f
 pkgrel=1
 pkgdesc="CLI for Supabase, an open source Firebase alternative"
 arch=(x86_64)
