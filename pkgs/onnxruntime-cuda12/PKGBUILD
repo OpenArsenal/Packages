@@ -1,6 +1,7 @@
-# Maintainer: Torsten Keßler <tpkessler@archlinux.org>
-# Contributor: Gustavo Alvarez <sl1pkn07@gmail.com>
-# Contributor: Chih-Hsuan Yen <yan12125@gmail.com>
+# Maintainer: Okiki <okiki@thunderstrike.co>
+# NOTE: This split PKGBUILD is for CUDA 12 only.
+# - Requires CUDA major version 12 at /opt/cuda
+# - Uses gcc14 host compiler for CUDA 12 compatibility
 
 pkgbase=onnxruntime
 pkgname=(
@@ -36,9 +37,24 @@ b2sums=('2bccc3469511273503644b29e742d890873d7aedc2c2c8d47a6e0e29f48921a51db4ead
         '207f020f310a7b447b4dc2fac74819f80099f088fdad6e42d67d0f01aa35bb5b9475bd006d9bec318127ae2db3d7ae3df33382fa16339d936c1dfb3832010837'
         'b0b58e2eb42a38956ef9e86b853d413c2fd002737d37721962dd9e1fc5c39c1ef4594325c6f6081f2b4cdce39a14907dbebc156645fa25ff3f2bbbce6417cd14')
 
+_require_cuda12() {
+  if [[ ! -x "/opt/cuda/bin/nvcc" ]]; then
+    echo "error: nvcc not found at /opt/cuda/bin/nvcc" >&2
+    echo "error: Install CUDA 12 before building onnxruntime-cuda12" >&2
+    return 1
+  fi
+
+  local cuda_major
+  cuda_major=$(/opt/cuda/bin/nvcc --version | sed -n 's/.*release \([0-9]*\)\..*/\1/p')
+  if [[ "${cuda_major}" -ne 12 ]]; then
+    echo "error: onnxruntime-cuda12 requires CUDA major 12 (detected: ${cuda_major})" >&2
+    echo "error: Use onnxruntime-cuda13 with CUDA 13+" >&2
+    return 1
+  fi
+}
+
 _valid_sm() {
-  # Check PKGBUILDs of python-pytorch and tensorflow for CUDA architectures built by official packages
-  echo "75-real;80-real;86-real;87-real;88-real;89-real;90-real;100-real;103-real;110-real;120-real;121-real;121-virtual"
+  echo "50-real;52-real;53-real;60-real;61-real;62-real;70-real;72-real;75-real;80-real;86-real;87-real;89-real;90-real"
 }
 
 prepare() {
@@ -80,6 +96,8 @@ prepare() {
 }
 
 build() {
+  _require_cuda12
+
   # Use -Donnxruntime_ENABLE_LAZY_TENSOR=OFF as it requires patched python-pytorch
   # See: https://github.com/microsoft/onnxruntime/pull/10460 https://github.com/pytorch/pytorch/pulls/wschin
   local _cmake_args=(
@@ -106,6 +124,19 @@ build() {
   _cmake_args+=(
     -Donnxruntime_USE_FULL_PROTOBUF=OFF)
 
+  export PATH="/opt/cuda/bin:${PATH}"
+  export CUDA_PATH="/opt/cuda"
+  export LD_LIBRARY_PATH="/opt/cuda/lib64:${LD_LIBRARY_PATH:-}"
+
+  if ! command -v gcc-14 >/dev/null 2>&1; then
+    echo "error: CUDA 12 build requires gcc14 (gcc-14/g++-14)" >&2
+    return 1
+  fi
+
+  export CC=gcc-14
+  export CXX=g++-14
+  export CUDAHOSTCXX=g++-14
+
   CXXFLAGS+=" -I/opt/cuda/targets/x86_64-linux/include"
   local _cmake_cuda_args=("${_cmake_args[@]}"
     -DCMAKE_CUDA_ARCHITECTURES="$(_valid_sm)"
@@ -118,10 +149,6 @@ build() {
     -Donnxruntime_USE_NCCL=ON
     -Donnxruntime_CUDA_HOME=/opt/cuda
     -Donnxruntime_CUDNN_HOME=/usr)
-
-  # For LTO everything needs to be compiled with the gcc version of CUDA
-  export CXX="$NVCC_CCBIN"
-  export CC="${NVCC_CCBIN/g++/gcc}"
 
   ##### onnxruntime-cuda
 
@@ -147,12 +174,6 @@ build() {
     >> cmake/adjust_global_compile_flags.cmake
   cmake "${_cmake_cuda_args[@]}"
   cmake --build build
-
-  # Manually fix https://github.com/microsoft/onnxruntime/issues/24570
-  mkdir onnxruntime/capi
-  python setup.py --help # We have to call it like this once to generate the file we need.
-  cp -r build/onnxruntime/* onnxruntime
-  python -m build --wheel --no-isolation
 
   # Manually fix https://github.com/microsoft/onnxruntime/issues/24570
   mkdir onnxruntime/capi
@@ -185,18 +206,6 @@ package_onnxruntime-opt-cuda() {
   cd "${pkgbase}-opt-cuda"
   DESTDIR="${pkgdir}" cmake --install build
 
-  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
-  install -Dm644 ThirdPartyNotices.txt "${pkgdir}/usr/share/licenses/${pkgname}/ThirdPartyNotices.txt"
-}
-
-package_python-onnxruntime-cpu() {
-  pkgdesc="$_pkgdesc (CPU only)"
-  depends+=("${pkgbase}-cpu" "${_pydepends[@]}")
-  provides=("python-${pkgbase}=${pkgver}")
-  conflicts=("python-${pkgbase}")
-
-  cd "${pkgbase}-cpu"
-  python -m installer --destdir="${pkgdir}" dist/*.whl
   install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
   install -Dm644 ThirdPartyNotices.txt "${pkgdir}/usr/share/licenses/${pkgname}/ThirdPartyNotices.txt"
 }
