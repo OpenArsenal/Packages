@@ -322,6 +322,18 @@
       "channel": "stable"
     },
     {
+      "name": "onnxruntime-cuda12",
+      "type": "github-release",
+      "repo": "microsoft/onnxruntime",
+      "channel": "stable"
+    },
+    {
+      "name": "onnxruntime-cuda13",
+      "type": "github-release",
+      "repo": "microsoft/onnxruntime",
+      "channel": "stable"
+    },
+    {
       "name": "specify-cli",
       "type": "github-release",
       "repo": "github/spec-kit",
