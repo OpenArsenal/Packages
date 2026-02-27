@@ -23,4 +23,6 @@ if [ "${#pkgs[@]}" -eq 0 ]; then
   exit 1
 fi
 
-repo-add "${args[@]}" "${REPO_DB:?REPO_DB not set}" "${pkgs[@]}"
+for pkg in "${pkgs[@]}"; do
+  repo-add "${args[@]}" "${REPO_DB:?REPO_DB not set}" "$pkg"
+done
