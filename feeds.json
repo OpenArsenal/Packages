@@ -286,6 +286,12 @@
       "channel": "stable"
     },
     {
+      "name": "logseq-desktop-electron",
+      "type": "github-release",
+      "repo": "logseq/logseq",
+      "channel": "stable"
+    },
+    {
       "name": "logseq-desktop-electron-bin",
       "type": "github-release",
       "repo": "logseq/logseq",
