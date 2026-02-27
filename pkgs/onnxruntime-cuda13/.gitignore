@@ -1,0 +1,14 @@
+*
+!LICENSES
+!.gitignore
+!.nvchecker.toml 
+!.SRCINFO 
+!deps-cutlass-4.2.0.patch 
+!fix-gcc-15.patch 
+!fix-thrust-api.patch 
+!LICENSE 
+!onnxruntime-install-orttraining-files.patch 
+!onnxruntime-system-dnnl.patch 
+!onnxruntime-system-flatbuffers.patch 
+!PKGBUILD 
+!REUSE.toml
