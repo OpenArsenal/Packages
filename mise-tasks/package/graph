@@ -304,6 +304,22 @@ while IFS= read -r line; do
   [[ -n "$pkg" ]] && repo_pkgs["$pkg"]=1
 done < <(pacman -Sl "$REPO_NAME" 2>/dev/null || true)
 
+# Also mark local packages as built if matching artifacts exist in REPO_DIR.
+# This avoids false "not built" when repo DB is stale or partially indexed.
+for pkg in "${!local_pkgs[@]}"; do
+  shopt -s nullglob
+  pkg_files=(
+    "$REPO_DIR/${pkg}-"*.pkg.tar.zst
+    "$REPO_DIR/${pkg}-"*.pkg.tar.xz
+    "$REPO_DIR/${pkg}-"*.pkg.tar.gz
+    "$REPO_DIR/${pkg}-"*.pkg.tar.bz2
+    "$REPO_DIR/${pkg}-"*.pkg.tar
+  )
+  shopt -u nullglob
+
+  [[ "${#pkg_files[@]}" -gt 0 ]] && repo_pkgs["$pkg"]=1
+done
+
 # --- Initial graph build ---
 
 declare -a srcinfo_files=()
@@ -580,6 +596,31 @@ collect_reachable() {
 
 collect_reachable "$PKG"
 
+add_repo_entries_for_pkg() {
+  local pkgname="$1"
+  local -a built_pkg_files=()
+
+  shopt -s nullglob
+  built_pkg_files=(
+    "$REPO_DIR/${pkgname}-"*.pkg.tar.zst
+    "$REPO_DIR/${pkgname}-"*.pkg.tar.xz
+    "$REPO_DIR/${pkgname}-"*.pkg.tar.gz
+    "$REPO_DIR/${pkgname}-"*.pkg.tar.bz2
+    "$REPO_DIR/${pkgname}-"*.pkg.tar
+  )
+  shopt -u nullglob
+
+  if [[ "${#built_pkg_files[@]}" -eq 0 ]]; then
+    echo "error: No built package files found for $pkgname in $REPO_DIR" >&2
+    return 1
+  fi
+
+  local pkg_file
+  for pkg_file in "${built_pkg_files[@]}"; do
+    repo-add --new "$REPO_DB" "$pkg_file"
+  done
+}
+
 # Get globally sorted order filtered to: local + reachable + not in repo + not PKG itself
 mapfile -t sorted_all < <(cat "${srcinfo_files[@]}" | aur graph | tsort | tac)
 
@@ -618,10 +659,7 @@ echo ""
 for p in "${build_order[@]}"; do
   echo "==> Building dep: $p"
   if (cd "$PKGS_DIR/$p" && mise run package:build); then
-    shopt -s nullglob
-    all_pkgs=( "$REPO_DIR"/*.pkg.tar.* )
-    shopt -u nullglob
-    [[ "${#all_pkgs[@]}" -gt 0 ]] && repo-add --new "$REPO_DB" "${all_pkgs[@]}"
+    add_repo_entries_for_pkg "$p"
   else
     echo "error: Build failed for dep: $p" >&2
     exit 1
@@ -631,11 +669,7 @@ done
 
 echo "==> Building: $PKG"
 (cd "$PKGS_DIR/$PKG" && mise run package:build)
-
-shopt -s nullglob
-all_pkgs=( "$REPO_DIR"/*.pkg.tar.* )
-shopt -u nullglob
-[[ "${#all_pkgs[@]}" -gt 0 ]] && repo-add --new "$REPO_DB" "${all_pkgs[@]}"
+add_repo_entries_for_pkg "$PKG"
 
 echo ""
 echo "Done: $PKG"
