@@ -1,7 +1,7 @@
 # Maintainer: Okiki Ojo <okiki@thunderstrike.co>
 
 pkgname=calibre-bin
-pkgver='9.3.1'
+pkgver='9.4.0'
 pkgrel=1
 pkgdesc="Official binary version Calibre"
 arch=(x86_64 aarch64)
@@ -36,9 +36,9 @@ source_aarch64=(
 
 # Checksums (using SHA-512 as provided by calibre)
 sha512sums=('f998af4d431d95149528691daf7d43c75052e6586c54b4d5595a6a8886d7d0b97ff355a1e25b64e6a606b679b096c49d6048a82ff1061611ad87ed0bb587e147')
-sha512sums_x86_64=('e80f620cffa834f65596eabc5f225252e28fa90600c6a8541dbdbca31c9d3105d5869b92e7737aa5dd038100e740dd3a4975e41cd31fc4391c74b44c5fc2beed'
+sha512sums_x86_64=('55a211a5e13bf5dcf1b2f8c4a70ded4900c5fd3d9dbd1aff01ae95ea8b4210513ca05a61be11a05d70db1ae6819c8072ac121ea0e01765c38cdc32241b77a06b'
                    'SKIP')
-sha512sums_aarch64=('af8ba786acd7c4b216738de3fd44a93fe783ab6c64816c33b7a3041b537fb646c1e1076138528e7f352140e4722b58c3c9c351a1b7fdea9be42efc53dd72bbb9'
+sha512sums_aarch64=('60c22053c3beb2210c7e97646973bcb8a450a5575af5cbac2703032ebba5bc3b8d5f02b95adba276822a5696cb1bfd84266fa0ca3bb262378716d88193a167c7'
                     'SKIP')
 
 package() {
