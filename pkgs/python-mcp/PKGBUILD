@@ -52,6 +52,7 @@ checkdepends=(
   'python-websockets'
   'python-requests'
   'ruff'
+  'uv'
 )
 
 source=(
