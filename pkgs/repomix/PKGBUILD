@@ -1,7 +1,7 @@
 # Maintainer: <you>
 
 pkgname=repomix
-pkgver=1.11.1
+pkgver='1.12.0'
 pkgrel=1
 pkgdesc="Pack a repository into a single AI-friendly file (CLI)"
 arch=('any')
@@ -14,7 +14,7 @@ optdepends=('git: pack remote repositories')
 conflicts=('repomix-git')
 
 source=("${pkgname}-${pkgver}.tgz::https://registry.npmjs.org/${pkgname}/-/${pkgname}-${pkgver}.tgz")
-sha256sums=('011c9a566f3373288d2139078e3713cc0bcda1cff33fa704949f085a83cb16d5')
+sha256sums=('a7a9fec646dc94117d1642ed79a623bd1a84d77b12282a431332624e351e120f')
 
 package() {
   cd "${srcdir}"
