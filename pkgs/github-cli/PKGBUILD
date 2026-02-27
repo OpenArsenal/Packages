@@ -1,7 +1,7 @@
 # Maintainer: Okiki <okiki@thunderstrike.co>
 
 pkgname=github-cli
-pkgver='2.86.0'
+pkgver='2.87.3'
 pkgrel=1
 pkgdesc="The GitHub CLI"
 arch=("x86_64")
@@ -13,7 +13,7 @@ checkdepends=("openssh")
 optdepends=("git: To interact with repositories"
             "org.freedesktop.secrets: Store credentials in system keyring")
 source=("$pkgname-$pkgver.tar.gz::$url/archive/v$pkgver.tar.gz")
-sha256sums=('cd2998310e81727af5c2056e9936e6541a20f968d6e3a4891f7fedbc0b336008')
+sha256sums=('8aa3458df7204c8b788e3d05c1363fefd899f8a53de22b067d924f24a8ae75ea')
 
 prepare() {
     cd "cli-${pkgver}"
