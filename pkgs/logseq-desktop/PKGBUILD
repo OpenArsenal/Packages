@@ -5,12 +5,10 @@
 : ${_install_path:=usr/share}
 : ${_electron_version=38}
 
-: ${_commit:=5c03c594ab02e6dce671534a0877655565fa52de}
-
 _pkgname="logseq-desktop"
 pkgname="$_pkgname"
 pkgver=0.10.15
-pkgrel=3
+pkgrel=4
 pkgdesc="Privacy-first, open-source platform for knowledge sharing and management"
 url="https://github.com/logseq/logseq"
 license=('AGPL-3.0-or-later')
@@ -28,10 +26,10 @@ makedepends=(
   'python-setuptools'
 )
 
-_pkgsrc="logseq-$_commit"
+_pkgsrc="logseq-$pkgver"
 _pkgext="tar.gz"
-source=("logseq-$pkgver-${_commit::7}.$_pkgext"::"$url/archive/$_commit.$_pkgext")
-sha256sums=('61f4d08cc9346962380878e93545c58625f73e193572e2a85461989a955b5980')
+source=("logseq-$pkgver.$_pkgext"::"$url/archive/refs/tags/$pkgver.$_pkgext")
+sha256sums=('ff5d28c82027d3193cf75d9d0cc8eefa00a7f054234c7f164c29845580a1cccc')
 
 _nvm_env() {
   # avoid cluttering user home, while allowing data to be cached
