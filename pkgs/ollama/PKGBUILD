@@ -90,10 +90,10 @@ build() {
         export CC=gcc-14
         export CXX=g++-14
         export CUDAHOSTCXX=g++-14
-        msg2 "Using GCC 14 for CUDA 12 compatibility"
+        printf '  -> %s\n' "Using GCC 14 for CUDA 12 compatibility"
       else
-        error "CUDA 12 requires gcc14 but it's not installed!"
-        error "Install with: sudo pacman -S gcc14"
+        printf '==> ERROR: %s\n' "CUDA 12 requires gcc14 but it's not installed!" >&2
+        printf '==> ERROR: %s\n' "Install with: sudo pacman -S gcc14" >&2
         return 1
       fi
     fi
@@ -101,18 +101,18 @@ build() {
     # Check for CCCL headers (required for cuda-12.9)
     if [[ "$_cuda_variant" == "cuda12" ]]; then
       if [[ ! -d "/opt/cuda/targets/x86_64-linux/include/thrust" ]]; then
-        error "CCCL headers are missing from cuda-12.9 installation!"
-        error ""
-        error "The cuda-12.9 AUR package is missing required CCCL headers."
-        error "To fix this, run the following commands as root:"
-        error ""
-        error "  cd /tmp"
-        error "  git clone --depth 1 --branch v2.9.0 https://github.com/NVIDIA/cccl.git"
-        error "  sudo cp -r cccl/thrust /opt/cuda/targets/x86_64-linux/include/"
-        error "  sudo cp -r cccl/cub /opt/cuda/targets/x86_64-linux/include/"
-        error "  sudo cp -r cccl/libcudacxx /opt/cuda/targets/x86_64-linux/include/"
-        error ""
-        error "Then rebuild this package."
+        printf '==> ERROR: %s\n' "CCCL headers are missing from cuda-12.9 installation!" >&2
+        printf '\n' >&2
+        printf '==> ERROR: %s\n' "The cuda-12.9 AUR package is missing required CCCL headers." >&2
+        printf '==> ERROR: %s\n' "To fix this, run the following commands as root:" >&2
+        printf '\n' >&2
+        printf '==> ERROR: %s\n' "  cd /tmp" >&2
+        printf '==> ERROR: %s\n' "  git clone --depth 1 --branch v2.9.0 https://github.com/NVIDIA/cccl.git" >&2
+        printf '==> ERROR: %s\n' "  sudo cp -r cccl/thrust /opt/cuda/targets/x86_64-linux/include/" >&2
+        printf '==> ERROR: %s\n' "  sudo cp -r cccl/cub /opt/cuda/targets/x86_64-linux/include/" >&2
+        printf '==> ERROR: %s\n' "  sudo cp -r cccl/libcudacxx /opt/cuda/targets/x86_64-linux/include/" >&2
+        printf '\n' >&2
+        printf '==> ERROR: %s\n' "Then rebuild this package." >&2
         return 1
       fi
     fi
@@ -136,8 +136,8 @@ build() {
 
   # Build CUDA variant based on detected version
   if [[ "$_cuda_variant" == "cuda12" ]]; then
-    msg2 "Building CUDA 12 variant..."
-    msg2 "Architectures: 50 (Maxwell), 52, 53, 60 (Pascal), 61, 62, 70 (Volta), 72, 75 (Turing), 80 (Ampere), 86, 87, 89, 90 (Hopper), 90a"
+    printf '  -> %s\n' "Building CUDA 12 variant..."
+    printf '  -> %s\n' "Architectures: 50 (Maxwell), 52, 53, 60 (Pascal), 61, 62, 70 (Volta), 72, 75 (Turing), 80 (Ampere), 86, 87, 89, 90 (Hopper), 90a"
     
     local cmake_cuda_options=(
       "${cmake_base_options[@]}"
@@ -150,8 +150,8 @@ build() {
     cmake --build "$_cuda_build_dir"
     
   elif [[ "$_cuda_variant" == "cuda13" ]]; then
-    msg2 "Building CUDA 13 variant..."
-    msg2 "Architectures: 75 (Turing), 80 (Ampere), 86, 87, 88, 89 (Ada), 90 (Hopper), 100, 103, 110, 120 (Blackwell), 121"
+    printf '  -> %s\n' "Building CUDA 13 variant..."
+    printf '  -> %s\n' "Architectures: 75 (Turing), 80 (Ampere), 86, 87, 88, 89 (Ada), 90 (Hopper), 100, 103, 110, 120 (Blackwell), 121"
     
     local cmake_cuda_options=(
       "${cmake_base_options[@]}"
@@ -179,7 +179,7 @@ package_ollama() {
   if [[ -n "$_cuda_build_dir" && -d "ollama/$_cuda_build_dir" ]]; then
     build_dir="ollama/$_cuda_build_dir"
   else
-    error "No build directory found! Install 'cuda' or 'cuda-12.9' package."
+    printf '==> ERROR: %s\n' "No build directory found! Install 'cuda' or 'cuda-12.9' package." >&2
     return 1
   fi
   
@@ -203,7 +203,7 @@ package_ollama-rocm() {
   if [[ -n "$_cuda_build_dir" && -d "ollama/$_cuda_build_dir" ]]; then
     build_dir="ollama/$_cuda_build_dir"
   else
-    error "No build directory found!"
+    printf '==> ERROR: %s\n' "No build directory found!" >&2
     return 1
   fi
   
@@ -237,7 +237,7 @@ package_ollama-vulkan() {
   if [[ -n "$_cuda_build_dir" && -d "ollama/$_cuda_build_dir" ]]; then
     build_dir="ollama/$_cuda_build_dir"
   else
-    error "No build directory found!"
+    printf '==> ERROR: %s\n' "No build directory found!" >&2
     return 1
   fi
   

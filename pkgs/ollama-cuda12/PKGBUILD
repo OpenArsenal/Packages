@@ -46,8 +46,8 @@ _cuda_build_dir="build-cuda12"
 
 _require_cuda12() {
   if [[ ! -x "/opt/cuda/bin/nvcc" ]]; then
-    error "nvcc not found at /opt/cuda/bin/nvcc"
-    error "Install CUDA 12 before building ollama-cuda12"
+    printf '==> ERROR: %s\n' "nvcc not found at /opt/cuda/bin/nvcc" >&2
+    printf '==> ERROR: %s\n' "Install CUDA 12 before building ollama-cuda12" >&2
     return 1
   fi
 
@@ -55,20 +55,20 @@ _require_cuda12() {
   cuda_major=$(/opt/cuda/bin/nvcc --version | sed -n 's/.*release \([0-9]*\)\..*/\1/p')
   echo "==> Detected CUDA version: ${cuda_major} at /opt/cuda"
   if [[ "${cuda_major}" -ne 12 ]]; then
-    error "ollama-cuda12 requires CUDA major version 12 (detected: ${cuda_major})"
-    error "Use ollama-cuda13 with CUDA 13+"
+    printf '==> ERROR: %s\n' "ollama-cuda12 requires CUDA major version 12 (detected: ${cuda_major})" >&2
+    printf '==> ERROR: %s\n' "Use ollama-cuda13 with CUDA 13+" >&2
     return 1
   fi
 
   if ! command -v gcc-14 >/dev/null 2>&1; then
-    error "CUDA 12 requires gcc14 but it's not installed"
-    error "Install with: sudo pacman -S gcc14"
+    printf '==> ERROR: %s\n' "CUDA 12 requires gcc14 but it's not installed" >&2
+    printf '==> ERROR: %s\n' "Install with: sudo pacman -S gcc14" >&2
     return 1
   fi
 
   if [[ ! -d "/opt/cuda/targets/x86_64-linux/include/thrust" ]]; then
-    error "CCCL headers are missing from CUDA 12 installation"
-    error "Expected: /opt/cuda/targets/x86_64-linux/include/thrust"
+    printf '==> ERROR: %s\n' "CCCL headers are missing from CUDA 12 installation" >&2
+    printf '==> ERROR: %s\n' "Expected: /opt/cuda/targets/x86_64-linux/include/thrust" >&2
     return 1
   fi
 }
@@ -89,7 +89,7 @@ build() {
   export CC=gcc-14
   export CXX=g++-14
   export CUDAHOSTCXX=g++-14
-  msg2 "Using GCC 14 for CUDA 12 compatibility"
+  printf '  -> %s\n' "Using GCC 14 for CUDA 12 compatibility"
 
   cd ollama
 
@@ -105,8 +105,8 @@ build() {
     -D CMAKE_INSTALL_PREFIX=/usr
   )
 
-  msg2 "Building CUDA 12 variant..."
-  msg2 "Architectures: 50 (Maxwell), 52, 53, 60 (Pascal), 61, 62, 70 (Volta), 72, 75 (Turing), 80 (Ampere), 86, 87, 89, 90 (Hopper), 90a"
+  printf '  -> %s\n' "Building CUDA 12 variant..."
+  printf '  -> %s\n' "Architectures: 50 (Maxwell), 52, 53, 60 (Pascal), 61, 62, 70 (Volta), 72, 75 (Turing), 80 (Ampere), 86, 87, 89, 90 (Hopper), 90a"
 
   local cmake_cuda_options=(
     "${cmake_base_options[@]}"
@@ -134,7 +134,7 @@ package_ollama() {
   _require_cuda12
 
   local build_dir="ollama/${_cuda_build_dir}"
-  [[ -d "$build_dir" ]] || { error "Missing build dir: $build_dir"; return 1; }
+  [[ -d "$build_dir" ]] || { printf '==> ERROR: %s\n' "Missing build dir: $build_dir" >&2; return 1; }
 
   DESTDIR="$pkgdir" cmake --install "$build_dir" --component CPU
 

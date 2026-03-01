@@ -120,7 +120,7 @@ package() {
           install -Dm644 "${_file}" "${pkgdir}/usr/share/zsh/site-functions/_${_name}"
           ;;
         *)
-          msg2 "Skipping unknown completion file: ${_basename}"
+          printf '  -> %s\n' "Skipping unknown completion file: ${_basename}"
           ;;
       esac
     done

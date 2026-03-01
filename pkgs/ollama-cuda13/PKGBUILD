@@ -45,8 +45,8 @@ _cuda_build_dir="build-cuda13"
 
 _require_cuda13() {
   if [[ ! -x "/opt/cuda/bin/nvcc" ]]; then
-    error "nvcc not found at /opt/cuda/bin/nvcc"
-    error "Install CUDA 13+ before building ollama-cuda13"
+    printf '==> ERROR: %s\n' "nvcc not found at /opt/cuda/bin/nvcc" >&2
+    printf '==> ERROR: %s\n' "Install CUDA 13+ before building ollama-cuda13" >&2
     return 1
   fi
 
@@ -54,8 +54,8 @@ _require_cuda13() {
   cuda_major=$(/opt/cuda/bin/nvcc --version | sed -n 's/.*release \([0-9]*\)\..*/\1/p')
   echo "==> Detected CUDA version: ${cuda_major} at /opt/cuda"
   if [[ "${cuda_major}" -lt 13 ]]; then
-    error "ollama-cuda13 requires CUDA major version 13 or newer (detected: ${cuda_major})"
-    error "Use ollama-cuda12 with CUDA 12"
+    printf '==> ERROR: %s\n' "ollama-cuda13 requires CUDA major version 13 or newer (detected: ${cuda_major})" >&2
+    printf '==> ERROR: %s\n' "Use ollama-cuda12 with CUDA 12" >&2
     return 1
   fi
 }
@@ -88,8 +88,8 @@ build() {
     -D CMAKE_INSTALL_PREFIX=/usr
   )
 
-  msg2 "Building CUDA 13 variant..."
-  msg2 "Architectures: 75 (Turing), 80 (Ampere), 86, 87, 88, 89 (Ada), 90 (Hopper), 100, 103, 110, 120 (Blackwell), 121"
+  printf '  -> %s\n' "Building CUDA 13 variant..."
+  printf '  -> %s\n' "Architectures: 75 (Turing), 80 (Ampere), 86, 87, 88, 89 (Ada), 90 (Hopper), 100, 103, 110, 120 (Blackwell), 121"
 
   local cmake_cuda_options=(
     "${cmake_base_options[@]}"
@@ -116,7 +116,7 @@ package_ollama() {
   _require_cuda13
 
   local build_dir="ollama/${_cuda_build_dir}"
-  [[ -d "$build_dir" ]] || { error "Missing build dir: $build_dir"; return 1; }
+  [[ -d "$build_dir" ]] || { printf '==> ERROR: %s\n' "Missing build dir: $build_dir" >&2; return 1; }
 
   DESTDIR="$pkgdir" cmake --install "$build_dir" --component CPU
 
