@@ -27,6 +27,7 @@ arch=('any')
 url='https://aur.archlinux.org/pkgbase/electron-wayland'
 license=('Apache')
 options=('!strip')
+makedepends=(1password electron-fiddle element-desktop rambox-pro-bin signal-desktop) # base-devel
 
 source=(
   "${pkgbase}.hook"
