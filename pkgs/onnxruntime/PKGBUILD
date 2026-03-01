@@ -29,7 +29,7 @@ _pydepends=('python-numpy' 'python-coloredlogs' 'python-psutil'
 makedepends=('git' 'cmake' 'ninja' 'boost' 'pybind11' 'nlohmann-json' 'chrono-date' 'cxxopts'
              'python-setuptools' 'python-installer' 'python-wheel' 'python-build' 'onednn'
              'cuda' 'cudnn' 'nccl' 'rocm-toolchain' 'rocm-hip-sdk' 'hipify-clang' 'rocm-smi-lib' 'roctracer' 'migraphx')
-makedepends+=("${_pydepends[@]}")
+makedepends+=("${_pydepends[@]}" "rccl")
 #TODO: Add tensorrt for CUDA.
 source=("git+https://github.com/microsoft/onnxruntime#tag=v${pkgver}"
         "${pkgbase}-install-orttraining-files.patch"
