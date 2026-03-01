@@ -10,7 +10,7 @@ pkgdesc="A new NTFS driver for Linux promised to be better than NTFS3. Maintaine
 arch=('any')
 url="https://github.com/namjaejeon/linux-ntfs"
 license=('GPL-2.0-only')
-makedepends=('git')
+makedepends=('git' 'dkms' 'udev')
 optdepends=(
   'ntfsprogs-plus: Recommended NTFS utilities'
 )
