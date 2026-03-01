@@ -50,5 +50,23 @@ if [[ -n "${CHROOT_ARCH_MIRRORLIST}" ]]; then
   mkarchroot_args+=(-f "${CHROOT_ARCH_MIRRORLIST}:/etc/pacman.d/mirrorlist")
 fi
 
-run0 mkdir -p -- "$CHROOT_ROOT"
+if [[ "${CHROOT_FORCE_REBUILD:-false}" != "true" ]] && [[ -d "$CHROOT_ROOT" && -f "$CHROOT_ROOT/etc/pacman.conf" ]]; then
+  echo "Chroot already provisioned; skipping: $CHROOT_ROOT" >&2
+  exit 0
+fi
+
+# If the target exists but doesn't look provisioned, fail fast (or wipe if forced)
+if [[ -d "$CHROOT_ROOT" ]] && [[ ! -f "$CHROOT_ROOT/etc/pacman.conf" ]]; then
+  if [[ "${CHROOT_FORCE_REBUILD:-false}" == "true" ]]; then
+    echo "CHROOT_FORCE_REBUILD=true; removing non-provisioned directory: $CHROOT_ROOT" >&2
+    run0 rm -rf -- "$CHROOT_ROOT"
+  else
+    echo "error: CHROOT_ROOT already exists but does not look provisioned: $CHROOT_ROOT" >&2
+    echo "       remove it manually, or set CHROOT_FORCE_REBUILD=true" >&2
+    exit 1
+  fi
+fi
+
+# mkarchroot should create the root dir; just ensure the parent exists
+run0 mkdir -p -- "$(dirname -- "$CHROOT_ROOT")"
 run0 mkarchroot "${mkarchroot_args[@]}" "$CHROOT_ROOT" base-devel
