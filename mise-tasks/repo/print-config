@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+#MISE description="Print pacman.conf stanza needed to use this repo on the host"
+
+set -euo pipefail
+
+: "${REPO_NAME:?REPO_NAME not set}"
+: "${REPO_DIR:?REPO_DIR not set}"
+
+cat <<EOF
+# Add this to /etc/pacman.conf (or an included file under /etc/pacman.d/)
+[${REPO_NAME}]
+SigLevel = Optional TrustAll
+Server = file://${REPO_DIR}
+
+EOF
