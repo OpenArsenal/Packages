@@ -1,28 +1,61 @@
 #!/usr/bin/env bash
 #MISE description="Update pacman repository database"
-#USAGE flag "-n --new" help="Only add packages not already present"
-#USAGE flag "-p --prevent-downgrade" help="Skip if newer version already exists"
+#USAGE flag "--new" help="Only add packages not already present"
+#USAGE flag "--prevent-downgrade" help="Skip if newer version already exists"
 #USAGE flag "--include-sigs" help="Include PGP signatures if available"
+#USAGE flag "--refresh-sync" help="Remove local pacman sync DB for this repo and run pacman -Sy (requires sudo)"
+#USAGE arg "<package>" help="Limit to a single package (pkgname, glob, or a .pkg.tar.* path)" required=#false
 
 set -euo pipefail
 
-pushd "${REPO_DIR:?REPO_DIR not set}" >/dev/null
-trap 'popd >/dev/null' EXIT
+: "${REPO_DIR:?REPO_DIR not set}"
+: "${REPO_DB:?REPO_DB not set}"
+
+add_flag() {
+  if [[ "${1:-false}" == "true" ]]; then
+    args+=("$2")
+  fi
+}
 
 args=()
-[ "${usage_new:-false}" = "true" ] && args+=("--new")
-[ "${usage_prevent_downgrade:-false}" = "true" ] && args+=("--prevent-downgrade")
-[ "${usage_include_sigs:-false}" = "true" ] && args+=("--include-sigs")
+add_flag "${usage_new:-false}" "--new"
+add_flag "${usage_prevent_downgrade:-false}" "--prevent-downgrade"
+add_flag "${usage_include_sigs:-false}" "--include-sigs"
 
-shopt -s nullglob
-pkgs=( ./*.pkg.tar.* )
-shopt -u nullglob
+(
+  cd "$REPO_DIR"
 
-if [ "${#pkgs[@]}" -eq 0 ]; then
-  echo "No package files found in $REPO_DIR"
-  exit 1
+  shopt -s nullglob
+  pkg_filter="${usage_package:-}"
+  if [ -n "$pkg_filter" ]; then
+    # Allow passing an explicit archive path or something that already looks like a glob/path.
+    if [[ "$pkg_filter" == *".pkg.tar."* ]] || [[ "$pkg_filter" == ./* ]] || [[ "$pkg_filter" == */* ]] || [[ "$pkg_filter" == *"*"* ]] || [[ "$pkg_filter" == *"?"* ]] || [[ "$pkg_filter" == *"["* ]]; then
+      pkgs=( "$pkg_filter" )
+    else
+      # Common case: passing "pkgname" -> match repo-built archives.
+      pkgs=( ./"$pkg_filter"-*.pkg.tar.* ./"$pkg_filter".pkg.tar.* ./"$pkg_filter"*.pkg.tar.* )
+    fi
+  else
+    pkgs=( ./*.pkg.tar.* )
+  fi
+  shopt -u nullglob
+
+  if [ "${#pkgs[@]}" -eq 0 ]; then
+    echo "No matching package archives found in $REPO_DIR for: ${pkg_filter:-<all>}" >&2
+    exit 1
+  fi
+
+  mapfile -t pkgs < <(printf '%s\n' "${pkgs[@]}" | sort -V)
+  for pkg in "${pkgs[@]}"; do
+    repo-add "${args[@]}" "$REPO_DB" "$pkg" 2>&1
+  done
+)
+
+if [ "${usage_refresh_sync:-false}" = "true" ]; then
+  : "${REPO_NAME:?REPO_NAME not set}"
+  sync_dir="/var/lib/pacman/sync"
+  repo="$REPO_NAME"
+
+  sudo rm -f "${sync_dir}/${repo}.db"* "${sync_dir}/${repo}.files"*
+  sudo pacman -Sy
 fi
-
-for pkg in "${pkgs[@]}"; do
-  repo-add "${args[@]}" "${REPO_DB:?REPO_DB not set}" "$pkg"
-done
