@@ -1,0 +1,244 @@
+#!/usr/bin/env bash
+#MISE description="Build selected packages listed in .packages (plus repo-local deps) and update repo DB"
+#MISE depends=["repo:create", "chroot:create"]
+
+set -euo pipefail
+
+if [[ "${DEBUG:-0}" == "1" ]]; then
+  set -x
+fi
+
+trap 'rc=$?; echo "ERROR: repo/build-selected failed (exit=$rc) at line $LINENO: $BASH_COMMAND" >&2; exit $rc' ERR
+
+PACKAGES_FILE="${PACKAGES_FILE:-${PKGBUILDS_ROOT}/.packages}"
+PACKAGES_DIR="${PACKAGES_DIR:-${PKGBUILDS_ROOT}/pkgs}"
+
+if [[ ! -f "$PACKAGES_FILE" ]]; then
+  mkdir -p "$(dirname "$PACKAGES_FILE")"
+  : >"$PACKAGES_FILE"
+  echo "Created empty packages file: $PACKAGES_FILE" >&2
+fi
+
+mapfile -t requested < <(
+  sed -e 's/\r$//' \
+      -e 's/#.*$//' \
+      -e 's/^[[:space:]]*//' \
+      -e 's/[[:space:]]*$//' "$PACKAGES_FILE" | awk 'NF'
+)
+
+if [[ "${#requested[@]}" -eq 0 ]]; then
+  echo "No packages listed in $PACKAGES_FILE" >&2
+  exit 1
+fi
+
+echo "REPO_DIR=${REPO_DIR}" >&2
+echo "CHROOT_DIR=${CHROOT_DIR}" >&2
+echo "PACKAGES_DIR=${PACKAGES_DIR}" >&2
+echo "Building ${#requested[@]} requested package(s) from $PACKAGES_FILE" >&2
+
+parse_dep_spec() {
+  local raw="$1"
+  local s="$raw"
+  s="${s%%:*}"           # drop optdepends description
+  s="${s//$'\r'/}"       # drop CR if present
+  s="${s//[[:space:]]/}" # remove whitespace
+
+  local name op ver
+  if [[ "$s" =~ ^([^<> =]+)([<>=]{1,2})(.+)$ ]]; then
+    name="${BASH_REMATCH[1]}"
+    op="${BASH_REMATCH[2]}"
+    ver="${BASH_REMATCH[3]}"
+  else
+    name="$s"
+    op=""
+    ver=""
+  fi
+
+  # IMPORTANT: emit newline to keep read/IFS parsing stable under set -e
+  printf '%s|%s|%s\n' "$name" "$op" "$ver"
+}
+
+pacman_has() {
+  local dep="$1"
+  pacman -Si "$dep" >/dev/null 2>&1
+}
+
+repo_has_pkgdir() {
+  local name="$1"
+  [[ -d "${PACKAGES_DIR}/${name}" ]]
+}
+
+repo_has_built_pkg() {
+  local name="$1"
+  compgen -G "${REPO_DIR}/${name}-*.pkg.tar.*" >/dev/null 2>&1
+}
+
+repo_has_built_pkg_exact_ver() {
+  local name="$1"
+  local ver="$2"
+  compgen -G "${REPO_DIR}/${name}-${ver}-*.pkg.tar.*" >/dev/null 2>&1
+}
+
+extract_deps_from_pkgbuild() {
+  local pkg_dir="$1"
+  local tmp
+  tmp="$(mktemp)"
+  trap 'rm -f "$tmp"' RETURN
+
+  # 1) Best: source PKGBUILD and print arrays (includes checkdepends).
+  (
+    set +u
+    cd "$pkg_dir" || exit 1
+
+    # shellcheck disable=SC1091
+    if source ./PKGBUILD >/dev/null 2>&1; then
+      for kind in makedepends depends optdepends checkdepends; do
+        eval 'arr=("${'"$kind"'[@]-}")'
+        for raw in "${arr[@]}"; do
+          printf '%s\n' "$raw"
+        done
+      done
+      exit 0
+    fi
+
+    exit 1
+  ) >"$tmp" 2>/dev/null || true
+
+  if [[ -s "$tmp" ]]; then
+    awk 'NF' "$tmp" \
+      | while IFS= read -r raw; do
+          [[ -z "$raw" ]] && continue
+          raw="${raw%%:*}"
+          raw="${raw//$'\r'/}"
+          raw="${raw//[[:space:]]/}"
+          [[ -z "$raw" ]] && continue
+          printf '%s\n' "$raw"
+        done \
+      | awk 'NF' | sort -u
+    return 0
+  fi
+
+  echo "warning: failed to source PKGBUILD for deps; falling back to parse: $pkg_dir/PKGBUILD" >&2
+
+  # 2) Fallback: parse quoted tokens in:
+  #    depends=(...), depends+=(...), makedepends=(...), makedepends+=(...), etc.
+  awk '
+    BEGIN { in=0 }
+    /^[[:space:]]*(depends|makedepends|optdepends|checkdepends)[[:space:]]*\+?=\s*\(/ { in=1; next }
+    in && /\)/ { in=0; next }
+    in {
+      while (match($0, /"[^"]+"|\047[^\047]+\047/)) {
+        tok=substr($0, RSTART, RLENGTH)
+        gsub(/^"|\\"$/, "", tok)
+        gsub(/^\047|\047$/, "", tok)
+        print tok
+        $0=substr($0, RSTART+RLENGTH)
+      }
+    }
+  ' "$pkg_dir/PKGBUILD" \
+    | while IFS= read -r raw; do
+        [[ -z "$raw" ]] && continue
+        raw="${raw%%:*}"
+        raw="${raw//$'\r'/}"
+        raw="${raw//[[:space:]]/}"
+        [[ -z "$raw" ]] && continue
+        printf '%s\n' "$raw"
+      done \
+    | awk 'NF' | sort -u
+}
+
+build_pkgdir() {
+  local pkg_dir="$1"
+  echo "---" >&2
+  echo "Building: $pkg_dir" >&2
+  pushd "$pkg_dir" >/dev/null
+  mise run package:build
+  popd >/dev/null
+  mise run repo:update
+}
+
+declare -A VISITED
+
+build_with_deps() {
+  local pkg_name="$1"
+  local pkg_dir="${PACKAGES_DIR}/${pkg_name}"
+
+  echo "[repo:build-selected] --> build_with_deps: $(printf '%q' "$pkg_name") dir=$(printf '%q' "$pkg_dir")" >&2
+
+  if [[ -n "${VISITED[$pkg_name]-}" ]]; then
+    echo "[repo:build-selected] already visited: $pkg_name" >&2
+    return 0
+  fi
+  VISITED["$pkg_name"]=1
+
+  if repo_has_built_pkg "$pkg_name"; then
+    echo "Already in repo; skipping build: $pkg_name" >&2
+    return 0
+  fi
+
+  if [[ ! -d "$pkg_dir" ]]; then
+    echo "warning: package directory not found; skipping: $pkg_dir (package: $pkg_name)" >&2
+    return 0
+  fi
+  if [[ ! -f "$pkg_dir/PKGBUILD" ]]; then
+    echo "warning: missing PKGBUILD; skipping: $pkg_dir (package: $pkg_name)" >&2
+    return 0
+  fi
+
+  mapfile -t deps < <(extract_deps_from_pkgbuild "$pkg_dir")
+  echo "[repo:build-selected] deps list for $pkg_name:" >&2
+  printf '[repo:build-selected]   - %q\n' "${deps[@]}" >&2
+
+  for dep_spec in "${deps[@]}"; do
+    [[ -z "$dep_spec" ]] && continue
+
+    local parsed dep op ver
+    parsed="$(parse_dep_spec "$dep_spec")"
+    IFS='|' read -r dep op ver <<<"$parsed"
+    [[ -z "$dep" ]] && continue
+
+    if [[ "$op" == "=" && -n "$ver" ]]; then
+      if repo_has_built_pkg_exact_ver "$dep" "$ver"; then
+        echo "dep already in repo (exact): $dep=$ver" >&2
+        continue
+      fi
+    else
+      if repo_has_built_pkg "$dep"; then
+        echo "dep already in repo: $dep" >&2
+        continue
+      fi
+    fi
+
+    if repo_has_pkgdir "$dep"; then
+      build_with_deps "$dep"
+      continue
+    fi
+
+    if ! pacman_has "$dep"; then
+      echo "warning: dependency not found for $pkg_name: $dep (not in ${PACKAGES_DIR}, not already built in repo, and pacman -Si failed)" >&2
+    fi
+  done
+
+  build_pkgdir "$pkg_dir"
+}
+
+for entry in "${requested[@]}"; do
+  echo "==> processing: $(printf '%q' "$entry")" >&2
+
+  if [[ "$entry" = /* ]]; then
+    if [[ ! -d "$entry" ]]; then
+      echo "warning: package directory not found; skipping: $entry" >&2
+      continue
+    fi
+    if [[ ! -f "$entry/PKGBUILD" ]]; then
+      echo "warning: missing PKGBUILD; skipping: $entry" >&2
+      continue
+    fi
+    build_pkgdir "$entry"
+  else
+    build_with_deps "$entry"
+  fi
+done
+
+echo "---" >&2
+echo "Done." >&2
