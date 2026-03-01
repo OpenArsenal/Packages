@@ -38,9 +38,7 @@ sha256sums_aarch64=('8679197b0c8d6b80a71361fb2c456b1d7ea3ee48a764596b3a7001ffbe3
 
 
 package_ollama-bin() {
-    cd "${srcdir}/" || exit
-
-    install -Dm755 "./bin/ollama" "${pkgdir}/usr/bin/ollama"
+    install -Dm755 "${srcdir}/bin/ollama" "${pkgdir}/usr/bin/ollama"
 
     for lib in 'libggml-base.so' \
         'libggml-cpu-alderlake.so' \
@@ -51,19 +49,19 @@ package_ollama-bin() {
         'libggml-cpu-sse42.so' \
         'libggml-cpu-x64.so'
     do
-        install -Dm755 "./lib/ollama/${lib}" "${pkgdir}/usr/lib/ollama/${lib}"
+        install -Dm755 "${srcdir}/lib/ollama/${lib}" "${pkgdir}/usr/lib/ollama/${lib}"
     done
 
-    install -Dm644 "./ollama.conf" "${pkgdir}/etc/ollama.conf"
+    install -Dm644 "${srcdir}/ollama.conf" "${pkgdir}/etc/ollama.conf"
 
-    install -Dm644 "./ollama.service" "${pkgdir}/usr/lib/systemd/system/ollama.service"
+    install -Dm644 "${srcdir}/ollama.service" "${pkgdir}/usr/lib/systemd/system/ollama.service"
 
-    install -Dm644 "./sysusers.conf" "${pkgdir}/usr/lib/sysusers.d/ollama.conf"
-    install -Dm644 "./tmpfiles.d" "${pkgdir}/usr/lib/tmpfiles.d/ollama.conf"
+    install -Dm644 "${srcdir}/sysusers.conf" "${pkgdir}/usr/lib/sysusers.d/ollama.conf"
+    install -Dm644 "${srcdir}/tmpfiles.d" "${pkgdir}/usr/lib/tmpfiles.d/ollama.conf"
 
-    install -Dm644 "LICENSE-${pkgver}" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+    install -Dm644 "${srcdir}/LICENSE-${pkgver}" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 
-    install -Dm644 "README-${pkgver}.md" "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+    install -Dm644 "${srcdir}/README-${pkgver}.md" "${pkgdir}/usr/share/doc/${pkgname}/README.md"
 
     install -dm755 "${pkgdir}/var/share"
     install -dm755 "${pkgdir}/var/lib/ollama"
@@ -77,14 +75,12 @@ package_ollama-cuda12-bin() {
     provides=("ollama-cuda")
     depends+=("ollama-bin")
 
-    cd "${srcdir}/" || exit
-
     for lib in 'libggml-cuda.so' ; do
-        install -Dm755 "./lib/ollama/cuda_v12/${lib}" "${pkgdir}/usr/lib/ollama/${lib}"
+        install -Dm755 "${srcdir}/lib/ollama/cuda_v12/${lib}" "${pkgdir}/usr/lib/ollama/${lib}"
     done
 
     for cudalib in 'libcublasLt' 'libcublas' 'libcudart' ; do
-        cp --preserve=links --no-dereference "./lib/ollama/cuda_v12/${cudalib}"* "${pkgdir}/usr/lib/ollama/"
+        cp --preserve=links --no-dereference "${srcdir}/lib/ollama/cuda_v12/${cudalib}"* "${pkgdir}/usr/lib/ollama/"
     done
 }
 
@@ -95,13 +91,11 @@ package_ollama-cuda13-bin() {
     provides=("ollama-cuda")
     depends+=("ollama-bin")
 
-    cd "${srcdir}/" || exit
-
     for lib in 'libggml-cuda.so' ; do
-        install -Dm755 "./lib/ollama/cuda_v13/${lib}" "${pkgdir}/usr/lib/ollama/${lib}"
+        install -Dm755 "${srcdir}/lib/ollama/cuda_v13/${lib}" "${pkgdir}/usr/lib/ollama/${lib}"
     done
 
     for cudalib in 'libcublasLt' 'libcublas' 'libcudart' ; do
-        cp --preserve=links --no-dereference "./lib/ollama/cuda_v13/${cudalib}"* "${pkgdir}/usr/lib/ollama/"
+        cp --preserve=links --no-dereference "${srcdir}/lib/ollama/cuda_v13/${cudalib}"* "${pkgdir}/usr/lib/ollama/"
     done
 }
