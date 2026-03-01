@@ -37,6 +37,12 @@ group_exists() {
   getent group "$1" >/dev/null 2>&1
 }
 
+# if repo dir + db already exist and repo dir is writable, do nothing.
+if [[ -d "$REPO_DIR" && -f "$REPO_DB" && -w "$REPO_DIR" ]]; then
+  echo "Repo already provisioned; skipping: $REPO_DIR"
+  exit 0
+fi
+
 ensure_group_exists() {
   local group="$1"
 
@@ -152,7 +158,7 @@ assert_repo_writable_or_explain() {
   echo "error: Repo dir exists but is not writable: $dir" >&2
   if [[ -n "$user" ]] && is_homed_user "$user"; then
     echo "error: Ensure '$user' is in '$group':" >&2
-    echo "error:   homectl inspect \"$user\" | sed -n '/Aux\\. Groups:/,/^[A-Z]/p'" >&2
+    echo "error:   homectl inspect \"$user\" | sed -n '/Aux\. Groups:/,/^[A-Z]/p'" >&2
   else
     echo "error: Join '$group' and re-login (or run: newgrp $group)." >&2
   fi
