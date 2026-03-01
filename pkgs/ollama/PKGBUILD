@@ -1,8 +1,4 @@
-# Maintainer: Alexander F. Rødseth <xyproto@archlinux.org>
-# Maintainer: Sven-Hendrik Haase <svenstaro@archlinux.org>
-# Contributor: Steven Allen <steven@stebalien.com>
-# Contributor: Matt Harrison <matt@harrison.us.com>
-# Contributor: Kainoa Kanter <kainoa@t1c.dev>
+# Maintainer: Okiki <okiki@thunderstrike.co>
 
 # NOTE: This PKGBUILD detects your installed CUDA version at /opt/cuda and builds the matching variant:
 # - cuda-12.9 (AUR) → builds ollama-cuda12 (Maxwell through Hopper GPUs)

@@ -1,4 +1,4 @@
-# AUR Maintainer: Shadichy <shadichy@blisslabs.org>
+# Maintainer: Okiki <okiki@thunderstrike.co>
 
 _pkgname=ntfsprogs-plus
 pkgname=${_pkgname}-git

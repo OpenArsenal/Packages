@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# AUR Maintainer: Shadichy <shadichy@blisslabs.org>
+# Maintainer: Okiki <okiki@thunderstrike.co>
 
 pkgbase=ntfsplus-dkms-git
 pkgname=("$pkgbase" "ntfsplus-udev")
