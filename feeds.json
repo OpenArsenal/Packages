@@ -557,6 +557,27 @@
       "type": "vcs",
       "repo": "supabase/cli",
       "channel": "stable"
+    },
+    {
+      "name": "mise",
+      "type": "github-release",
+      "repo": "jdx/mise",
+      "channel": "stable"
+    },
+    {
+      "name": "chromium-ffmpeg",
+      "type": "github-tags-filtered",
+      "repo": "FFmpeg/FFmpeg",
+      "channel": "stable",
+      "tagPrefix": "n8.0.",
+      "tagRegex": "^n8\\.0(\\.[0-9]+)?$",
+      "versionRegex": "^n(8\\.0(\\.[0-9]+)?)$",
+      "versionFormat": "$1"
+    },
+    {
+      "name": "chromium-ffmpeg-git",
+      "type": "manual",
+      "channel": "stable"
     }
   ]
 }
