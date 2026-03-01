@@ -75,12 +75,12 @@ makedepends=(cmake
              pyqt-builder
              rapydscript-ng
              sip
-             xdg-utils
+             xdg-utils)
 
              # Needed at build-time too (headers + libonnxruntime.pc)
-             onnxruntime
-             ffmpeg
-             espeak-ng)
+            #  onnxruntime
+            #  ffmpeg
+            #  espeak-ng)
 checkdepends=(poppler
               python-fonttools
               python-pyzstd

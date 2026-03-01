@@ -73,12 +73,12 @@ makedepends=(cmake
              rapydscript-ng
              sip
              xdg-utils
-             python-sphinx
+             python-sphinx)
 
              # Needed at build-time too (headers + libonnxruntime.pc)
-             onnxruntime
-             ffmpeg
-             espeak-ng)
+            #  onnxruntime
+            #  ffmpeg
+            #  espeak-ng)
 checkdepends=(poppler
               python-fonttools
               speech-dispatcher
