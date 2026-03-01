@@ -21,7 +21,7 @@ depends=(gcc-libs
          ollama
 )
 replaces=("${pkgname%-git}")
-makedepends=(extra-cmake-modules)
+makedepends=(extra-cmake-modules git)
 groups=(kde-applications
         kde-utilities)
 source=(git+https://invent.kde.org/utilities/alpaka.git)

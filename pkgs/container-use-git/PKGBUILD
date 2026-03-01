@@ -9,7 +9,7 @@ url="https://container-use.com"
 license=('Apache-2.0')
 
 depends=('glibc')
-makedepends=('go')
+makedepends=('go' 'git')
 optdepends=(
   'git: enable Git-based Container Use workflows'
   'docker: container runtime for environments'
