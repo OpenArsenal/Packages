@@ -86,6 +86,7 @@ makedepends=(
   gettext
   gobject-introspection
   meson
+  git
 )
 
 build() {
