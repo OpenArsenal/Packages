@@ -7,7 +7,7 @@ pkgdesc="An Ollama client made with GTK4 and Adwaita"
 arch=('any')
 url="https://github.com/jeffser/Alpaca"
 license=('GPL-3.0')
-makedepends=('meson' 'blueprint-compiler' 'gettext' 'desktop-file-utils' 'appstream')
+makedepends=('meson' 'blueprint-compiler' 'gettext' 'desktop-file-utils' 'appstream' 'git')
 depends=(
   'python-requests'
   'python-pillow'
