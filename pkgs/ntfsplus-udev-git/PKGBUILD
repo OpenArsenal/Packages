@@ -18,6 +18,7 @@ options=('!strip' '!emptydirs')
 
 source=(
   "$pkgbase::git+$url"
+  # Required by dkms.conf MAKE[0] when building from /usr/src/ntfs-${pkgver}
   'Makefile'
   'dkms.conf'
   '00-ntfsplus.conf'
@@ -47,6 +48,7 @@ package_ntfsplus-dkms-git() {
   mkdir -p "$dest"
   cp -rpt "$dest" "$srcdir/$pkgbase/"*.{h,c} "$srcdir/$pkgbase/Kconfig"
   install -Dm644 "$(readlink -f dkms.conf)" "$dest/dkms.conf"
+  # dkms.conf invokes make in $dest, so this local module Makefile must be present.
   install -Dm644 "$(readlink -f Makefile)" "$dest/Makefile"
 
   # Install module config
