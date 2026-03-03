@@ -578,6 +578,28 @@
       "name": "chromium-ffmpeg-git",
       "type": "manual",
       "channel": "stable"
+    },
+    {
+      "name": "vivaldi-snapshot-ffmpeg-codecs",
+      "type": "manual",
+      "channel": "stable"
+    },
+    {
+      "name": "vivaldi-snapshot",
+      "type": "vivaldi",
+      "channel": "snapshot",
+      "url": "https://vivaldi.com/feed/"
+    },
+    {
+      "name": "vivaldi",
+      "type": "vivaldi",
+      "channel": "stable",
+      "url": "https://vivaldi.com/blog/desktop/snapshots/"
+    },
+    {
+      "name": "vivaldi-ffmpeg-codecs",
+      "type": "manual",
+      "channel": "stable"
     }
   ]
 }
