@@ -30,7 +30,7 @@ pkgbase = chromium-ffmpeg-git
 	source = https://gitlab.archlinux.org/archlinux/packaging/packages/ffmpeg/-/raw/main/0001-Add-av_stream_get_first_dts-for-Chromium.patch
 	source = git+https://git.ffmpeg.org/ffmpeg.git
 	source = chromium-ffmpeg.install
-	source = chromium-ffmpeg.hook::https://aur.archlinux.org/cgit/aur.git/plain/chromium-ffmpeg.hook?h=chromium-ffmpeg
+	source = chromium-ffmpeg.hook::../chromium-ffmpeg.hook
 	b2sums = c92deb468a018ae7f04150d35cb71d3cf7e2e151f23ab84533bca9ccb0c678b94897668c48362aa6549cfa9127250e094719a14f95b59ed4e95f69dcebb3bca1
 	b2sums = e5f7b79f7731be9ee5a7280a9221fb531ac5a2d9820fc5870b68b0eabea667dfbe8f39f41c1e1763a4c84982896afaa54c81ff57847d203b70afafd726689e5d
 	b2sums = SKIP

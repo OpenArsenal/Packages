@@ -1,6 +1,6 @@
 pkgbase = ntfsprogs-plus-git
 	pkgdesc = NTFS filesystem driver and utilities
-	pkgver = 0.9.15+2+g9cd9891
+	pkgver = 1.0.0+8+g638d0d8
 	pkgrel = 1
 	url = https://github.com/ntfsprogs-plus/ntfsprogs-plus
 	arch = x86_64

@@ -7,6 +7,7 @@ pkgbase = container-use
 	arch = aarch64
 	license = Apache-2.0
 	makedepends = go
+	makedepends = git
 	depends = glibc
 	optdepends = git: enable Git-based Container Use workflows
 	optdepends = docker: container runtime for environments

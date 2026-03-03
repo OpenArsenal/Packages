@@ -10,6 +10,7 @@ pkgbase = alpaca-git
 	makedepends = gettext
 	makedepends = desktop-file-utils
 	makedepends = appstream
+	makedepends = git
 	depends = python-requests
 	depends = python-pillow
 	depends = python-pypdf

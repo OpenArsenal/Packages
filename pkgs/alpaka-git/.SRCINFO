@@ -8,6 +8,7 @@ pkgbase = alpaka-git
 	groups = kde-utilities
 	license = GPL-3.0-or-later
 	makedepends = extra-cmake-modules
+	makedepends = git
 	depends = gcc-libs
 	depends = glibc
 	depends = qt6-base
