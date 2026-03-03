@@ -1,0 +1,43 @@
+# Maintainer: Okiki <okiki@thunderstrike.co>
+
+pkgname=mise
+pkgver='2026.3.1'
+pkgrel=1
+pkgdesc='The front-end to your dev env'
+arch=('x86_64')
+url='https://github.com/jdx/mise'
+license=('MIT')
+makedepends=('cargo')
+provides=('mise')
+conflicts=('rtx' 'rtx-bin')
+replaces=('rtx')
+options=('!lto')
+source=("$pkgname-$pkgver.tar.gz::https://github.com/jdx/$pkgname/archive/v$pkgver.tar.gz")
+sha512sums=('023cc8c5b9bb27d5446a96c7ae615d8faf99ec030224903811c8327585129dff043d8727f0a69c18921f2dc7855b59270946b694360af5c9f4f5dfad647bf11d')
+optdepends=('usage: completion support')
+
+prepare() {
+  cd "$srcdir/$pkgname-$pkgver"
+  cargo fetch --locked --target "$CARCH-unknown-linux-gnu"
+}
+
+build() {
+  cd "$srcdir/$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+  cargo build --frozen --release
+}
+
+package() {
+  cd "$srcdir/$pkgname-$pkgver"
+  install -Dm755 target/release/mise "$pkgdir/usr/bin/mise"
+  install -Dm644 man/man1/mise.1 "$pkgdir/usr/share/man/man1/mise.1"
+  install -Dm644 completions/mise.bash "$pkgdir/usr/share/bash-completion/completions/mise"
+  install -Dm644 completions/mise.fish "$pkgdir/usr/share/fish/vendor_completions.d/mise.fish"
+  install -Dm644 completions/_mise "$pkgdir/usr/share/zsh/site-functions/_mise"
+}
+
+check() {
+  cd "$srcdir/$pkgname-$pkgver"
+  ./target/release/mise --version
+}
