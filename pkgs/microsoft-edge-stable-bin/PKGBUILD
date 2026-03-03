@@ -22,7 +22,7 @@ optdepends=(
 	)
 options=(!strip !zipman)
 replaces=("${pkgname%-bin}")
-source=("https://packages.microsoft.com/yumrepos/edge/Packages/m/${_pkgname}-stable-${pkgver}-1.x86_64.rpm"
+source=("https://packages.microsoft.com/yumrepos/edge/Packages/m/${_pkgname}-stable-${pkgver}-1.${CARCH}.rpm"
 	"microsoft-edge-stable.sh")
 sha256sums=('b1a36dff5278d14fcf3e854d42575dbd5aee6cad224c01ba1fd2b91441de8e60'
             'dc3765d2de6520b13f105b8001aa0e40291bc9457ac508160b23eea8811e26af')

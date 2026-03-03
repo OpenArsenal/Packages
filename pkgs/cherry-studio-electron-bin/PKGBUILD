@@ -39,7 +39,7 @@ source=(
     "${pkgname%-bin}.sh"
 )
 source_aarch64=("${pkgname%-bin}-${pkgver}-aarch64.rpm::${_ghurl}/releases/download/v${pkgver}/${_pkgname// /-}-${pkgver}-aarch64.rpm")
-source_x86_64=("${pkgname%-bin}-${pkgver}-x86_64.rpm::${_ghurl}/releases/download/v${pkgver}/${_pkgname// /-}-${pkgver}-x86_64.rpm")
+source_x86_64=("${pkgname%-bin}-${pkgver}-${CARCH}.rpm::${_ghurl}/releases/download/v${pkgver}/${_pkgname// /-}-${pkgver}-${CARCH}.rpm")
 sha256sums=('0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0'
             '31ad33b633744f5361abd964be306cea53ae1050e760c787115f7eca60045ae6')
 sha256sums_aarch64=('65f530e82efa256c1a16ecbe9384d1b8446cc23c90b2d97398eb635fdeb510e5')

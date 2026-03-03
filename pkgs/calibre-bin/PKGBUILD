@@ -26,8 +26,8 @@ source=(share.tar.xz)
 
 # Arch-per-arch sources (prebuilt upstream binaries from calibre.com with GPG signatures)
 source_x86_64=(
-  "calibre-${pkgver}-x86_64.txz::https://download.calibre-ebook.com/${pkgver}/calibre-${pkgver}-x86_64.txz"
-  "calibre-${pkgver}-x86_64.txz.sig::https://calibre-ebook.com/signatures/calibre-${pkgver}-x86_64.txz.sig"
+  "calibre-${pkgver}-${CARCH}.txz::https://download.calibre-ebook.com/${pkgver}/calibre-${pkgver}-${CARCH}.txz"
+  "calibre-${pkgver}-${CARCH}.txz.sig::https://calibre-ebook.com/signatures/calibre-${pkgver}-${CARCH}.txz.sig"
 )
 source_aarch64=(
   "calibre-${pkgver}-aarch64.txz::https://download.calibre-ebook.com/${pkgver}/calibre-${pkgver}-arm64.txz"

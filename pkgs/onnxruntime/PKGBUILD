@@ -120,7 +120,7 @@ build() {
   _cmake_args+=(
     -Donnxruntime_USE_FULL_PROTOBUF=OFF)
 
-  CXXFLAGS+=" -I/opt/cuda/targets/x86_64-linux/include"
+  CXXFLAGS+=" -I/opt/cuda/targets/${CARCH}-linux/include"
   local _cmake_cuda_args=("${_cmake_args[@]}"
     -DCMAKE_CUDA_ARCHITECTURES="$(_valid_sm)"
     -DCMAKE_CUDA_STANDARD_REQUIRED=ON

@@ -68,7 +68,7 @@ EOF
   dart tools/generate_package_config.dart
   python tools/generate_sdk_version_file.py
 
-  sed -i 's|prefix = "x86_64-linux-gnu-"|prefix = ""|g' build/toolchain/linux/BUILD.gn
+  sed -i "s|prefix = \"${CARCH}-linux-gnu-\"|prefix = \"\"|g" build/toolchain/linux/BUILD.gn
 }
 
 build() {
