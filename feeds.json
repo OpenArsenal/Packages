@@ -600,6 +600,12 @@
       "name": "vivaldi-ffmpeg-codecs",
       "type": "manual",
       "channel": "stable"
+    },
+    {
+      "name": "protobuf",
+      "type": "github-release",
+      "repo": "protocolbuffers/protobuf",
+      "channel": "stable"
     }
   ]
 }
