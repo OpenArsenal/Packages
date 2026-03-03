@@ -9,7 +9,7 @@ pkgbase = vivaldi-ffmpeg-codecs
 	makedepends = git
 	depends = glibc
 	options = !debug
-	source = chromium-ffmpeg::git+https://chromium.googlesource.com/chromium/third_party/ffmpeg.git#commit=
+	source = chromium-ffmpeg::git+https://chromium.googlesource.com/chromium/third_party/ffmpeg.git#commit=e18f48eba6b367ac68b9c477ae6cbe224e36b031
 	sha256sums = 2cdee1c4caf2c4b9e97f515d08c003f3a4c1e64c7cf13688a745c99b6b121c37
 
 pkgname = vivaldi-ffmpeg-codecs

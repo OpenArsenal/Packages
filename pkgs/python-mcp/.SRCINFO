@@ -17,6 +17,7 @@ pkgbase = python-mcp
 	checkdepends = python-websockets
 	checkdepends = python-requests
 	checkdepends = ruff
+	checkdepends = uv
 	makedepends = python-hatchling
 	makedepends = python-uv-dynamic-versioning
 	makedepends = python-build

@@ -1,6 +1,6 @@
 pkgbase = plezy-git
 	pkgdesc = Modern Plex client built with Flutter (git)
-	pkgver = 1.16.1.r1.g358824f
+	pkgver = 1.19.0.r11.g26ff55e
 	pkgrel = 1
 	url = https://github.com/edde746/plezy
 	arch = x86_64
@@ -16,6 +16,7 @@ pkgbase = plezy-git
 	depends = gtk3
 	depends = glib2
 	depends = libepoxy
+	depends = libevdev
 	depends = libkeybinder3
 	depends = alsa-lib
 	depends = mpv

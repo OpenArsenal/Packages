@@ -7,6 +7,7 @@ pkgbase = dagger-git
 	arch = aarch64
 	license = Apache-2.0
 	makedepends = go
+	makedepends = git
 	depends = glibc
 	optdepends = git: enable Git-based Dagger workflows
 	optdepends = docker: container runtime used to run the Dagger Engine
