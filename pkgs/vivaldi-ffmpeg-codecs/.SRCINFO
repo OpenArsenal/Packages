@@ -1,0 +1,15 @@
+pkgbase = vivaldi-ffmpeg-codecs
+	pkgdesc = additional support for proprietary codecs for vivaldi
+	pkgver = 144.0.7559.175
+	pkgrel = 1
+	url = https://chromium.googlesource.com/chromium/third_party/ffmpeg
+	arch = x86_64
+	license = LGPL-2.1-or-later
+	makedepends = nasm
+	makedepends = git
+	depends = glibc
+	options = !debug
+	source = chromium-ffmpeg::git+https://chromium.googlesource.com/chromium/third_party/ffmpeg.git#commit=
+	sha256sums = 2cdee1c4caf2c4b9e97f515d08c003f3a4c1e64c7cf13688a745c99b6b121c37
+
+pkgname = vivaldi-ffmpeg-codecs
