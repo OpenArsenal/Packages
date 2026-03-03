@@ -762,6 +762,30 @@ get_chrome_version_json() {
   echo "$response" | jq -r '.releases[0].version // empty'
 }
 
+# Fetches the Chromium version from ChromiumDash releases API.
+#
+# Why this exists separately from get_chrome_version_json:
+#   Chrome channels can diverge from Chromium channels, and some packages need
+#   Chromium's upstream release number directly (not Google Chrome branding).
+#
+# Channel mapping to ChromiumDash expects title case values.
+get_chromium_version_json() {
+  local channel="${1:-stable}"
+  local dash_channel="Stable"
+
+  case "$channel" in
+    stable) dash_channel="Stable" ;;
+    beta)   dash_channel="Beta" ;;
+    dev)    dash_channel="Dev" ;;
+    canary) dash_channel="Canary" ;;
+    *)      dash_channel="Stable" ;;
+  esac
+
+  local response
+  response="$(fetch "https://chromiumdash.appspot.com/fetch_releases?channel=${dash_channel}&platform=Linux&num=1")" || return 1
+  echo "$response" | jq -r '.[0].version // empty'
+}
+
 # Fetches the Microsoft Edge version from their Linux RPM repository metadata.
 #
 # Why this is more complex than a simple API call:
@@ -1039,6 +1063,46 @@ get_flutter_version() {
     | sed -E 's/^### \[?([0-9]+\.[0-9]+\.[0-9]+).*/\1/'
 }
 
+# Fetches Vivaldi Desktop versions from official Vivaldi web sources.
+#
+# Channels:
+#   stable   → parses "Stable - X.Y (A.B)" from desktop snapshots page,
+#              emits X.Y.A.B (e.g., 7.8.3925.74)
+#   snapshot → parses latest Linux x86_64 RPM snapshot URL from Vivaldi RSS,
+#              emits full version X.Y.Z.W (e.g., 7.9.3963.3)
+get_vivaldi_version() {
+  local channel="${1:-stable}"
+  local url="${2:-}"
+  local page version
+
+  case "$channel" in
+    stable)
+      [[ -z "$url" ]] && url="https://vivaldi.com/blog/desktop/snapshots/"
+      log_debug "get_vivaldi_version(stable): Fetching $url"
+      page="$(fetch "$url")" || { log_debug "Failed to fetch Vivaldi stable page"; return 1; }
+      version="$(echo "$page" \
+        | tr '\n' ' ' \
+        | sed -nE 's/.*Stable[[:space:]]*-[[:space:]]*([0-9]+\.[0-9]+)[[:space:]]*\(([0-9]+\.[0-9]+)\).*/\1.\2/p' \
+        | head -1)"
+      echo "$version"
+      ;;
+    snapshot)
+      [[ -z "$url" ]] && url="https://vivaldi.com/feed/"
+      log_debug "get_vivaldi_version(snapshot): Fetching $url"
+      page="$(fetch "$url")" || { log_debug "Failed to fetch Vivaldi snapshot feed"; return 1; }
+      version="$(echo "$page" \
+        | grep -oE 'vivaldi-snapshot-[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+-1\.x86_64\.rpm' \
+        | head -1 \
+        | sed -E 's/^vivaldi-snapshot-([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)-1\.x86_64\.rpm$/\1/')"
+      echo "$version"
+      ;;
+    *)
+      log_debug "get_vivaldi_version: Unsupported channel '$channel'"
+      echo ""
+      ;;
+  esac
+}
+
 # ============================================================================
 # Main Version Detection Dispatcher
 # ============================================================================
@@ -1128,6 +1192,7 @@ fetch_upstream_version_for_pkg() {
       fi
       ;;
     chrome)               get_chrome_version_json "$channel" ;;
+    chromium)             get_chromium_version_json "$channel" ;;
     edge)                 get_edge_version "$url" ;;
     vscode)               get_vscode_version ;;
     1password-cli2)       get_1password_cli2_version_json "$url" ;;
@@ -1156,6 +1221,7 @@ fetch_upstream_version_for_pkg() {
       [[ -z "$package" ]] && { log_debug "snap: No 'package' field for $pkg"; echo ""; return 0; }
       get_snap_version "$package" "$snap_channel"
       ;;
+    vivaldi) get_vivaldi_version "$channel" "$url" ;;
     flutter) get_flutter_version ;;
     manual)  echo "" ;;  # intentionally unversioned; maintained by hand
     "")      log_debug "Empty type for $pkg, treating as manual"; echo "" ;;
