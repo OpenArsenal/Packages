@@ -1,0 +1,18 @@
+pkgbase = mise
+	pkgdesc = The front-end to your dev env
+	pkgver = 2026.3.1
+	pkgrel = 1
+	url = https://github.com/jdx/mise
+	arch = x86_64
+	license = MIT
+	makedepends = cargo
+	optdepends = usage: completion support
+	provides = mise
+	conflicts = rtx
+	conflicts = rtx-bin
+	replaces = rtx
+	options = !lto
+	source = mise-2026.3.1.tar.gz::https://github.com/jdx/mise/archive/v2026.3.1.tar.gz
+	sha512sums = 023cc8c5b9bb27d5446a96c7ae615d8faf99ec030224903811c8327585129dff043d8727f0a69c18921f2dc7855b59270946b694360af5c9f4f5dfad647bf11d
+
+pkgname = mise
