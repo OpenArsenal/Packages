@@ -1490,10 +1490,17 @@ parse_args() {
 # Return value convention (inverse of what you might expect):
 #   0  the package HAD something to do (update available or update applied)
 #   1  nothing to do (up to date, manual, VCS, error, etc.)
+#   2  hard failure while checking/updating this package
 #
 # This is intentional: check_all_packages uses `if check_single_package; then
 # ((count++))` to count actionable packages. Returning 0 for "action taken"
 # matches bash's success=0 convention while also being the natural counting signal.
+#
+# Why code 2 exists:
+#   For direct/specific-package runs, external task runners (e.g. mise) treat
+#   any final non-zero process exit as a failure. We keep return 1 for internal
+#   "no action" counting semantics, and reserve return 2 for true failures so
+#   main() can convert no-action runs to exit 0 while still surfacing errors.
 check_single_package() {
   local pkg="$1"
   local pkg_dir="${PKG_DIR:-packages}/$pkg"
@@ -1502,7 +1509,7 @@ check_single_package() {
   if [[ ! -d "$pkg_dir" || ! -f "$pkgbuild" ]]; then
     [[ "$LIST_OUTDATED" != "true" && "$OUTPUT_JSON" != "true" ]] && \
       log_error "$pkg: Directory or PKGBUILD not found"
-    return 1
+    return 2
   fi
 
   local has_feed="false"
@@ -1511,7 +1518,7 @@ check_single_package() {
   if [[ "$has_feed" != "true" ]]; then
     [[ "$LIST_OUTDATED" != "true" && "$OUTPUT_JSON" != "true" ]] && \
       log_warning "$pkg: Not found in feeds.json"
-    return 1
+    return 2
   fi
 
   local type is_manual="false" is_vcs="false"
@@ -1572,7 +1579,7 @@ check_single_package() {
           return 0  # action taken
         else
           log_error "$pkg: Failed to update PKGBUILD"
-          return 1
+          return 2
         fi
       else
         log_info "$pkg: ${current:-n/a} → $upstream_display (update available)"
@@ -1584,7 +1591,7 @@ check_single_package() {
     MANUAL)  log_info "$pkg: Manual package, skipping version check";                  return 1 ;;
     VCS)     [[ -n "$upstream" ]] && log_info "$pkg: VCS package (stable: $upstream)"; return 1 ;;
     UNKNOWN) log_warning "$pkg: Could not detect remote version";                      return 1 ;;
-    *)       return 1 ;;
+    *)       return 2 ;;
   esac
 }
 
@@ -1666,12 +1673,24 @@ main() {
 
   if [[ ${#SPECIFIC_PACKAGES[@]} -gt 0 ]]; then
     # Named packages on the command line: check only those, in the order given.
+    # check_single_package returns:
+    #   0 = actionable update, 1 = no action, 2 = hard failure.
+    # For CLI/task-runner UX, a run with only "no action" results should still
+    # exit 0; otherwise tools like mise report a false failure. Only hard
+    # failures should make the process exit non-zero.
+    local had_errors=0 rc=0
     for pkg in "${SPECIFIC_PACKAGES[@]}"; do
       check_single_package "$pkg"
+      rc=$?
+      [[ "$rc" -eq 2 ]] && had_errors=1
     done
+
+    [[ "$had_errors" -eq 1 ]] && exit 1
+    exit 0
   else
     # No filter: check everything in feeds.json.
-    check_all_packages
+    check_all_packages || exit 1
+    exit 0
   fi
 }
 
