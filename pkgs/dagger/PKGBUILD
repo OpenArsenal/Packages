@@ -10,7 +10,7 @@ url="https://dagger.io"
 license=('Apache-2.0')
 
 depends=('glibc')
-makedepends=('go')
+makedepends=('go' 'git')
 options=('!lto' '!debug')
 
 # Dagger runs an engine as a container; you need a container runtime available.
