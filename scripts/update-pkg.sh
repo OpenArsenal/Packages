@@ -559,12 +559,17 @@ github_latest_release_tag_filtered() {
 #   thousands of tags for every version series). When we only want tags
 #   matching "v3.12.*", we'd have to fetch and discard most of them.
 #   The matching-refs endpoint does server-side prefix filtering, returning
-#   only refs that START with the given prefix — far fewer network round trips
-#   and pages to paginate through.
+#   only refs that START with the given prefix — far fewer network round trips.
 #
 # API endpoint pattern:
 #   GET /repos/{owner}/{repo}/git/matching-refs/tags/{prefix}
 #   e.g., /git/matching-refs/tags/v3.12. → returns only v3.12.x tags
+#
+# IMPORTANT: Despite the presence of page/per_page query params in the API,
+# GitHub's matching-refs endpoint returns ALL matching refs in a single response
+# and ignores pagination parameters. This is fundamentally different from the
+# standard /tags endpoint which requires pagination. The endpoint is designed
+# for prefix-filtered lookups where the result set is expected to be bounded.
 #
 # The tradeoff: this API requires knowing the prefix in advance, which is why
 # feeds.json has an optional "tagPrefix" field. When absent, we fall back to
@@ -572,11 +577,9 @@ github_latest_release_tag_filtered() {
 github_matching_refs_tags() {
   local repo="${1:-}"
   local prefix="${2:-}"
-  local page="${3:-1}"
-  local per_page="${4:-100}"
   [[ -z "$repo" || -z "$prefix" ]] && return 1
-  log_debug "github_matching_refs_tags: repo=$repo prefix=$prefix page=$page"
-  fetch "https://api.github.com/repos/${repo}/git/matching-refs/tags/${prefix}?per_page=${per_page}&page=${page}"
+  log_debug "github_matching_refs_tags: repo=$repo prefix=$prefix (no pagination)"
+  fetch "https://api.github.com/repos/${repo}/git/matching-refs/tags/${prefix}"
 }
 
 # Fetches a single page of tags from the standard GitHub tags endpoint.
@@ -629,34 +632,22 @@ process_tag_to_version() {
   fi
 }
 
-# Paginates through ALL tags in a repo (or a prefix-filtered subset) and
-# outputs every version string that matches the configured filters.
-# The caller (pick_max_version_list) then selects the maximum from ALL of them.
+# Fetches the latest matching version from a repo's tags.
 #
-# Why collect all matching versions instead of stopping at the first?
-#   GitHub returns tags newest-first on the standard endpoint, but the
-#   matching-refs endpoint may not be strictly ordered. Collecting all and
-#   then picking the max via vercmp is more correct than assuming ordering.
-#
-# Two code paths based on whether tagPrefix is configured:
+# Strategy differs based on whether tagPrefix is configured:
 #
 #   With tagPrefix (e.g., "v3.12."):
-#     Uses the matching-refs API — server-side filtering before pagination.
+#     Uses the matching-refs API — server-side filtering, single request.
+#     Returns ALL matching refs, so we collect all and pick the max.
 #     Ideal for repos with many unrelated tag series (python/cpython has
 #     thousands of tags; we only want the 3.12.x series).
 #     Response shape: [{"ref": "refs/tags/v3.12.0", ...}]
-#     Tag name is in .ref, needs "refs/tags/" stripped.
 #
 #   Without tagPrefix:
-#     Uses the standard /tags endpoint — fetches all tags, applies regex locally.
-#     Works for repos with fewer tags or where the series can't be prefix-filtered.
+#     Uses the standard /tags endpoint — tags returned newest-first.
+#     OPTIMIZATION: Stop after finding the first matching version.
+#     No need to scan all 2000 tags when the latest match is on page 1-2.
 #     Response shape: [{"name": "v1.2.3", ...}]
-#     Tag name is in .name directly.
-#
-# Pagination stops when:
-#   - A page comes back empty (count == 0): no more tags exist
-#   - A page has fewer than 100 tags (count < 100): it's the last page
-#   - We hit max_pages: safety limit to prevent infinite loops on huge repos
 github_tags_filtered_versions() {
   local repo="${1:-}"
   local tag_regex="${2:-}"
@@ -668,71 +659,79 @@ github_tags_filtered_versions() {
 
   log_debug "github_tags_filtered_versions: repo=$repo tag_regex=$tag_regex tag_prefix=$tag_prefix"
 
-  local page=1
-  local total_found=0
+  if [[ -n "$tag_prefix" ]]; then
+    # matching-refs path: single fetch, no pagination, collect all and pick max
+    local json
+    json="$(github_matching_refs_tags "$repo" "$tag_prefix" 2>/dev/null)" || return 0
 
-  while [[ "$page" -le "$max_pages" ]]; do
-    local json=""
-    local count=0
-
-    if [[ -n "$tag_prefix" ]]; then
-      json="$(github_matching_refs_tags "$repo" "$tag_prefix" "$page" 100 2>/dev/null)" || break
-
-      # Guard: matching-refs returns an array on success, but an error object
-      # on rate-limit or 404. Without this check, jq's .[].ref would iterate
-      # the object's string values and fail with "Cannot index string with string 'ref'".
-      if ! json_is_array "$json"; then
-        local api_err
-        api_err="$(json_api_error_message "$json")"
-        [[ -n "$api_err" ]] && log_debug "GitHub API error for $repo (matching-refs): $api_err"
-        break
-      fi
-
-      count="$(echo "$json" | jq -r 'length' 2>/dev/null || echo 0)"
-      log_debug "Page $page: $count refs from matching-refs"
-
-      if [[ "$count" -gt 0 ]]; then
-        # Extract .ref from each element, strip "refs/tags/" prefix to get
-        # the bare tag name, then pass each through process_tag_to_version.
-        #
-        # The `while IFS= read -r tag; do ... done` loop runs in a subshell
-        # because it's on the right side of a pipe. This is intentional —
-        # we're printing to stdout for the caller to collect, not building
-        # a variable. IFS= prevents word splitting on spaces in tag names.
-        echo "$json" | jq -r '.[].ref // empty' | sed 's|^refs/tags/||' | while IFS= read -r tag; do
-          process_tag_to_version "$tag" "$tag_regex" "$version_regex" "$version_format"
-        done
-      fi
-    else
-      json="$(github_list_tags_page "$repo" "$page" 100 2>/dev/null)" || break
-
-      # Same guard as above, but for the standard tags endpoint.
-      # The error here would be "Cannot index string with string 'name'"
-      # because tags objects have .name (not .ref like matching-refs).
-      if ! json_is_array "$json"; then
-        local api_err
-        api_err="$(json_api_error_message "$json")"
-        [[ -n "$api_err" ]] && log_debug "GitHub API error for $repo (tags): $api_err"
-        break
-      fi
-
-      count="$(echo "$json" | jq -r 'length' 2>/dev/null || echo 0)"
-      log_debug "Page $page: $count tags"
-
-      if [[ "$count" -gt 0 ]]; then
-        echo "$json" | jq -r '.[].name // empty' | while IFS= read -r tag; do
-          process_tag_to_version "$tag" "$tag_regex" "$version_regex" "$version_format"
-        done
-      fi
+    if ! json_is_array "$json"; then
+      local api_err
+      api_err="$(json_api_error_message "$json")"
+      [[ -n "$api_err" ]] && log_debug "GitHub API error for $repo (matching-refs): $api_err"
+      return 0
     fi
 
-    total_found=$((total_found + count))
-    [[ "$count" -eq 0 ]] && break       # empty page = no more data
-    [[ "$count" -lt 100 ]] && break     # partial page = last page
+    local count
+    count="$(echo "$json" | jq -r 'length' 2>/dev/null || echo 0)"
+    log_debug "matching-refs returned $count refs for prefix '$tag_prefix'"
+
+    if [[ "$count" -gt 0 ]]; then
+      # Collect all matching versions, then pick max (matching-refs may not be sorted)
+      echo "$json" | jq -r '.[].ref // empty' | sed 's|^refs/tags/||' | while IFS= read -r tag; do
+        process_tag_to_version "$tag" "$tag_regex" "$version_regex" "$version_format"
+      done
+    fi
+
+    log_debug "Total refs processed: $count"
+    return 0
+  fi
+
+  # Standard /tags path: paginate until we find a match, then stop
+  # Tags are returned newest-first, so first match = latest version
+  local page=1
+  local found_version=""
+
+  while [[ "$page" -le "$max_pages" && -z "$found_version" ]]; do
+    local json
+    json="$(github_list_tags_page "$repo" "$page" 100 2>/dev/null)" || break
+
+    if ! json_is_array "$json"; then
+      local api_err
+      api_err="$(json_api_error_message "$json")"
+      [[ -n "$api_err" ]] && log_debug "GitHub API error for $repo (tags): $api_err"
+      break
+    fi
+
+    local count
+    count="$(echo "$json" | jq -r 'length' 2>/dev/null || echo 0)"
+    log_debug "Page $page: $count tags"
+
+    [[ "$count" -eq 0 ]] && break
+
+    # Process tags on this page and capture first matching version
+    while IFS= read -r tag; do
+      [[ -z "$tag" ]] && continue
+      local version
+      version="$(process_tag_to_version "$tag" "$tag_regex" "$version_regex" "$version_format")"
+      if [[ -n "$version" ]]; then
+        found_version="$version"
+        log_debug "Found matching version '$version' on page $page, stopping pagination"
+        break
+      fi
+    done < <(echo "$json" | jq -r '.[].name // empty')
+
+    # Exit early if we found a match (tags are newest-first)
+    [[ -n "$found_version" ]] && break
+
+    # Continue pagination if no match yet
+    [[ "$count" -lt 100 ]] && break  # Last page
     page=$((page + 1))
   done
 
-  log_debug "Total tags processed across $page page(s): $total_found"
+  # Output the found version (if any)
+  [[ -n "$found_version" ]] && echo "$found_version"
+
+  log_debug "Checked $page page(s), found version: ${found_version:-none}"
 }
 
 # ============================================================================
