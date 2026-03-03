@@ -65,6 +65,7 @@ depends=(hunspell
          # Piper TTS build needs ONNX Runtime headers + lib + pkg-config.
          # Use the virtual so users can satisfy with cpu/cuda/rocm variants.
          onnxruntime
+         protobuf
          ffmpeg
          espeak-ng)
 makedepends=(cmake
@@ -120,12 +121,29 @@ prepare(){
 	python setup.py git_version
 	# Link translations to build dir
 	ln -sfT ../calibre-translations translations
-	# Desktop integration (e.g. enforce arch defaults)
-	# Use uppercase naming scheme, don't delete config files under fakeroot.
+  # Desktop integration (e.g. enforce arch defaults)
+  # Use uppercase naming scheme, don't delete config files under fakeroot.
 	sed -e "/import config_dir/,/os.rmdir(config_dir)/d" \
 		-e "s/'ctc-posml'/'text' not in mt and 'pdf' not in mt and 'xhtml'/" \
 		-e "s/^Name=calibre/Name=Calibre/g" \
 		-i  src/calibre/linux.py
+  # Python 3.14 + chroot can break multiprocessing pools in man page generation.
+  # Patch calibre to run man-page language jobs serially.
+  python - <<'PY'
+from pathlib import Path
+
+path = Path('setup/publish.py')
+text = path.read_text()
+old = """        if not parallel_build(jobs[1:], self.info, verbose=False):
+            raise SystemExit(1)
+"""
+new = """        for job in jobs[1:]:
+            subprocess.check_call(job.cmd)
+"""
+if old not in text:
+    raise SystemExit('Could not find man_pages parallel_build block to patch')
+path.write_text(text.replace(old, new, 1))
+PY
 	# Remove unneeded files
 	rm -f resources/$pkgname-portable.*
 }
@@ -140,6 +158,8 @@ check() {
 build() {
 	cd "${pkgname%-git}"
 	export LANG='en_US.UTF-8'
+  # Keep Python output unbuffered for clearer build logs.
+	export PYTHONUNBUFFERED=1
 	python setup.py build
 	python setup.py iso639
 	python setup.py iso3166
@@ -165,7 +185,6 @@ build() {
   fi
 
   python setup.py mathjax --system-mathjax --path-to-mathjax "${_mathjax_compat}"
-
 
 	python setup.py man_pages
 	python setup.py resources
