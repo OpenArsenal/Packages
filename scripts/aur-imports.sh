@@ -46,7 +46,7 @@ Usage: $0 [OPTIONS] <aur-url-or-name> [more...]
 
 OPTIONS:
   --feeds <path>      feeds.json path (default: $FEEDS_JSON)
-  --type <type>       feed type (manual|vcs|github-release|github-release-filtered|github-tags-filtered|chrome|edge|vscode|1password-cli2|lmstudio)
+  --type <type>       feed type (manual|vcs|github-release|github-release-filtered|github-tags-filtered|chrome|chromium|edge|vivaldi|vscode|1password-cli2|lmstudio)
   --repo <owner/repo> GitHub repo for github-* or vcs display (optional)
   --channel <name>    stable|any|prerelease (default: stable)
   --url <url>         for feed types that require explicit url (edge/1password-cli2/etc.)
