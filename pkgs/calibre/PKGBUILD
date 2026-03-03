@@ -69,6 +69,7 @@ depends=(hunspell
          # Piper TTS build needs ONNX Runtime headers + lib + pkg-config.
          # Use the virtual so users can satisfy with cpu/cuda/rocm variants.
          onnxruntime
+         protobuf
          ffmpeg
          espeak-ng)
 makedepends=(cmake

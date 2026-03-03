@@ -1,6 +1,6 @@
 pkgbase = calibre-git
 	pkgdesc = Ebook management application
-	pkgver = 9.2.1.r62.g103bf48d66
+	pkgver = 9.4.0.r8.g043c181d56
 	pkgrel = 1
 	url = https://calibre-ebook.com
 	arch = x86_64
@@ -21,9 +21,6 @@ pkgbase = calibre-git
 	makedepends = sip
 	makedepends = xdg-utils
 	makedepends = python-sphinx
-	makedepends = onnxruntime
-	makedepends = ffmpeg
-	makedepends = espeak-ng
 	depends = hunspell
 	depends = hyphen
 	depends = icu
@@ -78,12 +75,13 @@ pkgbase = calibre-git
 	depends = udisks2
 	depends = zstd
 	depends = onnxruntime
+	depends = protobuf
 	depends = ffmpeg
 	depends = espeak-ng
 	optdepends = poppler: required for converting pdf to html
 	optdepends = python-fonttools: required for font subset feature in epub editor
 	optdepends = speech-dispatcher: TTS support in the viewer
-	provides = calibre=9.2.1.r62.g103bf48d66
+	provides = calibre=9.4.0.r8.g043c181d56
 	conflicts = calibre
 	conflicts = calibre-common
 	conflicts = calibre-python3
