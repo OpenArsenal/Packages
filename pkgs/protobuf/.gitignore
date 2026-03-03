@@ -1,0 +1,7 @@
+*
+!.gitignore
+!.SRCINFO
+!PKGBUILD
+!*.patch
+!*.toml
+!LICENSE
