@@ -10,11 +10,18 @@ set -uo pipefail
 #   ./scripts/aur-imports.sh somepkg --infer
 #
 # Notes:
+# - --infer is enabled by default (use --no-infer to disable).
 # - Default feed type is "manual" unless inference finds a GitHub repo.
 # - The updater script treats feeds.json as authoritative.
 
 declare -r SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 declare -r PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# Prefer mise env vars when present, with non-mise fallbacks.
+: "${PKGBUILDS_ROOT:=${PROJECT_ROOT}}"
+: "${AURDEST:=${PKGBUILDS_ROOT}}"
+: "${FEEDS_JSON:=${PKGBUILDS_ROOT}/feeds.json}"
+: "${PKG_DIR:=${AURDEST}/pkgs}"
 
 declare -r RED='\033[0;31m'
 declare -r GREEN='\033[0;32m'
@@ -42,22 +49,28 @@ check_deps() {
 
 show_usage() {
   cat <<EOF
-Usage: $0 [OPTIONS] <aur-url-or-name> [more...]
+Usage: $0 [OPTIONS] <package-url-or-name> [more...]
 
 OPTIONS:
   --feeds <path>      feeds.json path (default: $FEEDS_JSON)
+  --source <src>      package source (auto|aur|archlinux, default: auto)
   --type <type>       feed type (manual|vcs|github-release|github-release-filtered|github-tags-filtered|chrome|chromium|edge|vivaldi|vscode|1password-cli2|lmstudio)
   --repo <owner/repo> GitHub repo for github-* or vcs display (optional)
   --channel <name>    stable|any|prerelease (default: stable)
   --url <url>         for feed types that require explicit url (edge/1password-cli2/etc.)
-  --infer             attempt to infer GitHub repo from PKGBUILD (recommended)
+  --infer             attempt to infer GitHub repo from PKGBUILD (default: enabled)
+  --no-infer          disable inference and use explicit/manual feed config
+  -p, --extra <pkg>   add an extra package/url to import (repeatable)
   --force             overwrite existing directory
   -h, --help          help
 
 Examples:
-  $0 google-chrome-canary-bin --infer
-  $0 https://aur.archlinux.org/kurtosis-cli-bin.git --infer
+  $0 google-chrome-canary-bin
+  $0 https://aur.archlinux.org/kurtosis-cli-bin.git
+  $0 --source archlinux protobuf
+  $0 https://archlinux.org/packages/extra/x86_64/protobuf/
   $0 somepkg --type manual
+  $0 --force alpaca --extra github-cli --extra vesktop-git
 EOF
 }
 
@@ -66,15 +79,88 @@ aur_url_from_name() {
   echo "https://aur.archlinux.org/${name}.git"
 }
 
-aur_name_from_url_or_name() {
+archlinux_url_from_name() {
+  local name="$1"
+  echo "https://gitlab.archlinux.org/archlinux/packaging/packages/${name}.git"
+}
+
+resolve_source_for_input() {
   local input="$1"
+  local selected_source="$2"
+
+  if [[ "$selected_source" != "auto" ]]; then
+    echo "$selected_source"
+    return 0
+  fi
+
+  if [[ "$input" =~ ^https?://archlinux\.org/packages/ ]] \
+    || [[ "$input" =~ ^https?://gitlab\.archlinux\.org/archlinux/packaging/packages/ ]]; then
+    echo "archlinux"
+    return 0
+  fi
+
+  echo "aur"
+}
+
+pkg_name_from_input() {
+  local input="$1"
+  local source="$2"
+
+  if [[ "$source" == "archlinux" ]]; then
+    if [[ "$input" =~ ^https?://archlinux\.org/packages/[^/]+/[^/]+/([^/]+)/?$ ]]; then
+      echo "${BASH_REMATCH[1]}"
+      return 0
+    fi
+
+    if [[ "$input" =~ ^https?://gitlab\.archlinux\.org/archlinux/packaging/packages/([^/?#]+)(\.git)?/?$ ]]; then
+      echo "${BASH_REMATCH[1]}"
+      return 0
+    fi
+  fi
+
   if [[ "$input" == http*://* ]]; then
-    local base="${input##*/}"
+    local clean="${input%%\?*}"
+    clean="${clean%%#*}"
+    clean="${clean%/}"
+    local base="${clean##*/}"
     base="${base%.git}"
     echo "$base"
     return 0
   fi
+
   echo "$input"
+}
+
+clone_url_from_input() {
+  local input="$1"
+  local source="$2"
+  local pkg="$3"
+
+  if [[ "$source" == "aur" ]]; then
+    if [[ "$input" == http*://* ]]; then
+      echo "$input"
+    else
+      aur_url_from_name "$input"
+    fi
+    return 0
+  fi
+
+  # archlinux source
+  if [[ "$input" =~ ^https?://gitlab\.archlinux\.org/archlinux/packaging/packages/ ]]; then
+    local arch_url="${input%/}"
+    if [[ "$arch_url" != *.git ]]; then
+      arch_url="${arch_url}.git"
+    fi
+    echo "$arch_url"
+    return 0
+  fi
+
+  if [[ "$input" =~ ^https?://archlinux\.org/packages/ ]]; then
+    archlinux_url_from_name "$pkg"
+    return 0
+  fi
+
+  archlinux_url_from_name "$input"
 }
 
 infer_github_repo_from_pkgbuild() {
@@ -157,6 +243,16 @@ ensure_feeds_json_exists() {
 JSON
 }
 
+ensure_pkg_dir_exists() {
+  local pkg_dir="$1"
+  if [[ -d "$pkg_dir" ]]; then
+    return 0
+  fi
+
+  log_warning "PKG_DIR not found; creating: $pkg_dir"
+  mkdir -p "$pkg_dir"
+}
+
 feeds_upsert_pkg() {
   local feeds_json="$1"
   local name="$2"
@@ -204,47 +300,93 @@ feeds_upsert_pkg() {
   return 0
 }
 
-clone_aur_pkg() {
+clone_pkg() {
   local input="$1"
   local pkg="$2"
-  local force="$3"
+  local source="$3"
+  local force="$4"
 
   local url
-  if [[ "$input" == http*://* ]]; then
-    url="$input"
+  url="$(clone_url_from_input "$input" "$source" "$pkg")"
+
+  if [[ "$source" == "archlinux" ]]; then
+    log_info "Using source: Arch Linux packaging"
   else
-    url="$(aur_url_from_name "$input")"
+    log_info "Using source: AUR"
   fi
 
   local dest="$PKG_DIR/$pkg"
+  local had_existing="false"
+  local tmp_clone=""
+  local backup=""
 
   if [[ -d "$dest" ]]; then
+    had_existing="true"
     if [[ "$force" == "true" ]]; then
-      log_warning "Removing existing directory: $dest"
-      rm -rf "$dest"
+      log_warning "Replacing existing directory safely: $dest"
     else
       log_error "Directory already exists: $dest (use --force to overwrite)"
       return 1
     fi
   fi
 
-  log_info "Cloning: $url -> $dest"
-  git clone --depth 1 "$url" "$dest" >/dev/null 2>&1
+  tmp_clone="$(mktemp -d "${PKG_DIR}/.${pkg}.clone.XXXXXX")"
+  if [[ -z "$tmp_clone" || ! -d "$tmp_clone" ]]; then
+    log_error "Failed to create temporary clone directory for $pkg"
+    return 1
+  fi
 
-  if [[ ! -d "$dest" ]]; then
+  log_info "Cloning: $url -> $tmp_clone"
+  if ! git clone --depth 1 "$url" "$tmp_clone" >/dev/null 2>&1; then
+    rm -rf "$tmp_clone" >/dev/null 2>&1 || true
     log_error "Clone failed: $url"
     return 1
   fi
 
-  # Strip git metadata (you requested this).
-  rm -rf "$dest/.git" >/dev/null 2>&1 || true
+  if [[ ! -f "$tmp_clone/PKGBUILD" ]]; then
+    local file_count
+    file_count="$(find "$tmp_clone" -mindepth 1 -maxdepth 1 ! -name '.git' | wc -l | tr -d ' ')"
 
-  if [[ ! -f "$dest/PKGBUILD" ]]; then
-    log_error "No PKGBUILD found in $dest (unexpected for AUR)."
+    rm -rf "$tmp_clone" >/dev/null 2>&1 || true
+
+    if [[ "$file_count" == "0" ]]; then
+      log_error "AUR repo appears empty for '$pkg' (no commits/checkout). It may not be a usable AUR package."
+    else
+      log_error "No PKGBUILD found in cloned source for '$pkg' (unexpected for AUR)."
+    fi
+
     return 1
   fi
 
-  log_success "Imported AUR package into: $dest"
+  # Strip git metadata (you requested this).
+  rm -rf "$tmp_clone/.git" >/dev/null 2>&1 || true
+
+  if [[ "$had_existing" == "true" ]]; then
+    backup="${PKG_DIR}/.${pkg}.backup.$$.$RANDOM"
+
+    if ! mv "$dest" "$backup"; then
+      rm -rf "$tmp_clone" >/dev/null 2>&1 || true
+      log_error "Failed to prepare existing directory for replacement: $dest"
+      return 1
+    fi
+
+    if ! mv "$tmp_clone" "$dest"; then
+      log_error "Failed to place new package directory for $pkg; restoring previous copy"
+      mv "$backup" "$dest" >/dev/null 2>&1 || true
+      rm -rf "$tmp_clone" >/dev/null 2>&1 || true
+      return 1
+    fi
+
+    rm -rf "$backup" >/dev/null 2>&1 || true
+  else
+    if ! mv "$tmp_clone" "$dest"; then
+      rm -rf "$tmp_clone" >/dev/null 2>&1 || true
+      log_error "Failed to move cloned package into destination: $dest"
+      return 1
+    fi
+  fi
+
+  log_success "Imported package into: $dest"
 }
 
 declare FEEDS_JSON="$FEEDS_JSON"
@@ -252,18 +394,31 @@ declare TYPE=""
 declare REPO=""
 declare CHANNEL="stable"
 declare URL=""
-declare INFER="false"
+declare SOURCE="auto"
+declare INFER="true"
 declare FORCE="false"
 declare -a INPUTS=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --feeds) FEEDS_JSON="$2"; shift 2 ;;
+    --source)
+      case "$2" in
+        auto|aur|archlinux) SOURCE="$2" ;;
+        *)
+          log_error "Invalid --source value: $2 (use: auto|aur|archlinux)"
+          exit 1
+          ;;
+      esac
+      shift 2
+      ;;
     --type) TYPE="$2"; shift 2 ;;
     --repo) REPO="$2"; shift 2 ;;
     --channel) CHANNEL="$2"; shift 2 ;;
     --url) URL="$2"; shift 2 ;;
     --infer) INFER="true"; shift ;;
+    --no-infer) INFER="false"; shift ;;
+    -p|--extra) INPUTS+=("$2"); shift 2 ;;
     --force) FORCE="true"; shift ;;
     -h|--help) show_usage; exit 0 ;;
     -*)
@@ -280,6 +435,7 @@ done
 
 main() {
   check_deps
+  ensure_pkg_dir_exists "$PKG_DIR"
   ensure_feeds_json_exists "$FEEDS_JSON"
 
   if [[ ${#INPUTS[@]} -eq 0 ]]; then
@@ -287,13 +443,14 @@ main() {
     exit 1
   fi
 
-  local input pkg pkgdir pkgb inferred_repo inferred_type
+  local input pkg pkgdir pkgb inferred_repo inferred_type source
   for input in "${INPUTS[@]}"; do
-    pkg="$(aur_name_from_url_or_name "$input")"
+    source="$(resolve_source_for_input "$input" "$SOURCE")"
+    pkg="$(pkg_name_from_input "$input" "$source")"
     pkgdir="$PKG_DIR/$pkg"
     pkgb="$pkgdir/PKGBUILD"
 
-    clone_aur_pkg "$input" "$pkg" "$FORCE" || exit 1
+    clone_pkg "$input" "$pkg" "$source" "$FORCE" || exit 1
 
     inferred_repo=""
     inferred_type="$TYPE"
