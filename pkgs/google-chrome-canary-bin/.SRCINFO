@@ -1,6 +1,6 @@
 pkgbase = google-chrome-canary-bin
 	pkgdesc = The popular web browser by Google (Canary Channel)
-	pkgver = 147.0.7715.0
+	pkgver = 147.0.7716.0
 	pkgrel = 1
 	url = https://www.google.com/chrome
 	install = google-chrome-canary-bin.install
@@ -22,10 +22,10 @@ pkgbase = google-chrome-canary-bin
 	replaces = google-chrome-canary
 	options = !emptydirs
 	options = !strip
-	source = https://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-canary/google-chrome-canary_147.0.7715.0-1_amd64.deb
+	source = https://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-canary/google-chrome-canary_147.0.7716.0-1_amd64.deb
 	source = eula_text.html
 	source = google-chrome-canary.sh
-	sha512sums = 89d476c996165149596fe4f533c99fafa27fe109cd82004f07d1a52348de870696d703ec71523e6aadf5dc8e7d06f641e4d99dee7145f2e617b406fc1e31f715
+	sha512sums = 6defd6a6b361bf451dc4a432698fadaba6da90732627dc2959337347498e9c6ca93e8bbb95df869579858e041567ca9697aad28d6b63dd4ee9fbbc62e1ff5627
 	sha512sums = a225555c06b7c32f9f2657004558e3f996c981481dbb0d3cd79b1d59fa3f05d591af88399422d3ab29d9446c103e98d567aeafe061d9550817ab6e7eb0498396
 	sha512sums = 9579a42fbcbc8c592a6f1c625735768287a74d5081d5e2486a5ea11ee41b1d9f91bf60c7c816a9f433e9bf92724262a4c986408a04bf7f13fec8fca4600c6b3a
 
