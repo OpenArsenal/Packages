@@ -173,9 +173,9 @@ package() {
   # Allow newer host compilers (user choice; not officially supported by NVIDIA).
   # Remove the hard failure checks.
   sed -i "/.*unsupported GNU version.*/d" \
-    "${pkgdir}/opt/cuda/targets/x86_64-linux/include/crt/host_config.h"
+    "${pkgdir}/opt/cuda/targets/${CARCH}-linux/include/crt/host_config.h"
   sed -i "/.*unsupported clang version.*/d" \
-    "${pkgdir}/opt/cuda/targets/x86_64-linux/include/crt/host_config.h"
+    "${pkgdir}/opt/cuda/targets/${CARCH}-linux/include/crt/host_config.h"
 
   # Fix Makefile paths to CUDA install location (spaces/newlines safe).
   while IFS= read -r -d '' f; do
@@ -189,7 +189,7 @@ package() {
   patch -p1 -d "${pkgdir}" -i "${srcdir}/fix-glibc242.patch" --no-backup-if-mismatch
 
   # Fix for https://github.com/NVIDIA/cccl/issues/4967
-  patch -p2 -d "${pkgdir}/opt/cuda/targets/x86_64-linux" -i "${srcdir}/4972.patch" --no-backup-if-mismatch
+  patch -p2 -d "${pkgdir}/opt/cuda/targets/${CARCH}-linux" -i "${srcdir}/4972.patch" --no-backup-if-mismatch
 }
 
 # vim:set ts=2 sw=2 et:

@@ -100,7 +100,7 @@ build() {
     
     # Check for CCCL headers (required for cuda-12.9)
     if [[ "$_cuda_variant" == "cuda12" ]]; then
-      if [[ ! -d "/opt/cuda/targets/x86_64-linux/include/thrust" ]]; then
+      if [[ ! -d "/opt/cuda/targets/${CARCH}-linux/include/thrust" ]]; then
         printf '==> ERROR: %s\n' "CCCL headers are missing from cuda-12.9 installation!" >&2
         printf '\n' >&2
         printf '==> ERROR: %s\n' "The cuda-12.9 AUR package is missing required CCCL headers." >&2
@@ -108,9 +108,9 @@ build() {
         printf '\n' >&2
         printf '==> ERROR: %s\n' "  cd /tmp" >&2
         printf '==> ERROR: %s\n' "  git clone --depth 1 --branch v2.9.0 https://github.com/NVIDIA/cccl.git" >&2
-        printf '==> ERROR: %s\n' "  sudo cp -r cccl/thrust /opt/cuda/targets/x86_64-linux/include/" >&2
-        printf '==> ERROR: %s\n' "  sudo cp -r cccl/cub /opt/cuda/targets/x86_64-linux/include/" >&2
-        printf '==> ERROR: %s\n' "  sudo cp -r cccl/libcudacxx /opt/cuda/targets/x86_64-linux/include/" >&2
+        printf '==> ERROR: %s\n' "  sudo cp -r cccl/thrust /opt/cuda/targets/${CARCH}-linux/include/" >&2
+        printf '==> ERROR: %s\n' "  sudo cp -r cccl/cub /opt/cuda/targets/${CARCH}-linux/include/" >&2
+        printf '==> ERROR: %s\n' "  sudo cp -r cccl/libcudacxx /opt/cuda/targets/${CARCH}-linux/include/" >&2
         printf '\n' >&2
         printf '==> ERROR: %s\n' "Then rebuild this package." >&2
         return 1

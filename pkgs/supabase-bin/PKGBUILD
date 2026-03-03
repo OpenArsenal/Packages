@@ -14,7 +14,7 @@ depends=(glibc)
 provides=(supabase)
 conflicts=(supabase supabase-git)
 
-source_x86_64=("supabase-$pkgver-x86_64.tar.gz::$_url/releases/download/v$pkgver/supabase_linux_amd64.tar.gz")
+source_x86_64=("supabase-$pkgver-${CARCH}.tar.gz::$_url/releases/download/v$pkgver/supabase_linux_amd64.tar.gz")
 source_aarch64=("supabase-$pkgver-aarch64.tar.gz::$_url/releases/download/v$pkgver/supabase_linux_arm64.tar.gz")
 
 sha256sums_aarch64=('b551c2f8e03715be428d2592765200a9e371168fc36ec2646a84ecc530d3120e')
