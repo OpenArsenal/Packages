@@ -1,6 +1,6 @@
 # Maintainer: Okiki <okiki@thunderstrike.co>
 pkgname=omnictl-bin
-pkgver='1.5.7'
+pkgver='1.5.8'
 pkgrel=1
 pkgdesc="CLI for Omni - SaaS-simple deployment of Kubernetes on your own hardware"
 arch=('x86_64' 'aarch64')
@@ -16,8 +16,8 @@ source_aarch64=(
   "omnictl-linux-arm64-v${pkgver}::https://github.com/siderolabs/omni/releases/download/v${pkgver}/omnictl-linux-arm64"
 )
 
-sha256sums_x86_64=('07bbcaca2ca30c42be9bc877bd75d4f1a613ddf67d420083e058e185a378e0f5')
-sha256sums_aarch64=('31e243e40ae153cf1ff924004e0edc116d1962aad81b7d21df4068f05acbea65')
+sha256sums_x86_64=('84cc2faa51d9d76fd22c606c138b20a65967a56db79b5026892a1833274da055')
+sha256sums_aarch64=('05509fd446ffd5a6b1b279b2bf61c611e2e38906f92070c4e91ba669dbd5a4bb')
 
 # Don't strip the prebuilt binary
 options=(!strip)
