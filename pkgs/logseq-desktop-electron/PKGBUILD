@@ -8,7 +8,7 @@
 _pkgname="logseq-desktop-electron"
 pkgname="$_pkgname"
 pkgver=0.10.15
-pkgrel=3
+pkgrel=4
 pkgdesc="Privacy-first, open-source platform for knowledge sharing and management (built from source; system Electron)"
 url="https://github.com/logseq/logseq"
 license=('AGPL-3.0-or-later')
@@ -27,6 +27,7 @@ makedepends=(
   'nvm'
   'patchelf'
   'python-setuptools'
+  'yarn'
 )
 
 _pkgsrc="logseq-$pkgver"
@@ -59,7 +60,6 @@ build() (
 
   cd "$_pkgsrc"
 
-  npm install -g yarn
   yarn install --force
 
   yarn gulp:build

@@ -8,7 +8,7 @@
 _pkgname="logseq-desktop"
 pkgname="$_pkgname"
 pkgver=0.10.15
-pkgrel=4
+pkgrel=5
 pkgdesc="Privacy-first, open-source platform for knowledge sharing and management"
 url="https://github.com/logseq/logseq"
 license=('AGPL-3.0-or-later')
@@ -24,6 +24,7 @@ makedepends=(
   'nvm'
   'patchelf'
   'python-setuptools'
+  'yarn'
 )
 
 _pkgsrc="logseq-$pkgver"
@@ -58,7 +59,6 @@ build() (
 
   cd "$_pkgsrc"
 
-  npm install -g yarn
   yarn install --force
 
   # create and sync files to folder `static`
