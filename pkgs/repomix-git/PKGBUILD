@@ -2,7 +2,7 @@
 
 pkgname=repomix-git
 pkgver=1.12.0.r21.gbf4e45e
-pkgrel=1
+pkgrel=2
 pkgdesc="Pack a repository into a single AI-friendly file (CLI) (git)"
 arch=('any')
 url="https://repomix.com/"
@@ -33,15 +33,19 @@ build() {
 
   npm ci
   npm run build
+  npm pack --pack-destination "${srcdir}"
 }
 
 package() {
-  cd "${srcdir}/repomix"
+  cd "${srcdir}"
+
+  local pkg_tgz
+  pkg_tgz=$(printf '%s\n' repomix-*.tgz | tail -n1)
 
   npm install -g \
     --prefix "${pkgdir}/usr" \
     --omit=dev \
-    "${srcdir}/repomix"
+    "${srcdir}/${pkg_tgz}"
 
   install -Dm644 \
     "${pkgdir}/usr/lib/node_modules/repomix/LICENSE" \
