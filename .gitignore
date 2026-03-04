@@ -107,3 +107,4 @@ $RECYCLE.BIN/
 !repomix.config.json
 !.repomixignore
 repomix-output.xml
+.packages
