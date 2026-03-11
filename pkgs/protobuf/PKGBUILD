@@ -28,6 +28,7 @@ makedepends=(
   'cmake'
   'git'
   'gtest'
+  'python'
   'python-build'
   'python-installer'
   'python-setuptools'
@@ -37,6 +38,7 @@ makedepends=(
   'ruby-ffi-compiler'
   'ruby-rake'
   'ruby-rake-compiler'
+  'ruby-bigdecimal'
 )
 checkdepends=(
   python-pytest
