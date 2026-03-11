@@ -1,7 +1,7 @@
 # Maintainer: <you>
 pkgname=dagger-bin
 _pkgname=dagger
-pkgver='0.20.0'
+pkgver='0.20.1'
 pkgrel=1
 pkgdesc="An open-source runtime for composable workflows (prebuilt binary)"
 arch=('x86_64' 'aarch64' 'armv7h')
@@ -39,10 +39,10 @@ source_armv7h+=(
 )
 
 # We verify the binary tarball ourselves via checksums.txt in prepare().
-sha256sums=('d569fb3953850400332b4f429d65b1507d2421ba7f41e16fc4e81b7ed717594b')
-sha256sums_x86_64=('b32c20723f9f5121a7dfee50682e0032b25b997febb4811481cfce2074a88b02')
-sha256sums_aarch64=('f6c1390a070adc29e6f8e878a2dc2bf40885a5289bc1c0adab75c2fd84513005')
-sha256sums_armv7h=('a70ac003f5b1be85576af46878a58e18787d05acc55f3500ebb5c1c368266548')
+sha256sums=('26cbbcdc35da812e8b76f29390d020125bbf6c3f97535af2c12d0f3387bde675')
+sha256sums_x86_64=('012afa819a9d459389af34f1055c064dc117881080bf91dc31a6b4694f2bcf99')
+sha256sums_aarch64=('da4da814e0a37540c88bd107ea4667bcdae1480a6656088f41ecad18f02b6334')
+sha256sums_armv7h=('c7773a75a82a0efd54be36ef616076474b30e4146865c8c53f55acdd44661aef')
 
 prepare() {
   cd "${srcdir}"
