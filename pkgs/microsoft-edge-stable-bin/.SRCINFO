@@ -1,6 +1,6 @@
 pkgbase = microsoft-edge-stable-bin
 	pkgdesc = A browser that combines a minimal design with sophisticated technology to make the web faster, safer, and easier
-	pkgver = 145.0.3800.82
+	pkgver = 145.0.3800.97
 	pkgrel = 1
 	url = https://www.microsoftedgeinsider.com/en-us/download
 	arch = x86_64
@@ -25,9 +25,9 @@ pkgbase = microsoft-edge-stable-bin
 	replaces = microsoft-edge-stable
 	options = !strip
 	options = !zipman
-	source = https://packages.microsoft.com/yumrepos/edge/Packages/m/microsoft-edge-stable-145.0.3800.82-1.x86_64.rpm
+	source = https://packages.microsoft.com/yumrepos/edge/Packages/m/microsoft-edge-stable-145.0.3800.97-1.x86_64.rpm
 	source = microsoft-edge-stable.sh
-	sha256sums = b1a36dff5278d14fcf3e854d42575dbd5aee6cad224c01ba1fd2b91441de8e60
+	sha256sums = 38b989e1785ab5428f4d6e6c20426530d570f7ab04d5bc598aa2eef12e026d7e
 	sha256sums = dc3765d2de6520b13f105b8001aa0e40291bc9457ac508160b23eea8811e26af
 
 pkgname = microsoft-edge-stable-bin
