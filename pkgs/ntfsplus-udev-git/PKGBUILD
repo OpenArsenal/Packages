@@ -3,7 +3,7 @@
 
 pkgbase=ntfsplus-dkms-git
 pkgname=("$pkgbase" "ntfsplus-udev")
-pkgver=2026.02.12+241d3d9
+pkgver=2026.03.03+6f6beff
 pkgrel=1
 # epoch=1
 pkgdesc="A new NTFS driver for Linux promised to be better than NTFS3. Maintained out-of-tree. Backported to 5.15 LTS."
