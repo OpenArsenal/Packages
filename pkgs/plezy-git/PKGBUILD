@@ -2,7 +2,7 @@
 
 pkgname=plezy-git
 _pkgname=plezy
-pkgver=1.19.0.r11.g26ff55e
+pkgver=1.26.1.r6.gd4e9364d
 pkgrel=1
 pkgdesc="Modern Plex client built with Flutter (git)"
 arch=('x86_64')
