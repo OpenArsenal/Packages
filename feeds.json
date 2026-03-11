@@ -580,9 +580,16 @@
       "channel": "stable"
     },
     {
-      "name": "vivaldi-snapshot-ffmpeg-codecs",
-      "type": "manual",
-      "channel": "stable"
+      "name": "vivaldi",
+      "type": "vivaldi",
+      "channel": "stable",
+      "url": "https://vivaldi.com/blog/desktop/snapshots/"
+    },
+    {
+      "name": "vivaldi-ffmpeg-codecs",
+      "type": "vivaldi",
+      "channel": "stable",
+      "url": "https://vivaldi.com/blog/desktop/snapshots/"
     },
     {
       "name": "vivaldi-snapshot",
@@ -591,20 +598,27 @@
       "url": "https://vivaldi.com/feed/"
     },
     {
-      "name": "vivaldi",
+      "name": "vivaldi-snapshot-ffmpeg-codecs",
       "type": "vivaldi",
-      "channel": "stable",
-      "url": "https://vivaldi.com/blog/desktop/snapshots/"
-    },
-    {
-      "name": "vivaldi-ffmpeg-codecs",
-      "type": "manual",
-      "channel": "stable"
+      "channel": "snapshot",
+      "url": "https://vivaldi.com/feed/"
     },
     {
       "name": "protobuf",
       "type": "github-release",
       "repo": "protocolbuffers/protobuf",
+      "channel": "stable"
+    },
+    {
+      "name": "ayugram-desktop",
+      "type": "github-release",
+      "repo": "AyuGram/AyuGramDesktop",
+      "channel": "stable"
+    },
+    {
+      "name": "ayugram-desktop-git",
+      "type": "vcs",
+      "repo": "AyuGram/AyuGramDesktop",
       "channel": "stable"
     }
   ]

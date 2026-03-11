@@ -1332,6 +1332,14 @@ update_checksums() {
   ( cd "$pkg_dir" && updpkgsums )
 }
 
+# Regenerates .SRCINFO after PKGBUILD changes.
+# Uses makepkg's canonical formatter to avoid drift between PKGBUILD and
+# committed metadata.
+update_srcinfo() {
+  local pkg_dir="${1:-}"
+  ( cd "$pkg_dir" && makepkg --printsrcinfo > .SRCINFO )
+}
+
 # ============================================================================
 # Version Comparison & Status
 # ============================================================================
@@ -1575,6 +1583,11 @@ check_single_package() {
           else
             log_warning "$pkg: Failed to update checksums (run updpkgsums manually)"
           fi
+          if update_srcinfo "$pkg_dir"; then
+            log_success "$pkg: Regenerated .SRCINFO"
+          else
+            log_warning "$pkg: Failed to regenerate .SRCINFO (run makepkg --printsrcinfo > .SRCINFO manually)"
+          fi
           return 0  # action taken
         else
           log_error "$pkg: Failed to update PKGBUILD"
@@ -1658,6 +1671,7 @@ main() {
   command -v python3 >/dev/null 2>&1 || missing+=("python")
   command -v xmllint >/dev/null 2>&1 || missing+=("libxml2")
   [[ "$APPLY_UPDATES" == "true" ]] && ! command -v updpkgsums >/dev/null 2>&1 && missing+=("pacman-contrib")
+  [[ "$APPLY_UPDATES" == "true" ]] && ! command -v makepkg >/dev/null 2>&1 && missing+=("pacman")
 
   if [[ ${#missing[@]} -gt 0 ]]; then
     log_error "Missing dependencies: ${missing[*]}"
