@@ -1,13 +1,13 @@
 pkgbase = tessl-cli
 	pkgdesc = Tessl CLI (npm: @tessl/cli) for managing agent context/skills
-	pkgver = 0.69.0
+	pkgver = 0.71.0
 	pkgrel = 1
 	url = https://docs.tessl.io/
 	arch = any
 	license = custom
 	makedepends = npm
 	depends = nodejs
-	source = https://registry.npmjs.org/@tessl/cli/-/cli-0.69.0.tgz
-	sha256sums = ce9ff8cd47c0bd1e2713b2004bb4f558772d6971762f25cdb3259e3621e80ba5
+	source = https://registry.npmjs.org/@tessl/cli/-/cli-0.71.0.tgz
+	sha256sums = 9610dc3eb2d625d203ba82cb9f0ddbbb7b556f748dbd52eedb4b3e2e73f13841
 
 pkgname = tessl-cli
