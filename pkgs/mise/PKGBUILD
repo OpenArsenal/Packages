@@ -1,43 +1,88 @@
 # Maintainer: Okiki <okiki@thunderstrike.co>
 
-pkgname=mise
-pkgver='2026.3.1'
+pkgname='mise'
+pkgver='2026.3.7'
 pkgrel=1
 pkgdesc='The front-end to your dev env'
 arch=('x86_64')
 url='https://github.com/jdx/mise'
 license=('MIT')
-makedepends=('cargo')
+depends=(
+  bzip2
+  libgcc
+  glibc
+  openssl
+)
+makedepends=(
+  cargo
+  clang
+  cmake
+)
 provides=('mise')
-conflicts=('rtx' 'rtx-bin')
-replaces=('rtx')
-options=('!lto')
-source=("$pkgname-$pkgver.tar.gz::https://github.com/jdx/$pkgname/archive/v$pkgver.tar.gz")
-sha512sums=('023cc8c5b9bb27d5446a96c7ae615d8faf99ec030224903811c8327585129dff043d8727f0a69c18921f2dc7855b59270946b694360af5c9f4f5dfad647bf11d')
-optdepends=('usage: completion support')
+optdepends=(
+  'bash-completion: bash completion support'
+  'usage: completion support'
+)
+conflicts=(
+  rtx
+  rtx-bin
+)
+replaces=(
+  rtx
+)
+options=(
+  '!emptydirs'
+  '!lto'
+)
+source=("${url}/archive/v${pkgver}/${pkgname}-${pkgver}.tar.gz")
+sha512sums=('5d57126921acf78b8cf494714bc2b9ee066e9c541bd5e232d78f761e987d7f27c085259742a49ddf98fa5c11225a3382a7ef71614cbb13fa3c0189018d5bc6d8')
+b2sums=('bfa24ae007ca834c410f2e710a0df57e6613b250021a52765cbdebf8006671cc00fb235431d5354f5abbdb13dbcdac04d268a99e052399839ff93f1af5074e9d')
 
 prepare() {
-  cd "$srcdir/$pkgname-$pkgver"
-  cargo fetch --locked --target "$CARCH-unknown-linux-gnu"
+  cd "${pkgname}-${pkgver}"
+
+  cargo fetch --locked --target "$(rustc --print host-tuple)"
 }
 
 build() {
-  cd "$srcdir/$pkgname-$pkgver"
-  export RUSTUP_TOOLCHAIN=stable
-  export CARGO_TARGET_DIR=target
-  cargo build --frozen --release
-}
+  cd "${pkgname}-${pkgver}"
 
-package() {
-  cd "$srcdir/$pkgname-$pkgver"
-  install -Dm755 target/release/mise "$pkgdir/usr/bin/mise"
-  install -Dm644 man/man1/mise.1 "$pkgdir/usr/share/man/man1/mise.1"
-  install -Dm644 completions/mise.bash "$pkgdir/usr/share/bash-completion/completions/mise"
-  install -Dm644 completions/mise.fish "$pkgdir/usr/share/fish/vendor_completions.d/mise.fish"
-  install -Dm644 completions/_mise "$pkgdir/usr/share/zsh/site-functions/_mise"
+  export OPENSSL_NO_VENDOR=true
+
+  cargo build --frozen --release --all-features
 }
 
 check() {
-  cd "$srcdir/$pkgname-$pkgver"
-  ./target/release/mise --version
+  cd "${pkgname}-${pkgver}"
+
+  export OPENSSL_NO_VENDOR=true
+  export MISE_EXPERIMENTAL=1
+
+  cargo test --frozen --all-features
+
+  unset MISE_EXPERIMENTAL
 }
+
+package() {
+  cd "${pkgname}-${pkgver}"
+
+  # package
+  install --verbose -D --mode=0755 "target/release/${pkgname}" --target-directory "${pkgdir}/usr/bin"
+
+  # disable self-update
+  install --verbose -D --mode=0644 /dev/null "${pkgdir}/usr/lib/mise/.disable-self-update"
+
+  # license
+  install --verbose -D --mode=0644 LICENSE --target-directory "${pkgdir}/usr/share/licenses/${pkgname}"
+
+  # docs
+  install --verbose -D --mode=0644 *.md --target-directory "${pkgdir}/usr/share/doc/${pkgname}"
+  install --verbose -D --mode=0644 man/man1/mise.1 --target-directory "${pkgdir}/usr/share/man/man1"
+
+  # completion support
+  install --verbose -D --mode=0644 completions/mise.bash "${pkgdir}/usr/share/bash-completion/completions/mise"
+  install --verbose -D --mode=0644 completions/mise.fish "${pkgdir}/usr/share/fish/vendor_completions.d/mise.fish"
+  install --verbose -D --mode=0644 completions/_mise "${pkgdir}/usr/share/zsh/site-functions/_mise"
+}
+
+# vim: tabstop=2 shiftwidth=2 expandtab:
