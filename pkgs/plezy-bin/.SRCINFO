@@ -1,6 +1,6 @@
 pkgbase = plezy-bin
 	pkgdesc = Modern Plex client built with Flutter (prebuilt binary)
-	pkgver = 1.24.1
+	pkgver = 1.26.1
 	pkgrel = 1
 	url = https://github.com/edde746/plezy
 	arch = x86_64
@@ -15,9 +15,9 @@ pkgbase = plezy-bin
 	options = !strip
 	source = plezy.desktop
 	sha256sums = b8e991c52d0c3b4a703d9232985c6ffd8bddee2120cba9743f4484a82008f050
-	source_x86_64 = plezy-bin-1.24.1-x86_64.tar.gz::https://github.com/edde746/plezy/releases/download/1.24.1/plezy-linux-x64.tar.gz
-	sha256sums_x86_64 = 044248cb0196f246569efc6a455cb2a8845b0eae36301d6268dcab4033922c2d
-	source_aarch64 = plezy-bin-1.24.1-aarch64.tar.gz::https://github.com/edde746/plezy/releases/download/1.24.1/plezy-linux-arm64.tar.gz
-	sha256sums_aarch64 = f6bba8371ac0bd86cd4f8fe995c92f8d91c6b92a5fda8e8c495082dd06f273ed
+	source_x86_64 = plezy-bin-1.26.1-x86_64.tar.gz::https://github.com/edde746/plezy/releases/download/1.26.1/plezy-linux-x64.tar.gz
+	sha256sums_x86_64 = 615d3df65fb8df6a6d559ffd40295af375d0cb9c2fc88ec9342e5a721c45de60
+	source_aarch64 = plezy-bin-1.26.1-aarch64.tar.gz::https://github.com/edde746/plezy/releases/download/1.26.1/plezy-linux-arm64.tar.gz
+	sha256sums_aarch64 = b58809621c0d0b5f0cc4bb12b85fd8215d2d3f1758fdd228a93ef3803bd239a0
 
 pkgname = plezy-bin
