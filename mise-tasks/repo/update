@@ -23,6 +23,30 @@ if [ "${#pkgs[@]}" -eq 0 ]; then
   exit 1
 fi
 
+declare -A newest_file
+declare -A newest_ver
+
 for pkg in "${pkgs[@]}"; do
-  repo-add "${args[@]}" "${REPO_DB:?REPO_DB not set}" "$pkg"
+  pkg_meta=$(pacman -Qp -- "$pkg")
+  pkg_name=${pkg_meta%% *}
+  pkg_ver=${pkg_meta#* }
+
+  if [ -z "${newest_ver[$pkg_name]+x}" ]; then
+    newest_ver[$pkg_name]="$pkg_ver"
+    newest_file[$pkg_name]="$pkg"
+    continue
+  fi
+
+  if [ "$(vercmp "$pkg_ver" "${newest_ver[$pkg_name]}")" -gt 0 ]; then
+    newest_ver[$pkg_name]="$pkg_ver"
+    newest_file[$pkg_name]="$pkg"
+  fi
 done
+
+mapfile -t pkg_names < <(printf '%s\n' "${!newest_file[@]}" | sort)
+selected_pkgs=()
+for pkg_name in "${pkg_names[@]}"; do
+  selected_pkgs+=("${newest_file[$pkg_name]}")
+done
+
+repo-add "${args[@]}" "${REPO_DB:?REPO_DB not set}" "${selected_pkgs[@]}"
