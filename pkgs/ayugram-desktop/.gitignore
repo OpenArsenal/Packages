@@ -1,0 +1,7 @@
+pkg
+src
+*.pkg.tar.*
+*.log
+*.tar.gz
+28d19a99.patch
+682f1b57.patch
