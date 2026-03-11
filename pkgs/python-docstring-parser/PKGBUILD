@@ -1,3 +1,5 @@
+# Maintainer: Okiki <okiki@thunderstrike.co>
+
 _name=docstring_parser
 pkgname="python-${_name/_/-}"
 pkgdesc="Parse Python docstrings"
