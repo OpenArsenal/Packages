@@ -1,6 +1,6 @@
 pkgbase = dagger
 	pkgdesc = Dagger CLI: programmable CI/CD engine that runs pipelines in containers
-	pkgver = 0.20.0
+	pkgver = 0.20.1
 	pkgrel = 1
 	url = https://dagger.io
 	arch = x86_64
@@ -18,7 +18,7 @@ pkgbase = dagger
 	conflicts = dagger-bin
 	options = !lto
 	options = !debug
-	source = dagger::git+https://github.com/dagger/dagger.git#tag=v0.20.0
-	sha256sums = 9c571dbafa75799ee35d430c1fa9726ddd400daa46bb65d80f6bc33176bddcd8
+	source = dagger::git+https://github.com/dagger/dagger.git#tag=v0.20.1
+	sha256sums = a035515966d3c8dc9914128a1eb99a9faba8480e9021eb2627964ff0cd5f510d
 
 pkgname = dagger
