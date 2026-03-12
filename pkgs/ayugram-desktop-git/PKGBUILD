@@ -105,12 +105,14 @@ prepare() {
 }
 
 pkgver() {
-  cd "$_pkgsrc"
+  cd "$_pkgsrc" || exit
   git describe --long --tags --abbrev=7 --exclude='*[a-zA-Z][a-zA-Z]*' \
     | sed -E 's/^[^0-9]+//;s/([^-]*-g)/r\1/;s/-/./g'
 }
 
 build() {
+  CXXFLAGS+=' -ffat-lto-objects -Wno-array-bounds -Wno-restrict'
+
   echo "Building tde2e..."
   local _cmake_tde2e=(
     -B "build_tde2e"
@@ -118,6 +120,7 @@ build() {
     -G Ninja
     -DCMAKE_BUILD_TYPE=None
     -DCMAKE_INSTALL_PREFIX=/usr
+    -DCMAKE_CXX_FLAGS="${CXXFLAGS}" \
     -DTD_E2E_ONLY=ON
     -DBUILD_SHARED_LIBS=OFF
     -DBUILD_TESTING=OFF
@@ -137,6 +140,19 @@ build() {
     -DCMAKE_INSTALL_PREFIX=/usr
     -DCMAKE_PREFIX_PATH="$srcdir/deps/usr"
     -DDESKTOP_APP_DISABLE_AUTOUPDATE=ON
+    -DCMAKE_C_FLAGS="${CFLAGS} -Wno-discarded-qualifiers" \
+    -DCMAKE_CXX_FLAGS="${CXXFLAGS} -Wno-range-loop-construct \
+      -Wno-parentheses \
+      -Wno-dangling-pointer \
+      -Wno-deprecated-declarations \
+      -Wno-alloc-size-larger-than \
+      -Wno-free-nonheap-object \
+      -Wno-unused-function \
+      -Wno-unused-but-set-variable \
+      -Wno-unused-local-typedefs \
+      -Wno-stringop-overflow \
+      -Wno-aggressive-loop-optimizations \
+      -Wno-redundant-move" \
     -DTDESKTOP_API_ID=611335
     -DTDESKTOP_API_HASH=d524b414d21f4d37f08684c1df41ac9c
     -DDESKTOP_APP_USE_PACKAGED_FONTS=OFF
