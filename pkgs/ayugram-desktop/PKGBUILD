@@ -191,7 +191,7 @@ sha256sums=('ebeec29f6ad1adf1cfa1d5dc242f13dba48404b645d75e953e57148e533733f3'
             '0bb1ac2b495bf7056a57a1b9bd6020007041eb7b6cc85467ae55d0eb5c8254e8')
 
 prepare() {
-    cd "$srcdir/AyuGramDesktop-$pkgver"
+    cd "$srcdir/AyuGramDesktop-$pkgver" || exit
     _fill_gitmodules_recursively
     #/usr/bin/ld: /usr/lib/libprotobuf-lite.so: undefined reference to symbol '_ZN4absl12lts_2023080212log_internal17MakeCheckOpStringIllEEPNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEET_T0_PKc'
     #/usr/bin/ld: /usr/lib/libabsl_log_internal_check_op.so.2308.0.0: error adding symbols: DSO missing from command line
@@ -207,19 +207,34 @@ prepare() {
     patch -Np1 -d Telegram/lib_base -i "$srcdir/0001-force-minizip-includes.diff"
 }
 build() {
-    CXXFLAGS+=' -ffat-lto-objects'
+    CXXFLAGS+=' -ffat-lto-objects -Wno-array-bounds -Wno-restrict'
     cmake -B td-$_tdlib_commit/build -S td-$_tdlib_commit \
         -DCMAKE_BUILD_TYPE=None \
         -DCMAKE_INSTALL_PREFIX="$PWD/td-$_tdlib_commit/install" \
+        -DCMAKE_CXX_FLAGS="${CXXFLAGS}" \
         -Wno-dev \
         -DTD_E2E_ONLY=ON
     cmake --build td-$_tdlib_commit/build
-    cmake --install td-$_tdlib_commit/build  
+    cmake --install td-$_tdlib_commit/build
     # https://github.com/AyuGram/AyuGramDesktop/blob/dev/docs/building-linux.md#building-the-project
     # for API_ID and API_HASH
     cmake -B build -S AyuGramDesktop-$pkgver -G Ninja \
         -DCMAKE_INSTALL_PREFIX="/usr" \
+        -DQT_NO_PRIVATE_MODULE_WARNING=ON \
         -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_C_FLAGS="${CFLAGS} -Wno-discarded-qualifiers" \
+        -DCMAKE_CXX_FLAGS="${CXXFLAGS} -Wno-range-loop-construct \
+          -Wno-parentheses \
+          -Wno-dangling-pointer \
+          -Wno-deprecated-declarations \
+          -Wno-alloc-size-larger-than \
+          -Wno-free-nonheap-object \
+          -Wno-unused-function \
+          -Wno-unused-but-set-variable \
+          -Wno-unused-local-typedefs \
+          -Wno-stringop-overflow \
+          -Wno-aggressive-loop-optimizations \
+          -Wno-redundant-move" \
         -DTDESKTOP_API_ID="${MAKEPKG_AYUGRAM_API_ID:-2040}" \
         -DTDESKTOP_API_HASH="${MAKEPKG_AYUGRAM_API_HASH:-b18441a1ff607e10a989891a5462e627}" \
         -DDESKTOP_APP_DISABLE_AUTOUPDATE=True \
