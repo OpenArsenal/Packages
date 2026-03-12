@@ -56,6 +56,13 @@ SOURCE_DATE_EPOCH = "{{ exec(command='sh -lc \"(git -C \\\"' ~ env.PKGBUILDS_ROO
 description = "List available tasks"
 run = "mise tasks"
 
+[tasks."repo:maintain"]
+description = "Update repo DB then prune old packages"
+run = [
+  { task = "repo:update" },
+  { task = "repo:prune" },
+]
+
 [tasks."aur:import"]
 description = "Clone a package from the AUR and add it to the feeds.json file for updates"
 run = 'bash "{{env.SCRIPTS}}/aur-imports.sh"'

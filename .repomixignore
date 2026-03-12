@@ -3,7 +3,12 @@
 # *.log
 # tmp/
 
-# Sensitive / local
+*
+!mise.toml
+!mise-tasks/
+!mise-tasks/**
+
+# Local
 .gnupg/
 .cache/
 
@@ -12,6 +17,6 @@
 
 # Repomix output/config (safe to ignore)
 repomix.config.json
-repomix-output.xml
+repomix-output.*
 
 pkgs/*

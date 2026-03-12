@@ -27,12 +27,18 @@ add_flag "${usage_include_sigs:-false}" "--include-sigs"
 
   shopt -s nullglob
   pkg_filter="${usage_package:-}"
+
   if [ -n "$pkg_filter" ]; then
-    # Allow passing an explicit archive path or something that already looks like a glob/path.
-    if [[ "$pkg_filter" == *".pkg.tar."* ]] || [[ "$pkg_filter" == ./* ]] || [[ "$pkg_filter" == */* ]] || [[ "$pkg_filter" == *"*"* ]] || [[ "$pkg_filter" == *"?"* ]] || [[ "$pkg_filter" == *"["* ]]; then
+    # If the input already looks like a path or glob, use it directly.
+    # Otherwise treat it as a pkgname and match common package archive shapes.
+    if [[ "$pkg_filter" == *".pkg.tar."* ]] \
+      || [[ "$pkg_filter" == ./* ]] \
+      || [[ "$pkg_filter" == */* ]] \
+      || [[ "$pkg_filter" == *"*"* ]] \
+      || [[ "$pkg_filter" == *"?"* ]] \
+      || [[ "$pkg_filter" == *"["* ]]; then
       pkgs=( "$pkg_filter" )
     else
-      # Common case: passing "pkgname" -> match repo-built archives.
       pkgs=( ./"$pkg_filter"-*.pkg.tar.* ./"$pkg_filter".pkg.tar.* ./"$pkg_filter"*.pkg.tar.* )
     fi
   else
@@ -45,7 +51,14 @@ add_flag "${usage_include_sigs:-false}" "--include-sigs"
     exit 1
   fi
 
+  # Keep processing order stable so runs are predictable.
   mapfile -t pkgs < <(printf '%s\n' "${pkgs[@]}" | sort -V)
+
+  # Update the repository one package at a time.
+  #
+  # repo-add supports multiple package files in one call, but processing
+  # packages individually has proven more reliable here and keeps failures
+  # easier to isolate.
   for pkg in "${pkgs[@]}"; do
     repo-add "${args[@]}" "$REPO_DB" "$pkg" 2>&1
   done
@@ -53,40 +66,10 @@ add_flag "${usage_include_sigs:-false}" "--include-sigs"
 
 if [ "${usage_refresh_sync:-false}" = "true" ]; then
   : "${REPO_NAME:?REPO_NAME not set}"
+
   sync_dir="/var/lib/pacman/sync"
   repo="$REPO_NAME"
 
   sudo rm -f "${sync_dir}/${repo}.db"* "${sync_dir}/${repo}.files"*
   sudo pacman -Sy
 fi
-<<<<<<< HEAD
-
-declare -A newest_file
-declare -A newest_ver
-
-for pkg in "${pkgs[@]}"; do
-  pkg_meta=$(pacman -Qp -- "$pkg")
-  pkg_name=${pkg_meta%% *}
-  pkg_ver=${pkg_meta#* }
-
-  if [ -z "${newest_ver[$pkg_name]+x}" ]; then
-    newest_ver[$pkg_name]="$pkg_ver"
-    newest_file[$pkg_name]="$pkg"
-    continue
-  fi
-
-  if [ "$(vercmp "$pkg_ver" "${newest_ver[$pkg_name]}")" -gt 0 ]; then
-    newest_ver[$pkg_name]="$pkg_ver"
-    newest_file[$pkg_name]="$pkg"
-  fi
-done
-
-mapfile -t pkg_names < <(printf '%s\n' "${!newest_file[@]}" | sort)
-selected_pkgs=()
-for pkg_name in "${pkg_names[@]}"; do
-  selected_pkgs+=("${newest_file[$pkg_name]}")
-done
-
-repo-add "${args[@]}" "${REPO_DB:?REPO_DB not set}" "${selected_pkgs[@]}"
-=======
->>>>>>> aaf5cb0 (chore(mise-tasks): update `repo:update`)

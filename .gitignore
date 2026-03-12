@@ -108,3 +108,4 @@ $RECYCLE.BIN/
 !.repomixignore
 repomix-output.xml
 .packages
+repomix-instruction.md
