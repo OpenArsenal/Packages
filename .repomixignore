@@ -3,11 +3,20 @@
 # *.log
 # tmp/
 
+*
+!mise.toml
+!mise-tasks/
+!mise-tasks/**
+
+# Local
+.gnupg/
+.cache/
+
 # GitHub workflows
 .github/workflows/
 
 # Repomix output/config (safe to ignore)
 repomix.config.json
-repomix-output.xml
+repomix-output.*
 
 pkgs/*
