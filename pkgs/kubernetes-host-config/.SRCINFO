@@ -1,0 +1,18 @@
+pkgbase = kubernetes-host-config
+	pkgdesc = Default sysctl and kernel module settings required for Kubernetes nodes
+	pkgver = 1
+	pkgrel = 1
+	url = https://kubernetes.io
+	arch = any
+	license = custom
+	optdepends = talosctl: for Talos local cluster workflows
+	optdepends = kubeadm: for Kubernetes cluster bootstrapping
+	optdepends = k3s: lightweight Kubernetes distribution
+	source = br_netfilter.conf
+	source = k8s.conf
+	sha512sums = SKIP
+	sha512sums = SKIP
+	b2sums = SKIP
+	b2sums = SKIP
+
+pkgname = kubernetes-host-config

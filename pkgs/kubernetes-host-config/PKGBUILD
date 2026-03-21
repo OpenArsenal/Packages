@@ -1,0 +1,35 @@
+# Maintainer: Your Name <you@example.com>
+
+pkgname=kubernetes-host-config
+pkgver=1
+pkgrel=1
+pkgdesc='Default sysctl and kernel module settings required for Kubernetes nodes'
+arch=(any)
+url='https://kubernetes.io'
+license=(custom)
+depends=()
+optdepends=(
+  'talosctl: for Talos local cluster workflows'
+  'kubeadm: for Kubernetes cluster bootstrapping'
+  'k3s: lightweight Kubernetes distribution'
+)
+source=(
+  br_netfilter.conf
+  k8s.conf
+)
+sha512sums=('c318b64a03da07dfe435b2d8c368e55b0ab567da78c57ed814a7864fa75aeac52b28cf562b4afd8daa52168af93b318c1fead557ee676e950af25d422c276a17'
+            '3c6c9470985d4fce065a806b9430663eda7417a1e74830d8848e29c404f5abe034dd1ac406a384b674f85c0a51fa7afb9fd5b2fcb924ab3d58674c0352db26e9')
+b2sums=('a03b8a2ce6a606068cad278c6b8039181968c132a935448bf45e1b3668357487da1528569ed582b107db0654a1614b784a73c726729aad42abed18a4c15ce5b6'
+        'fe7cc535148c2fa5449459038656f591e4677885e865394f0eea59c562fe1f1ce2daa3a751dc1f37d17b742b1121fc97f0d775c6246b5bb6e9e1d902878cb726')
+
+package() {
+  # Load br_netfilter at boot
+  install -vDm644 /dev/stdin "$pkgdir/usr/lib/modules-load.d/br_netfilter.conf" <<'EOF'
+br_netfilter
+EOF
+
+  # Enable IPv4 forwarding
+  install -vDm644 /dev/stdin "$pkgdir/usr/lib/sysctl.d/k8s.conf" <<'EOF'
+net.ipv4.ip_forward = 1
+EOF
+}
