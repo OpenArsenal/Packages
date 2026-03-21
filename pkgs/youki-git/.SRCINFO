@@ -1,6 +1,6 @@
 pkgbase = youki-git
 	pkgdesc = A container runtime written in rust
-	pkgver = 0.5.0.r6.g887e474e
+	pkgver = 0.6.0.r31.g8ae2c5a3
 	pkgrel = 1
 	url = https://github.com/youki-dev/youki
 	arch = x86_64

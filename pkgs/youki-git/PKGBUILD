@@ -17,7 +17,6 @@ optdepends=(
   'docker: for docker runtime support'
   'podman: for podman runtime support'
 )
-options=('!lto')
 
 pkgver() {
   cd "${srcdir}/${_pkgname}"
