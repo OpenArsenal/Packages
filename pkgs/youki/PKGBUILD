@@ -13,7 +13,6 @@ optdepends=(
   'docker: for docker runtime support'
   'podman: for podman runtime support'
 )
-options=('!lto')
 source=("git+https://github.com/youki-dev/youki.git#tag=v$pkgver")
 sha256sums=('67a67305474279f01b986054ffe318628100ca87d59d021603bfa8cf04827cf9')
 
