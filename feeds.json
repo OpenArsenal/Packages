@@ -620,6 +620,18 @@
       "type": "vcs",
       "repo": "AyuGram/AyuGramDesktop",
       "channel": "stable"
+    },
+    {
+      "name": "youki",
+      "type": "github-release",
+      "repo": "youki-dev/youki",
+      "channel": "stable"
+    },
+    {
+      "name": "youki-git",
+      "type": "vcs",
+      "repo": "youki-dev/youki",
+      "channel": "stable"
     }
   ]
 }

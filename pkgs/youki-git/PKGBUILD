@@ -1,0 +1,62 @@
+# Maintainer: Okiki <okiki@thunderstrike.co>
+
+_pkgname='youki'
+pkgname="${_pkgname}-git"
+pkgver=0.6.0.r31.g8ae2c5a3
+pkgrel=1
+pkgdesc="A container runtime written in rust"
+arch=('x86_64')
+url='https://github.com/youki-dev/youki'
+license=('Apache')
+sha512sums=('SKIP')
+source=("git+${url}")
+provides=("${_pkgname}")
+depends=('dbus' 'gcc-libs' 'libseccomp')
+makedepends=('git' 'dbus-glib' 'libelf' 'pkg-config' 'rust' 'systemd')
+optdepends=(
+  'docker: for docker runtime support'
+  'podman: for podman runtime support'
+)
+options=('!lto')
+
+pkgver() {
+  cd "${srcdir}/${_pkgname}"
+  # cutting off 'v' prefix that presents in the git tag
+  git describe --long --tags | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+prepare() {
+  cd "${srcdir}/${_pkgname}"
+
+  # download dependencies
+  cargo fetch --locked --target "$(rustc --print host-tuple)"
+}
+
+build() {
+  cd "${srcdir}/${_pkgname}"
+
+  cargo build --frozen --release --bin youki
+
+  # generate shell completions
+  for shell in bash fish zsh; do
+    ./target/release/youki completion --shell "${shell}" > "target/${shell}-completion"
+  done
+
+}
+
+check() {
+  cd "${srcdir}/${_pkgname}"
+  cargo test --frozen --release
+}
+
+package() {
+  cd "${srcdir}/${_pkgname}"
+
+  install -vDm0755 "target/release/${_pkgname}" "${pkgdir}/usr/bin/${_pkgname}"
+  install -vDm0644 "LICENSE"     "${pkgdir}/usr/share/licenses/${_pkgname}/LICENSE"
+
+  # shell completions
+  install -vDm644 "target/bash-completion" "${pkgdir}/usr/share/bash-completion/completions/${_pkgname}"
+  install -vDm644 "target/fish-completion" "${pkgdir}/usr/share/fish/vendor_completions.d/${_pkgname}.fish"
+  install -vDm644 "target/zsh-completion" "${pkgdir}/usr/share/zsh/site-functions/_${_pkgname}"
+}
