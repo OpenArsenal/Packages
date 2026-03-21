@@ -1,0 +1,21 @@
+pkgbase = kbcli-bin
+	pkgdesc = Command-line interface for KubeBlocks
+	pkgver = 1.0.2
+	pkgrel = 1
+	url = https://github.com/apecloud/kbcli
+	arch = x86_64
+	license = AGPL-3.0-only
+	depends = glibc
+	optdepends = kubectl: interact with Kubernetes clusters
+	optdepends = docker: required for playground init
+	optdepends = k3d: required for local playground support
+	optdepends = helm: useful for chart-oriented workflows
+	optdepends = bash-completion: Bash completion support
+	optdepends = fish: Fish completion support
+	optdepends = zsh: Zsh completion support
+	provides = kbcli
+	conflicts = kbcli
+	source = https://github.com/apecloud/kbcli/releases/download/v1.0.2/kbcli-linux-amd64-v1.0.2.tar.gz
+	sha256sums = 3bc2ba09ba2308b66f670c4f986d5f9ecf8c735da83aa8be1f99889c69d4517a
+
+pkgname = kbcli-bin

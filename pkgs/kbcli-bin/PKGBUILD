@@ -1,0 +1,47 @@
+# Maintainer: Your Name <you@example.com>
+
+pkgname=kbcli-bin
+pkgver=1.0.2
+pkgrel=1
+pkgdesc='Command-line interface for KubeBlocks'
+arch=('x86_64')
+url='https://github.com/apecloud/kbcli'
+license=('AGPL-3.0-only')
+depends=('glibc')
+optdepends=(
+  'kubectl: interact with Kubernetes clusters'
+  'docker: required for playground init'
+  'k3d: required for local playground support'
+  'helm: useful for chart-oriented workflows'
+  'bash-completion: Bash completion support'
+  'fish: Fish completion support'
+  'zsh: Zsh completion support'
+)
+provides=('kbcli')
+conflicts=('kbcli')
+source=("${url}/releases/download/v${pkgver}/kbcli-linux-amd64-v${pkgver}.tar.gz")
+sha256sums=('3bc2ba09ba2308b66f670c4f986d5f9ecf8c735da83aa8be1f99889c69d4517a')
+
+package() {
+  local _bin
+
+  _bin="$(find "${srcdir}" -maxdepth 3 -type f -name 'kbcli' -print -quit)"
+  if [[ -z "${_bin}" ]]; then
+    echo 'error: could not find kbcli binary in extracted release archive' >&2
+    return 1
+  fi
+
+  install -Dm755 "${_bin}" "${pkgdir}/usr/bin/kbcli"
+
+  install -Dm644 /dev/stdin \
+    "${pkgdir}/usr/share/bash-completion/completions/kbcli" \
+    < <("${pkgdir}/usr/bin/kbcli" completion bash)
+
+  install -Dm644 /dev/stdin \
+    "${pkgdir}/usr/share/zsh/site-functions/_kbcli" \
+    < <("${pkgdir}/usr/bin/kbcli" completion zsh)
+
+  install -Dm644 /dev/stdin \
+    "${pkgdir}/usr/share/fish/vendor_completions.d/kbcli.fish" \
+    < <("${pkgdir}/usr/bin/kbcli" completion fish)
+}
