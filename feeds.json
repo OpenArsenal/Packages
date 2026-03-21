@@ -632,6 +632,12 @@
       "type": "vcs",
       "repo": "youki-dev/youki",
       "channel": "stable"
+    },
+    {
+      "name": "kbcli-bin",
+      "type": "github-release",
+      "repo": "apecloud/kbcli",
+      "channel": "stable"
     }
   ]
 }
