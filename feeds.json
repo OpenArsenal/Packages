@@ -638,6 +638,23 @@
       "type": "github-release",
       "repo": "apecloud/kbcli",
       "channel": "stable"
+    },
+    {
+      "name": "hyprwhspr",
+      "type": "github-release",
+      "repo": "goodroot/hyprwhspr",
+      "channel": "stable"
+    },
+    {
+      "name": "hyprwhspr-git",
+      "type": "vcs",
+      "repo": "goodroot/hyprwhspr",
+      "channel": "stable"
+    },
+    {
+      "name": "python-sounddevice",
+      "type": "pypi",
+      "project": "sounddevice"
     }
   ]
 }
