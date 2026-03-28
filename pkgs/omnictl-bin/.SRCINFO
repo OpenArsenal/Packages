@@ -1,6 +1,6 @@
 pkgbase = omnictl-bin
 	pkgdesc = CLI for Omni - SaaS-simple deployment of Kubernetes on your own hardware
-	pkgver = 1.5.10
+	pkgver = 1.6.2
 	pkgrel = 1
 	url = https://omni.siderolabs.com/
 	arch = x86_64
@@ -8,9 +8,9 @@ pkgbase = omnictl-bin
 	license = BUSL-1.1
 	replaces = omnictl
 	options = !strip
-	source_x86_64 = omnictl-linux-amd64-v1.5.10::https://github.com/siderolabs/omni/releases/download/v1.5.10/omnictl-linux-amd64
-	sha256sums_x86_64 = 569ab2ebc8c743179390bd6f145ca2f20900413a3ad963e89613dc49c208075b
-	source_aarch64 = omnictl-linux-arm64-v1.5.10::https://github.com/siderolabs/omni/releases/download/v1.5.10/omnictl-linux-arm64
-	sha256sums_aarch64 = 88b988082e6d1e2f774be9ac58d9aa4699f2f9c884b6610d28848ce3cb237d58
+	source_x86_64 = omnictl-linux-amd64-v1.6.2::https://github.com/siderolabs/omni/releases/download/v1.6.2/omnictl-linux-amd64
+	sha256sums_x86_64 = e63472ce086c394fef6c0c42c393b559a660232cbbc9bddec95023f3ef642290
+	source_aarch64 = omnictl-linux-arm64-v1.6.2::https://github.com/siderolabs/omni/releases/download/v1.6.2/omnictl-linux-arm64
+	sha256sums_aarch64 = fb5b51204c2cd9ed52c2ef224f15e995e7494d251849c84ce786a797036921a7
 
 pkgname = omnictl-bin
