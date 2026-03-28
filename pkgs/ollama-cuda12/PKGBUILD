@@ -1,8 +1,4 @@
-# Maintainer: Alexander F. Rødseth <xyproto@archlinux.org>
-# Maintainer: Sven-Hendrik Haase <svenstaro@archlinux.org>
-# Contributor: Steven Allen <steven@stebalien.com>
-# Contributor: Matt Harrison <matt@harrison.us.com>
-# Contributor: Kainoa Kanter <kainoa@t1c.dev>
+# Maintainer: Okiki <okiki@thunderstrike.co>
 
 # NOTE: This split PKGBUILD is for CUDA 12 only.
 # - Requires CUDA major version 12 at /opt/cuda
