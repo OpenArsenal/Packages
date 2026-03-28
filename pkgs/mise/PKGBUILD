@@ -1,7 +1,7 @@
 # Maintainer: Okiki <okiki@thunderstrike.co>
 
 pkgname='mise'
-pkgver='2026.3.7'
+pkgver='2026.3.17'
 pkgrel=1
 pkgdesc='The front-end to your dev env'
 arch=('x86_64')
@@ -35,8 +35,8 @@ options=(
   '!lto'
 )
 source=("${url}/archive/v${pkgver}/${pkgname}-${pkgver}.tar.gz")
-sha512sums=('5d57126921acf78b8cf494714bc2b9ee066e9c541bd5e232d78f761e987d7f27c085259742a49ddf98fa5c11225a3382a7ef71614cbb13fa3c0189018d5bc6d8')
-b2sums=('bfa24ae007ca834c410f2e710a0df57e6613b250021a52765cbdebf8006671cc00fb235431d5354f5abbdb13dbcdac04d268a99e052399839ff93f1af5074e9d')
+sha512sums=('714344df851d69a39560ab90b6776c04a503f8f59a732473591dadb74b01bd3d5f537f319333fc620f8b345813d8c46bc070c786e41b1721dbe920869a7dc908')
+b2sums=('f11c07adf2f43f6e8eed3387c805eeecd212c31f69631a423d25eae9b9d204bea043f495f2439b228538456bdb274679b08b6763271c71670caade9802e908c5')
 
 prepare() {
   cd "${pkgname}-${pkgver}"
