@@ -1,17 +1,7 @@
-# Maintainer: Alexander Rødseth <rodseth@gmail.com>
-# Maintainer: Felix Yan <felixonmars@archlinux.org>
-# Maintainer: Orhun Parmaksız <orhun@archlinux.org>
-# Contributor: Daniele Basso <d dot bass05 at proton dot me>
-# Contributor: T. Jameson Little <t.jameson.little at gmail dot com>
-# Contributor: Usagi Ito <usagi@WonderRabbitProject.net>
-# Contributor: siasia <http://pastebin.com/qsBEmNCw>
-# Contributor: Julien Nicoulaud <julien.nicoulaud@gmail.com>
-# Contributor: The one with the braid <info@braid.business>
-# Contributor: Juan Cuevas <juanandrescuevas14@gmail.com>
-# Contributor: Jacob Bang <julemand101@archlinux.dk>
+# Maintainer: Okiki <okiki@thunderstrike.co>
 
 pkgname=dart
-pkgver='3.11.2'
+pkgver='3.11.4'
 pkgrel=1
 pkgdesc='The dart programming language SDK'
 arch=('x86_64')

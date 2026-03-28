@@ -1,11 +1,9 @@
-# Maintainer: WithTheBraid <info@braid.business>
-# Co-Maintainer: Polarian <polarian@polarian.dev>, Fredy García <frealgagu at gmail dot com>
-# Contributor: Philip Goto <philip.goto@gmail.com>
+# Maintainer: Okiki <okiki@thunderstrike.co>
 
 pkgbase=flutter
 _group=flutter
 groups=("$_group")
-pkgver='3.41.4'
+pkgver='3.41.6'
 _enginever=b5990e5ccc5e325fd24f0746e7d6689bbebc7c65
 _materialfontsver=3012db47f3130e62f7cc0beabff968a33cbec8d8
 _gradlewver=fd5c1f2c013565a3bea56ada6df9d2b8e96d56aa
@@ -174,7 +172,7 @@ noextract=(
   "dart-sdk-arm64-${_enginever}.zip"
 )
 
-sha256sums=('a0b3242e6eabc0320c66d0c0f291b57c3dc32a9cf1f9e497ab03fc91adc4c82f'
+sha256sums=('145b0a160dcbf6fb68e6f57913a0b55229aacac82cef7618ab830cfca540aa53'
             'e56fa8e9bb4589fde964be3de451f3e5b251e4a1eafb1dc98d94add034dd5a86'
             '31e9428baf1a2b2f485f1110c5899f852649b33d46a2e9b07f9d17752d50190a'
             '73e3593d3fea1a91b1cc2fa5052e7bae989a5188a61a95fa265beb87846d89cd'
