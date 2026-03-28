@@ -1,6 +1,6 @@
 pkgbase = protobuf
 	pkgdesc = Protocol Buffers - Google's data interchange format
-	pkgver = 34.0
+	pkgver = 34.1
 	pkgrel = 1
 	url = https://developers.google.com/protocol-buffers/
 	arch = x86_64
@@ -11,6 +11,7 @@ pkgbase = protobuf
 	makedepends = cmake
 	makedepends = git
 	makedepends = gtest
+	makedepends = python
 	makedepends = python-build
 	makedepends = python-installer
 	makedepends = python-setuptools
@@ -20,16 +21,17 @@ pkgbase = protobuf
 	makedepends = ruby-ffi-compiler
 	makedepends = ruby-rake
 	makedepends = ruby-rake-compiler
+	makedepends = ruby-bigdecimal
 	depends = abseil-cpp
 	depends = glibc
 	depends = libgcc
 	depends = libstdc++
 	depends = zlib
 	options = !lto
-	source = git+https://github.com/protocolbuffers/protobuf.git#tag=v34.0
+	source = git+https://github.com/protocolbuffers/protobuf.git#tag=v34.1
 	source = protobuf-fix-build-type-none.patch
 	source = protobuf-33-patch-enum-traits-impl.patch
-	sha512sums = 438512e6aef6dd5732412061b8a37801344432ac964567c6bc901f7db97c3698727c5724f358c5570d9671ec671c48cc0bed4f560b6f297efca88cbc0b26bd5a
+	sha512sums = 22083bdc3b71d4b77902eb2372b04136bbcac9a7ee05a2d3e197d9d2ce45e8cf0b6c0c445076102ace485162c5020b93ef52bd26d4fd8fba780137b80cacd1a4
 	sha512sums = 18bc71031bbcbc3810a9985fa670465040f06a6c104ab8079b56bdfc499bb6cec40805a0cefd455031142490a576dc60aa8000523877ac0353b93558e9beabbd
 	sha512sums = 8f7b8cb3829490962668bbb0eb8104f565a16bb336669e03afdc355c7ad50efb094851f7f78eba0d0a9704290b1c45ec56c9e6d6677cbf96ccfbfb659c014756
 
@@ -41,7 +43,7 @@ pkgname = protobuf
 
 pkgname = python-protobuf
 	pkgdesc = Python 3 bindings for Google Protocol Buffers
-	depends = protobuf=34.0
+	depends = protobuf=34.1
 	depends = python
 
 pkgname = ruby-google-protobuf
