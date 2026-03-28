@@ -1,6 +1,6 @@
 pkgbase = calibre-bin
 	pkgdesc = Official binary version Calibre
-	pkgver = 9.4.0
+	pkgver = 9.6.0
 	pkgrel = 1
 	url = https://download.calibre-ebook.com
 	arch = x86_64
@@ -14,13 +14,13 @@ pkgbase = calibre-bin
 	source = share.tar.xz
 	validpgpkeys = 3CE1780F78DD88DF45194FD706BC317B515ACE7C
 	sha512sums = f998af4d431d95149528691daf7d43c75052e6586c54b4d5595a6a8886d7d0b97ff355a1e25b64e6a606b679b096c49d6048a82ff1061611ad87ed0bb587e147
-	source_x86_64 = calibre-9.4.0-x86_64.txz::https://download.calibre-ebook.com/9.4.0/calibre-9.4.0-x86_64.txz
-	source_x86_64 = calibre-9.4.0-x86_64.txz.sig::https://calibre-ebook.com/signatures/calibre-9.4.0-x86_64.txz.sig
-	sha512sums_x86_64 = 55a211a5e13bf5dcf1b2f8c4a70ded4900c5fd3d9dbd1aff01ae95ea8b4210513ca05a61be11a05d70db1ae6819c8072ac121ea0e01765c38cdc32241b77a06b
+	source_x86_64 = calibre-9.6.0-x86_64.txz::https://download.calibre-ebook.com/9.6.0/calibre-9.6.0-x86_64.txz
+	source_x86_64 = calibre-9.6.0-x86_64.txz.sig::https://calibre-ebook.com/signatures/calibre-9.6.0-x86_64.txz.sig
+	sha512sums_x86_64 = 3cd2a5e8351d9e508398267c3e6ea902882e29a7e8379a7fc66c29fb348f210bb0d13dd941d1215b946aaec69dc605b96b2b887050ebf2b4c1a0fb6974ad2689
 	sha512sums_x86_64 = SKIP
-	source_aarch64 = calibre-9.4.0-aarch64.txz::https://download.calibre-ebook.com/9.4.0/calibre-9.4.0-arm64.txz
-	source_aarch64 = calibre-9.4.0-aarch64.txz.sig::https://calibre-ebook.com/signatures/calibre-9.4.0-arm64.txz.sig
-	sha512sums_aarch64 = 60c22053c3beb2210c7e97646973bcb8a450a5575af5cbac2703032ebba5bc3b8d5f02b95adba276822a5696cb1bfd84266fa0ca3bb262378716d88193a167c7
+	source_aarch64 = calibre-9.6.0-aarch64.txz::https://download.calibre-ebook.com/9.6.0/calibre-9.6.0-arm64.txz
+	source_aarch64 = calibre-9.6.0-aarch64.txz.sig::https://calibre-ebook.com/signatures/calibre-9.6.0-arm64.txz.sig
+	sha512sums_aarch64 = b83a034b75acf3c5acdab531e774df8935870907ab53318550ee5f98b6f54da82d701e57b78121040ccbee25742b0b04e4ff4fab9854d20db77f2e0327ac7416
 	sha512sums_aarch64 = SKIP
 
 pkgname = calibre-bin

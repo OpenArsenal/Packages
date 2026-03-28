@@ -1,7 +1,7 @@
 # Maintainer: Okiki Ojo <okiki@thunderstrike.co>
 
 pkgname=calibre
-pkgver='9.4.0'
+pkgver='9.6.0'
 pkgrel=1
 pkgdesc='Ebook management application'
 arch=(x86_64 aarch64)
@@ -111,7 +111,7 @@ source=(
   qt-6.10.patch
 )
 
-sha256sums=('dda9cf11e541e42ed1b92e5908532fa30e56864228a600a9c6999cb2db08817e'
+sha256sums=('c4d740d50a0c2e38ac33af10e815366cbd2d0846a06dafca3008eaafe2f09bea'
             '7b878663100c38ac849570afc8ee41cfcd55609367a5cb38305ef73bb3094f4e')
 
 
