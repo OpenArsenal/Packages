@@ -2,7 +2,7 @@
 
 pkgname=dagger
 _pkgname=dagger
-pkgver='0.20.1'
+pkgver='0.20.3'
 pkgrel=1
 pkgdesc="Dagger CLI: programmable CI/CD engine that runs pipelines in containers"
 arch=('x86_64' 'aarch64' 'armv7h')
@@ -24,7 +24,7 @@ provides=("${_pkgname}")
 conflicts=("${_pkgname}-git" "${_pkgname}-bin")
 
 source=("${pkgname}::git+https://github.com/dagger/dagger.git#tag=v${pkgver}")
-sha256sums=('a035515966d3c8dc9914128a1eb99a9faba8480e9021eb2627964ff0cd5f510d')
+sha256sums=('b8d614ca9f1acb8204d5efbb27a8dd695d5c8342f3e62d647a6012f3fb2fd514')
 
 _git_describe() {
   cd "${srcdir}/${pkgname}"
