@@ -5,7 +5,7 @@ _appname=lm-studio
 
 # Version format: X.Y.Z.B where B is the build number
 # Example: 0.3.39.2 means version 0.3.39, build 2
-pkgver='0.4.6.1'
+pkgver='0.4.8.1'
 
 # Transform pkgver for installer URL: 0.3.39.2 → 0.3.39-2
 _version="${pkgver%.*}"           # Extract version (0.3.39)
@@ -26,7 +26,7 @@ _appimage="${pkgname}-${pkgver}.AppImage"
 
 # Installer URL uses hyphen format: 0.3.39-2
 source=("${_appimage}::https://installers.lmstudio.ai/linux/x64/${_pkgver}/LM-Studio-${_pkgver}-x64.AppImage")
-sha256sums=('14767ae339a7a87ad0c97e227edfe5554cd6f878825645e95956b8864b2c5ff9')
+sha256sums=('81b2eaea763725da369d96166e1d17115a23aea90ee67a192d5fe5c384da12cf')
 noextract=("${_appimage}")
 
 prepare() {
