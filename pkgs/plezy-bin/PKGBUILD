@@ -2,7 +2,7 @@
 
 pkgname=plezy-bin
 _pkgname=plezy
-pkgver='1.26.1'
+pkgver='1.30.0'
 pkgrel=1
 pkgdesc="Modern Plex client built with Flutter (prebuilt binary)"
 arch=('x86_64' 'aarch64')
@@ -29,8 +29,8 @@ source_aarch64=(
 )
 
 sha256sums=('b8e991c52d0c3b4a703d9232985c6ffd8bddee2120cba9743f4484a82008f050')
-sha256sums_x86_64=('615d3df65fb8df6a6d559ffd40295af375d0cb9c2fc88ec9342e5a721c45de60')
-sha256sums_aarch64=('b58809621c0d0b5f0cc4bb12b85fd8215d2d3f1758fdd228a93ef3803bd239a0')
+sha256sums_x86_64=('6d9c95e0282ab0529129947ca7d3a31610e1b2389f15ee87c04eaaf59569cdec')
+sha256sums_aarch64=('2f1685db98d2a3f48c11666b84fd2f7bd332103fc310973a9f19faefa633d5e8')
 
 package() {
     cd "${srcdir}"
