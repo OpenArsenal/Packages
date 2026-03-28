@@ -1,4 +1,4 @@
-# Maintainer: Okiki <okikio@thunderstrike.co>
+# Maintainer: Okiki <okiki@thunderstrike.co>
 
 pkgbase=onnxruntime
 pkgname=(
