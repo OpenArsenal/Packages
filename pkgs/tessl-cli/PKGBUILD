@@ -1,6 +1,6 @@
 # Maintainer: Okiki <okiki@thunderstrike.co>
 pkgname=tessl-cli
-pkgver='0.71.0'
+pkgver='0.74.0'
 pkgrel=1
 pkgdesc="Tessl CLI (npm: @tessl/cli) for managing agent context/skills"
 arch=('any')
@@ -9,7 +9,7 @@ license=('custom')
 depends=('nodejs')
 makedepends=('npm')
 source=("https://registry.npmjs.org/@tessl/cli/-/cli-${pkgver}.tgz")
-sha256sums=('9610dc3eb2d625d203ba82cb9f0ddbbb7b556f748dbd52eedb4b3e2e73f13841')
+sha256sums=('a7302fec2fbd38cedd3ac7b59c25d62a1087b8abab58e4980e2496861b34f30d')
 
 prepare() {
   cd "${srcdir}"
