@@ -1,0 +1,14 @@
+post_install() {
+  for file in \
+    /usr/share/applications/code*.desktop \
+    /usr/share/applications/vscode*.desktop \
+    /usr/share/applications/vscodium*.desktop; do
+    if [[ -f "${file}" ]]; then
+      echo "${file}" | /usr/lib/vscode-xdg-patch-hook/apply-xdg-patch.sh
+    fi
+  done
+}
+
+post_upgrade() {
+  post_install
+}
