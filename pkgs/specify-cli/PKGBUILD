@@ -1,42 +1,65 @@
 # Maintainer: Okiki <okiki@thunderstrike.co>
 pkgname=specify-cli
-pkgver='0.2.0'
+pkgver=0.4.3
 pkgrel=1
-pkgdesc="Spec Kit Specify CLI (spec-driven development workflow)"
-arch=('any')
+pkgdesc='Bootstrap and manage Spec Kit projects'
+arch=('x86_64' 'aarch64')
 url='https://github.com/github/spec-kit'
 license=('MIT')
-
 depends=(
-  'python>=3.12'
-  'python-typer'
-  'python-rich'
+  'python'
+  'python-click'
   'python-httpx'
+  'python-json5'
+  'python-packaging'
+  'python-pathspec'
   'python-platformdirs'
+  'python-pyyaml'
   'python-readchar'
+  'python-rich'
   'python-truststore'
-  'python-socksio'
+  'python-typer'
 )
-
 makedepends=(
+  'git'
   'python-build'
   'python-installer'
   'python-wheel'
   'python-hatchling'
 )
-
-source=("$pkgname-$pkgver.tar.gz::https://github.com/github/spec-kit/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('173f21a5f251e644f2229a2db23fb2cb13f2810748bda11c49831e78cf67932d')
+optdepends=(
+  'claude-code: Supported Agent'
+  'codebuddy-cli: Supported Agent'
+  'cursor-ide: Supported Agent, IDE-based'
+  'gemini-cli: Supported Agent'
+  'git-credential-manager-bin: For issues with Git authentication'
+  'iflow-cli: Supported Agent'
+  'kilocode-cli-bin: Supported Agent, IDE-based'
+  'kimi-cli: Supported Agent'
+  'kiro-cli: Supported Agent'
+  'mistral-vibe: Supported Agent'
+  'openai-codex: Supported Agent'
+  'opencode: Supported Agent'
+  'qodercli-bin: Suported Agent'
+  'pi-coding-agent: Supported Agent'
+  'qwen-code: Supported Agent'
+  'shai: Supported Agent'
+  'tabnine: Supported Agent'
+  'visual-studio-code-bin: Visual Studio Code'
+  'windsurf: Supported Agent, IDE-based'
+)
+options=(!debug)
+source=("git+$url.git#tag=v$pkgver")
+b2sums=('58aff0e742ef512c2d9d5fb09f3146190cd3a10a959580acf0cd8cb68b8b2f1cb6da2e5f80b362a25907559e4dc91ed0681b3348aeece71705a13690bb8d61f0')
 
 build() {
-  cd "spec-kit-$pkgver"
+  cd spec-kit
   python -m build --wheel --no-isolation
 }
 
 package() {
-  cd "spec-kit-$pkgver"
+  cd spec-kit
   python -m installer --destdir="$pkgdir" dist/*.whl
-
-  # license file location is conventional for Arch packages
-  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 -t "$pkgdir/usr/share/licenses/specify-cli/" LICENSE
+  install -Dm644 -t "$pkgdir/usr/share/doc/specify-cli/" {AGENTS.md,CHANGELOG.md,CODE_OF_CONDUCT.md,CONTRIBUTING.md,README.md,SECURITY.md,SUPPORT.md}
 }
