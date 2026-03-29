@@ -655,6 +655,24 @@
       "name": "python-sounddevice",
       "type": "pypi",
       "project": "sounddevice"
+    },
+    {
+      "name": "losslesscut",
+      "type": "github-release",
+      "repo": "mifi/lossless-cut",
+      "channel": "stable"
+    },
+    {
+      "name": "losslesscut-bin",
+      "type": "github-release",
+      "repo": "mifi/lossless-cut",
+      "channel": "stable"
+    },
+    {
+      "name": "losslesscut-git",
+      "type": "vcs",
+      "repo": "mifi/lossless-cut",
+      "channel": "stable"
     }
   ]
 }
