@@ -655,6 +655,24 @@
       "name": "python-sounddevice",
       "type": "pypi",
       "project": "sounddevice"
+    },
+    {
+      "name": "codex-acp-bin",
+      "type": "github-release",
+      "repo": "zed-industries/codex-acp",
+      "channel": "stable"
+    },
+    {
+      "name": "claude-agent-acp",
+      "type": "github-release",
+      "repo": "agentclientprotocol/claude-agent-acp",
+      "channel": "stable"
+    },
+    {
+      "name": "claude-agent-acp-bin",
+      "type": "github-release",
+      "repo": "agentclientprotocol/claude-agent-acp",
+      "channel": "stable"
     }
   ]
 }
