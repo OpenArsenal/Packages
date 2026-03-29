@@ -655,6 +655,17 @@
       "name": "python-sounddevice",
       "type": "pypi",
       "project": "sounddevice"
+    },
+    {
+      "name": "visual-studio-code-electron-bin",
+      "type": "github-release",
+      "repo": "microsoft/vscode",
+      "channel": "stable"
+    },
+    {
+      "name": "vscode-xdg-patch-hook",
+      "type": "manual",
+      "channel": "stable"
     }
   ]
 }

@@ -1,0 +1,9 @@
+*
+# dev tools
+!.gitignore
+# actual package
+!PKGBUILD
+!apply-xdg-patch.sh
+!vscode-xdg-patch-hook.install
+!vscode-xdg-patch.hook
+!.SRCINFO
