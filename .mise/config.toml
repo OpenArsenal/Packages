@@ -1,4 +1,17 @@
+[tools]
+node = 'latest'
+
+[hooks]
+# Enabling corepack will install the `pnpm` package manager specified in your package.json
+# alternatively, you can also install `pnpm` with mise
+postinstall = 'npx corepack enable'
+
+[settings]
+# This must be enabled to make the hooks work
+experimental = true
+
 [env]
+_.path = ['{{config_root}}/node_modules/.bin']
 _.file = [".env.repo"]
 
 # Workspace root
@@ -55,6 +68,12 @@ SOURCE_DATE_EPOCH = "{{ exec(command='sh -lc \"(git -C \\\"' ~ env.PKGBUILDS_ROO
 [tasks.default]
 description = "List available tasks"
 run = "mise tasks"
+
+[tasks.pnpm-install]
+description = 'Installs dependencies with pnpm'
+run = 'pnpm install'
+sources = ['package.json', 'pnpm-lock.yaml', 'mise.toml']
+outputs = ['node_modules/.pnpm/lock.yaml']
 
 [tasks."repo:maintain"]
 description = "Update repo DB then prune old packages"
