@@ -2,21 +2,24 @@
 # Example:
 # *.log
 # tmp/
-
-*
-!mise.toml
-!mise-tasks/
-!mise-tasks/**
-
 # Local
 .gnupg/
 .cache/
 
+*
+!.mise/
+!.mise/lib/
+!.mise/lib/**
+!.mise/tasks/
+!.mise/tasks/**
+!.mise/config.toml
+
 # GitHub workflows
-.github/workflows/
+#!.github/workflows/
 
 # Repomix output/config (safe to ignore)
-repomix.config.json
-repomix-output.*
+#!repomix.config.*
 
-pkgs/*
+!packages/
+!packages/*
+!packages/*/PKGBUILD
