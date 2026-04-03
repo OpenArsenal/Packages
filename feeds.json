@@ -524,8 +524,14 @@
       "channel": "stable"
     },
     {
-      "name": "ladybird-git",
+      "name": "ladybird",
       "type": "manual",
+      "repo": "LadybirdBrowser/ladybird",
+      "channel": "stable"
+    },
+    {
+      "name": "ladybird-git",
+      "type": "vcs",
       "repo": "LadybirdBrowser/ladybird",
       "channel": "stable"
     },
