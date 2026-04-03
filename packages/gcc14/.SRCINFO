@@ -20,6 +20,9 @@ pkgbase = gcc14
 	makedepends = libmpc
 	makedepends = python
 	makedepends = zstd
+	provides = gcc
+	provides = gcc-libs
+	provides = gcc-fortran
 	options = !emptydirs
 	options = !lto
 	source = gcc14::git+https://github.com/gcc-mirror/gcc.git#commit=5998566829eed9f39a316be877a7ce61c7e710ed
@@ -36,12 +39,14 @@ pkgname = gcc14
 	depends = libmpc
 	depends = zstd
 	depends = libisl.so
+	provides = gcc
 	options = !emptydirs
 	options = staticlibs
 
 pkgname = gcc14-libs
 	pkgdesc = Runtime libraries shipped by GCC (14.x.x)
 	depends = glibc>=2.27
+	provides = gcc-libs
 	options = !emptydirs
 	options = !strip
 
@@ -49,3 +54,4 @@ pkgname = gcc14-fortran
 	pkgdesc = Fortran front-end for GCC (14.x.x)
 	depends = gcc14
 	depends = libisl.so
+	provides = gcc-fortran
