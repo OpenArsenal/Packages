@@ -1,16 +1,9 @@
-# Maintainer: Dave Daynard <nardholio@gmail.com>
-# Contributor: Sven-Hendrik Haase <svenstaro@archlinux.org>
-# Contributor: Torsten Keßler <tpkessler@archlinux.org>
-# Contributor: Giancarlo Razzolini <grazzolini@archlinux.org>
-# Contributor: Frederik Schwan <freswa at archlinux dot org>
-# Contributor: Bartłomiej Piotrowski <bpiotrowski@archlinux.org>
-# Contributor: Allan McRae <allan@archlinux.org>
-# Contributor: Daniel Kozak <kozzi11@gmail.com>
+# Maintainer: Okiki <okiki@thunderstrike.co>
 
 pkgname=(gcc14 gcc14-libs gcc14-fortran)
 pkgver=14.3.1+r516+g5998566829ee
 _commit=5998566829eed9f39a316be877a7ce61c7e710ed
-pkgrel=1
+pkgrel=2
 pkgdesc='The GNU Compiler Collection (14.x.x)'
 arch=(x86_64)
 license=(GPL-3.0-with-GCC-exception GFDL-1.3-or-later)
@@ -104,8 +97,21 @@ build() {
   # Credits @allanmcrae
   # https://github.com/allanmcrae/toolchain/blob/f18604d70c5933c31b51a320978711e4e6791cf1/gcc/PKGBUILD
   # TODO: properly deal with the build issues resulting from this
-  CFLAGS=${CFLAGS/-Werror=format-security/}
-  CXXFLAGS=${CXXFLAGS/-Werror=format-security/}
+  local _boot_cflags=${CFLAGS/-Werror=format-security/}
+  local _boot_cxxflags=${CXXFLAGS/-Werror=format-security/}
+
+  # CachyOS-style native/O3 build flags trigger widespread stage3 compare
+  # failures with gcc14's bootstrap-lto build. Normalize them to stable,
+  # reproducible values for the compiler bootstrap.
+  _boot_cflags=${_boot_cflags//-march=native/}
+  _boot_cflags=${_boot_cflags//-mtune=native/}
+  _boot_cflags=${_boot_cflags//-O3/-O2}
+  _boot_cxxflags=${_boot_cxxflags//-march=native/}
+  _boot_cxxflags=${_boot_cxxflags//-mtune=native/}
+  _boot_cxxflags=${_boot_cxxflags//-O3/-O2}
+
+  CFLAGS=${_boot_cflags}
+  CXXFLAGS=${_boot_cxxflags}
 
   "$srcdir/gcc14/configure" \
     --enable-languages=c,c++,fortran \
