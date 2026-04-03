@@ -17,6 +17,7 @@ pkgbase = onnxruntime
 	makedepends = python-wheel
 	makedepends = python-build
 	makedepends = onednn
+	makedepends = gcc14
 	makedepends = cuda-12
 	makedepends = cudnn9-cuda12
 	makedepends = nccl
