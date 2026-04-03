@@ -23,7 +23,7 @@ _pydepends=('python-numpy' 'python-coloredlogs' 'python-psutil'
             'python-flatbuffers' 'python-protobuf' 'python-packaging')
 makedepends=('git' 'cmake' 'ninja' 'boost' 'pybind11' 'nlohmann-json' 'chrono-date' 'cxxopts'
              'python-setuptools' 'python-installer' 'python-wheel' 'python-build' 'onednn'
-             'cuda' 'cudnn' 'nccl')
+             'cuda-12' 'cudnn9-cuda12' 'nccl') # cuda, cudnn, and nccl are needed to build the CUDA variants; we check for them manually in the build function to avoid hard deps for non-CUDA variants.
 makedepends+=("${_pydepends[@]}")
 #TODO: Add tensorrt for CUDA.
 source=("git+https://github.com/microsoft/onnxruntime#tag=v${pkgver}"
