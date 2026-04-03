@@ -1,0 +1,13 @@
+*
+!PKGBUILD
+!.SRCINFO
+!LICENSE
+!.gitignore
+!*.toml
+!*.install
+!*.desktop
+!*.patch
+!*.sh
+!c89
+!c99
+!LICENSES
