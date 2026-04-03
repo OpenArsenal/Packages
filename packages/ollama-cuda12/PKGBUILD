@@ -22,7 +22,7 @@ makedepends=(cmake
              rocm-toolchain
              rocm-hip-sdk
              hipblas
-             cuda
+             cuda-12
              clblast
              vulkan-headers
              vulkan-icd-loader
