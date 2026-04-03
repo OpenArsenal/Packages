@@ -1,7 +1,4 @@
-# Maintainer: Ali Mohammad Pur <totally@fakegmail.ch>
-# Contributor: Tim Schumacher <timschumi@gmx.de>
-# Contributor: Alexander F. Rødseth <xyproto@archlinux.org>
-# Contributor: Brian <brain@derelict.garden>
+# Maintainer: Okiki <okiki@thunderstrike.co>
 
 pkgname=ladybird-git
 pkgver=r74110.488fd52039a
@@ -35,7 +32,7 @@ depends=(
   ttf-liberation
   woff2
   
-  libpng-apng # AUR
+  # libpng-apng # AUR
   angle # AUR
   simdutf-git # 'simdutf' is v6, we need v7.
   cpptrace # AUR
