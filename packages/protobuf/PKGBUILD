@@ -3,12 +3,15 @@
 pkgbase='protobuf'
 pkgname=('protobuf' 'python-protobuf' 'ruby-google-protobuf')
 pkgver='34.1'
-pkgrel=1
+pkgrel=3
 pkgdesc="Protocol Buffers - Google's data interchange format"
 arch=('x86_64')
 url='https://developers.google.com/protocol-buffers/'
 license=('BSD-3-Clause')
+_srcname=protobuf-src
 depends=(
+  # protoc links against abseil shared libraries, so protobuf needs a rebuild
+  # whenever abseil-cpp bumps its SONAME.
   'abseil-cpp'
   'glibc'
   'libgcc'
@@ -37,7 +40,7 @@ checkdepends=(
   python-numpy
 )
 source=(
-  git+https://github.com/protocolbuffers/protobuf.git#tag=v$pkgver
+  ${_srcname}::git+https://github.com/protocolbuffers/protobuf.git#tag=v$pkgver
   protobuf-fix-build-type-none.patch
   protobuf-33-patch-enum-traits-impl.patch
 )
@@ -50,7 +53,7 @@ options=(!lto)
 _gemname=google-protobuf
 
 prepare() {
-  cd "$pkgname"
+  cd "${_srcname}"
   bazel --version
 
   patch -p1 < ../protobuf-fix-build-type-none.patch # Fix cmake config compatibility mode
@@ -67,14 +70,14 @@ build() {
     -D protobuf_BUILD_SHARED_LIBS=ON
     -D protobuf_USE_EXTERNAL_GTEST=ON
     -D protobuf_ABSL_PROVIDER=package
-    -S "$pkgbase"
+    -S "${_srcname}"
     -W no-dev
   )
 
   cmake "${cmake_options[@]}"
   cmake --build build --verbose
 
-  cd "$pkgbase"
+  cd "${_srcname}"
   local bazel_options=(
     --enable_bzlmod
     --noenable_workspace
@@ -154,8 +157,8 @@ package_protobuf() {
 
   DESTDIR="$pkgdir" cmake --install build
 
-  cd $pkgbase
-  install -vDm 644 LICENSE -t "$pkgdir/usr/share/licenses/$pkgname"
+  cd "${_srcname}"
+  install -vDm 644 LICENSE -t "$pkgdir/usr/share/licenses/$pkgname/"
   install -vDm 644 editors/protobuf-mode.el \
     -t "$pkgdir/usr/share/emacs/site-lisp/"
   install -vDm 644 editors/proto.vim \
@@ -169,8 +172,8 @@ package_python-protobuf() {
     'python'
   )
 
-  python -m installer --destdir="$pkgdir" "$pkgbase"/bazel-bin/python/dist/*.whl
-  install -vDm 644 $pkgbase/LICENSE -t "$pkgdir/usr/share/licenses/$pkgname/"
+  python -m installer --destdir="$pkgdir" "${_srcname}"/bazel-bin/python/dist/*.whl
+  install -vDm 644 "${_srcname}"/LICENSE -t "$pkgdir/usr/share/licenses/$pkgname/"
 }
 
 package_ruby-google-protobuf() {
@@ -182,8 +185,8 @@ package_ruby-google-protobuf() {
     'ruby-rake'
   )
 
-  cp -a $pkgbase/ruby/tmp_install/* "$pkgdir"
+  cp -a "${_srcname}"/ruby/tmp_install/* "$pkgdir"
 
-  install -vDm 644 $pkgbase/LICENSE -t "$pkgdir/usr/share/licenses/$pkgname/"
-  install -Dm 0644 $pkgbase/ruby/*.md -t "$pkgdir/usr/share/doc/${pkgname}"
+  install -vDm 644 "${_srcname}"/LICENSE -t "$pkgdir/usr/share/licenses/$pkgname/"
+  install -Dm 0644 "${_srcname}"/ruby/*.md -t "$pkgdir/usr/share/doc/${pkgname}"
 }

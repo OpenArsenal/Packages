@@ -1,7 +1,7 @@
 pkgbase = protobuf
 	pkgdesc = Protocol Buffers - Google's data interchange format
 	pkgver = 34.1
-	pkgrel = 1
+	pkgrel = 3
 	url = https://developers.google.com/protocol-buffers/
 	arch = x86_64
 	license = BSD-3-Clause
@@ -28,7 +28,7 @@ pkgbase = protobuf
 	depends = libstdc++
 	depends = zlib
 	options = !lto
-	source = git+https://github.com/protocolbuffers/protobuf.git#tag=v34.1
+	source = protobuf-src::git+https://github.com/protocolbuffers/protobuf.git#tag=v34.1
 	source = protobuf-fix-build-type-none.patch
 	source = protobuf-33-patch-enum-traits-impl.patch
 	sha512sums = 22083bdc3b71d4b77902eb2372b04136bbcac9a7ee05a2d3e197d9d2ce45e8cf0b6c0c445076102ace485162c5020b93ef52bd26d4fd8fba780137b80cacd1a4
