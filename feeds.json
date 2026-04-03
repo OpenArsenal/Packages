@@ -661,6 +661,12 @@
       "name": "python-sounddevice",
       "type": "pypi",
       "project": "sounddevice"
+    },
+    {
+      "name": "gcc14",
+      "type": "github-release",
+      "repo": "gcc-mirror/gcc",
+      "channel": "stable"
     }
   ]
 }
