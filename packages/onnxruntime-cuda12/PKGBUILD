@@ -5,10 +5,10 @@
 
 pkgbase=onnxruntime
 pkgname=(
-  "${pkgbase}-cuda"
-  "${pkgbase}-opt-cuda"
-  "python-${pkgbase}-cuda"
-  "python-${pkgbase}-opt-cuda"
+  "${pkgbase}-cuda12"
+  "${pkgbase}-opt-cuda12"
+  "python-${pkgbase}-cuda12"
+  "python-${pkgbase}-opt-cuda12"
 )
 pkgver='1.24.4'
 _pkgdesc='Cross-platform, high performance scoring engine for ML models'
@@ -182,9 +182,9 @@ build() {
   python -m build --wheel --no-isolation
 }
 
-package_onnxruntime-cuda() {
+package_onnxruntime-cuda12() {
   pkgdesc="$_pkgdesc (with CUDA)"
-  depends+=('cuda' 'cudnn' 'nccl' 'onednn')
+  depends+=('cuda-12' 'cudnn9-cuda12' 'nccl') # cuda, cudnn, and nccl are needed to build the CUDA variants; we check for them manually in the build function to avoid hard deps for non-CUDA variants.
   provides=("${pkgbase}=${pkgver}")
   conflicts=("${pkgbase}")
   replaces=("${pkgbase}")
@@ -196,9 +196,9 @@ package_onnxruntime-cuda() {
   install -Dm644 ThirdPartyNotices.txt "${pkgdir}/usr/share/licenses/${pkgname}/ThirdPartyNotices.txt"
 }
 
-package_onnxruntime-opt-cuda() {
+package_onnxruntime-opt-cuda12() {
   pkgdesc="$_pkgdesc (with CUDA and AVX2 CPU optimizations)"
-  depends+=('cuda' 'cudnn' 'nccl' 'onednn')
+  depends+=('cuda-12' 'cudnn9-cuda12' 'nccl') # cuda, cudnn, and nccl are needed to build the CUDA variants; we check for them manually in the build function to avoid hard deps for non-CUDA variants.
   provides=("${pkgbase}=${pkgver}")
   conflicts=("${pkgbase}")
   replaces=("${pkgbase}-opt")
@@ -210,9 +210,9 @@ package_onnxruntime-opt-cuda() {
   install -Dm644 ThirdPartyNotices.txt "${pkgdir}/usr/share/licenses/${pkgname}/ThirdPartyNotices.txt"
 }
 
-package_python-onnxruntime-cuda() {
+package_python-onnxruntime-cuda12() {
   pkgdesc="$_pkgdesc (with CUDA)"
-  depends+=("${pkgbase}-cuda" "${_pydepends[@]}")
+  depends+=("${pkgbase}-cuda12" "${_pydepends[@]}")
   provides=("python-${pkgbase}=${pkgver}")
   conflicts=("python-${pkgbase}")
   replaces=("python-${pkgbase}")
@@ -223,9 +223,9 @@ package_python-onnxruntime-cuda() {
   install -Dm644 ThirdPartyNotices.txt "${pkgdir}/usr/share/licenses/${pkgname}/ThirdPartyNotices.txt"
 }
 
-package_python-onnxruntime-opt-cuda() {
+package_python-onnxruntime-opt-cuda12() {
   pkgdesc="$_pkgdesc (with CUDA and AVX2 CPU optimizations)"
-  depends+=("${pkgbase}-opt-cuda" "${_pydepends[@]}")
+  depends+=("${pkgbase}-opt-cuda12" "${_pydepends[@]}")
   provides=("python-${pkgbase}=${pkgver}")
   conflicts=("python-${pkgbase}")
   replaces=("python-${pkgbase}-opt")
