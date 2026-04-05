@@ -54,7 +54,7 @@ _require_cuda12() {
 }
 
 _valid_sm() {
-  echo "50-real;52-real;53-real;60-real;61-real;62-real;70-real;72-real;75-real;80-real;86-real;87-real;89-real;90-real"
+  echo "50;52;53;60;61;62;70;72"
 }
 
 prepare() {
@@ -168,9 +168,9 @@ build() {
 
   echo "Build onnxruntime with CUDA with AVX optimizations"
   cd "${srcdir}/${pkgbase}-opt-cuda"
-  echo 'string(APPEND CMAKE_C_FLAGS " -march=haswell")' \
+  echo 'string(APPEND CMAKE_C_FLAGS " -march=skylake")' \
     >> cmake/adjust_global_compile_flags.cmake
-  echo 'string(APPEND CMAKE_CXX_FLAGS " -march=haswell")' \
+  echo 'string(APPEND CMAKE_CXX_FLAGS " -march=skylake")' \
     >> cmake/adjust_global_compile_flags.cmake
   cmake "${_cmake_cuda_args[@]}"
   cmake --build build
