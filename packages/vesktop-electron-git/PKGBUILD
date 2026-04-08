@@ -1,0 +1,82 @@
+_pkgname=Vesktop
+_appname=vesktop
+
+pkgname=vesktop-electron-git
+pkgrel=1
+pkgdesc="An Electron-based Discord app with Vencord & improved Linux support using system-provided Electron. Unsupported"
+arch=('x86_64' 'aarch64')
+url='https://github.com/Vencord/Vesktop'
+license=('GPL-3.0-or-later')
+
+depends=('electron')
+makedepends=('git' 'nodejs' 'pnpm')
+optdepends=(
+  'libnotify: Notifications'
+  'xdg-utils: Open links, files, etc'
+)
+
+provides=('vesktop' 'vesktop-electron')
+conflicts=('vesktop' 'vesktop-electron')
+replaces=('vesktop-electron')
+
+source=(
+  "$_pkgname::git+$url.git"
+  'vesktop.desktop'
+  'vesktop.sh'
+)
+
+sha256sums=(
+  'SKIP'
+  '455c00b862aa0a7e18ca8e23d65d5c5ee4506cdfb15f1bf6f622cce39827de46'
+  'a2da313031cfaa892f0f2e51fd0ffafbc14001d4efb0523bb8bfaeb7f4ddc3fa'
+)
+
+pkgver() {
+  cd "$srcdir/$_pkgname"
+  git describe --long --tags --abbrev=7 --exclude='*[A-Za-z]*' \
+    | sed -E 's/^[^0-9]*//; s/([^-]+-g)/r\1/; s/-/./g'
+}
+
+prepare() {
+  cd "$srcdir/$_pkgname"
+
+  node <<'EOF'
+const fs = require("fs");
+const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+
+pkg.build.electronDist = "/usr/lib/electron";
+pkg.scripts.postinstall = ":";
+
+fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
+EOF
+}
+
+build() {
+  cd "$srcdir/$_pkgname"
+
+  pnpm install --frozen-lockfile --ignore-scripts
+  pnpm updateArrpcDB
+  pnpm package:dir
+}
+
+package() {
+  cd "$srcdir/$_pkgname"
+
+  local _asar
+  _asar="$(find dist -path '*/resources/app.asar' -print -quit)"
+
+  install -Dm644 "$_asar" \
+    "$pkgdir/usr/lib/$_appname/app.asar"
+
+  install -Dm755 "../vesktop.sh" \
+    "$pkgdir/usr/bin/$_appname"
+
+  install -Dm644 "../vesktop.desktop" \
+    "$pkgdir/usr/share/applications/$_appname.desktop"
+
+  install -Dm644 "LICENSE" \
+    "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+
+  install -Dm644 "build/icon.svg" \
+    "$pkgdir/usr/share/icons/hicolor/scalable/apps/$_appname.svg"
+}
