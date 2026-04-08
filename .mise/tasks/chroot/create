@@ -3,18 +3,18 @@
 #USAGE flag "--root <dir>" help="Chroot root directory (e.g., /srv/chroot/root)" env="CHROOT_ROOT"
 #USAGE flag "--pacman-conf <file>" help="Pacman config to use" env="CHROOT_PACMAN_CONF"
 #USAGE flag "--mirrorlist-v4 <file>" help="Optional mirrorlist v4 file to copy into chroot" env="CHROOT_MIRRORLIST_V4"
-#USAGE flag "--mirrorlist-v3 <file>" help="Optional mirrorlist file to copy into chroot" env="CHROOT_MIRRORLIST_V3"
+#USAGE flag "--mirrorlist-v3 <file>" help="Optional mirrorlist v3 file to copy into chroot" env="CHROOT_MIRRORLIST_V3"
 #USAGE flag "--mirrorlist <file>" help="Optional mirrorlist file to copy into chroot" env="CHROOT_MIRRORLIST"
 #USAGE flag "--arch-mirrorlist <file>" help="Optional arch mirrorlist file to copy into chroot" env="CHROOT_ARCH_MIRRORLIST"
 
 set -euo pipefail
 
-CHROOT_ROOT="${usage_root:-${CHROOT_ROOT:-}}"
-CHROOT_PACMAN_CONF="${usage_pacman_conf:-${CHROOT_PACMAN_CONF:-}}"
-CHROOT_MIRRORLIST_V4="${usage_mirrorlist_v4:-${CHROOT_MIRRORLIST_V4:-}}"
-CHROOT_MIRRORLIST_V3="${usage_mirrorlist_v3:-${CHROOT_MIRRORLIST_V3:-}}"
-CHROOT_MIRRORLIST="${usage_mirrorlist:-${CHROOT_MIRRORLIST:-}}"
-CHROOT_ARCH_MIRRORLIST="${usage_arch_mirrorlist:-${CHROOT_ARCH_MIRRORLIST:-}}"
+CHROOT_ROOT="${usage_root:-}"
+CHROOT_PACMAN_CONF="${usage_pacman_conf:-}"
+CHROOT_MIRRORLIST_V4="${usage_mirrorlist_v4:-}"
+CHROOT_MIRRORLIST_V3="${usage_mirrorlist_v3:-}"
+CHROOT_MIRRORLIST="${usage_mirrorlist:-}"
+CHROOT_ARCH_MIRRORLIST="${usage_arch_mirrorlist:-}"
 
 [[ -n "${CHROOT_ROOT}" ]] || { echo "error: CHROOT_ROOT is required (or use --root)" >&2; exit 1; }
 [[ -n "${CHROOT_PACMAN_CONF}" ]] || { echo "error: CHROOT_PACMAN_CONF is required (or use --pacman-conf)" >&2; exit 1; }
@@ -50,23 +50,25 @@ if [[ -n "${CHROOT_ARCH_MIRRORLIST}" ]]; then
   mkarchroot_args+=(-f "${CHROOT_ARCH_MIRRORLIST}:/etc/pacman.d/mirrorlist")
 fi
 
-if [[ "${CHROOT_FORCE_REBUILD:-false}" != "true" ]] && [[ -d "$CHROOT_ROOT" && -f "$CHROOT_ROOT/etc/pacman.conf" ]]; then
+if [[ -d "$CHROOT_ROOT" && -f "$CHROOT_ROOT/etc/pacman.conf" ]]; then
   echo "Chroot already provisioned; skipping: $CHROOT_ROOT" >&2
   exit 0
 fi
 
-# If the target exists but doesn't look provisioned, fail fast (or wipe if forced)
-if [[ -d "$CHROOT_ROOT" ]] && [[ ! -f "$CHROOT_ROOT/etc/pacman.conf" ]]; then
-  if [[ "${CHROOT_FORCE_REBUILD:-false}" == "true" ]]; then
-    echo "CHROOT_FORCE_REBUILD=true; removing non-provisioned directory: $CHROOT_ROOT" >&2
-    run0 rm -rf -- "$CHROOT_ROOT"
-  else
-    echo "error: CHROOT_ROOT already exists but does not look provisioned: $CHROOT_ROOT" >&2
-    echo "       remove it manually, or set CHROOT_FORCE_REBUILD=true" >&2
-    exit 1
-  fi
+if [[ -e "$CHROOT_DIR" ]]; then
+  echo "error: Chroot exists but does not look provisioned: $CHROOT_DIR" >&2
+  echo "       run 'mise run chroot:destroy' and then rerun 'mise run chroot:create'" >&2
+  exit 1
 fi
 
-# mkarchroot should create the root dir; just ensure the parent exists
-run0 mkdir -p -- "$(dirname -- "$CHROOT_ROOT")"
-run0 mkarchroot "${mkarchroot_args[@]}" "$CHROOT_ROOT" base-devel
+run0 mkdir -p -- "$CHROOT_DIR"
+
+run0 mkarchroot "${mkarchroot_args[@]}" "$CHROOT_ROOT" \
+  base-devel git \
+  archlinux-keyring cachyos-keyring
+
+run0 sh -c "grep -qxF 'no-secmem-warning' '$CHROOT_ROOT/etc/pacman.d/gnupg/gpg.conf' 2>/dev/null || printf '%s\n' 'no-secmem-warning' >> '$CHROOT_ROOT/etc/pacman.d/gnupg/gpg.conf'"
+
+run0 arch-nspawn "$CHROOT_ROOT" pacman-key --init
+run0 arch-nspawn "$CHROOT_ROOT" pacman-key --populate archlinux
+run0 arch-nspawn "$CHROOT_ROOT" pacman-key --populate cachyos
