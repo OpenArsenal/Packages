@@ -1,0 +1,15 @@
+*
+!PKGBUILD
+!.SRCINFO
+!LICENSE
+!LICENSES
+!.gitignore
+!*.toml
+!*.service
+!*.install
+!*.desktop
+!*.patch
+!*.sh
+!*.conf
+!sysusers.conf
+!*.d
