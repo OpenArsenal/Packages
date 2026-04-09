@@ -11,12 +11,13 @@ url="https://github.com/Vencord/Vesktop"
 license=('GPL-3.0-only')
 
 depends=('alsa-lib' 'gtk3' 'nss')
-makedepends=('pnpm' 'npm' 'nodejs')
+makedepends=('pnpm' 'nodejs')
 optdepends=(
   'libnotify: Notifications'
   'xdg-utils: Open links, files, etc'
 )
 
+conflicts=('vesktop-electron' 'vesktop-bin')
 source=("$_pkgname-$pkgver.tar.gz::https://github.com/Vencord/Vesktop/archive/v${pkgver}.tar.gz" "vesktop.desktop" "vesktop.sh")
 
 sha256sums=('4bb9b5e1acaf17a5f145931008fe4015f9b8c1116b769e1a55a68d5483f238fc'
@@ -26,7 +27,8 @@ sha256sums=('4bb9b5e1acaf17a5f145931008fe4015f9b8c1116b769e1a55a68d5483f238fc'
 build() {
   cd "$srcdir/$_pkgname-$pkgver"
 
-  pnpm i --frozen-lockfile
+  pnpm install --frozen-lockfile --ignore-scripts
+  pnpm updateArrpcDB
   pnpm package:dir
 }
 
