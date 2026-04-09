@@ -672,6 +672,11 @@
       "type": "vcs",
       "channel": "stable"
     },
+    {
+      "name": "vesktop-bin",
+      "type": "github-release",
+      "repo": "Vencord/Vesktop",
+      "channel": "stable"
     }
   ]
 }
