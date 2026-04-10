@@ -22,7 +22,7 @@ source=("$_pkgname-$pkgver.tar.gz::https://github.com/Vencord/Vesktop/archive/v$
 
 sha256sums=('4bb9b5e1acaf17a5f145931008fe4015f9b8c1116b769e1a55a68d5483f238fc'
             '98fa8f661b065c2d825e24f0055a40ae01d58d23628ad7ebf6914296209dd43c'
-            '506c246328af639d6f6a3e52215c7b34af2a6df11d195de6f57a8bbee750cce9')
+            'ca47fc4e1f4dd5ec44c03dbb6dc0bde1c40f1ec7f9cb568626f3ed157220efe2')
 
 build() {
   cd "$srcdir/$_pkgname-$pkgver"
