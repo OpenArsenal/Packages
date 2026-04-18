@@ -1,0 +1,9 @@
+# Ignore everything ...
+*/**
+
+# Allow generally:
+!.gitignore
+!PKGBUILD
+!.SRCINFO
+!LICENSE*
+!*.patch
