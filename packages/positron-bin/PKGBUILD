@@ -1,0 +1,103 @@
+pkgname=positron-bin
+_pkgname=positron
+_wrapper=${_pkgname}
+pkgver='2026.04.1.10'
+_upstream_ver="${pkgver%.*}-${pkgver##*.}"
+pkgrel=1
+pkgdesc="A next-generation data science IDE from Posit (official binary version)"
+arch=('x86_64' 'aarch64')
+url="https://positron.posit.co/"
+license=('custom')
+provides=('positron')
+options=(!strip)
+install=${pkgname}.install
+
+depends=(
+  libxkbfile
+  gnupg
+  gtk3
+  libsecret
+  nss
+  gcc-libs
+  libnotify
+  libxss
+  glibc
+  lsof
+  shared-mime-info
+  xdg-utils
+  alsa-lib
+)
+
+optdepends=(
+  'glib2: needed for move to trash functionality'
+  'libdbusmenu-glib: needed for KDE global menu'
+  'org.freedesktop.secrets: needed for settings sync'
+)
+
+source=(
+  "${_wrapper}"
+  "${pkgname}.install"
+)
+
+source_x86_64=(
+  "Positron-${_upstream_ver}-x64.rpm::https://cdn.posit.co/positron/releases/rpm/x86_64/Positron-${_upstream_ver}-x64.rpm"
+)
+
+source_aarch64=(
+  "Positron-${_upstream_ver}-arm64.rpm::https://cdn.posit.co/positron/releases/rpm/arm64/Positron-${_upstream_ver}-arm64.rpm"
+)
+
+sha256sums=('3d0cdecacb396ba175b7fe2cfc8c220b2aed9b12f2927696223019028b14d4cf'
+  'ceba13aa3616b484cdc2dc7909017770024d6393d2e7a88da15d0f5b246bd6d8')
+sha256sums_x86_64=('2b0db0e1fd7087b5f7041044b601323de7ea5c8fd8b0ba94e684141c64c2b28c')
+sha256sums_aarch64=('f5253c875ee671fd8fb724a35083925773b96e72c0cfeb61bd36793db199e99c')
+
+package() {
+  local _rpm
+
+  install -d "${pkgdir}/usr/share"
+  install -d "${pkgdir}/usr/bin"
+  install -d "${pkgdir}/usr/share/licenses/${pkgname}"
+
+  case "${CARCH}" in
+  x86_64)
+    _rpm="${srcdir}/Positron-${_upstream_ver}-x64.rpm"
+    ;;
+  aarch64)
+    _rpm="${srcdir}/Positron-${_upstream_ver}-arm64.rpm"
+    ;;
+  *)
+    echo "Unsupported architecture: ${CARCH}" >&2
+    return 1
+    ;;
+  esac
+
+  bsdtar -xpf "${_rpm}" -C "${pkgdir}" || return 1
+
+  install -Dm755 "${srcdir}/${_wrapper}" "${pkgdir}/usr/bin/positron"
+
+  [[ -f "${pkgdir}/usr/share/${_pkgname}/resources/app/LICENSE.txt" ]] &&
+    install -Dm644 \
+      "${pkgdir}/usr/share/${_pkgname}/resources/app/LICENSE.txt" \
+      "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+
+  [[ -f "${pkgdir}/usr/share/${_pkgname}/resources/app/NOTICE" ]] &&
+    install -Dm644 \
+      "${pkgdir}/usr/share/${_pkgname}/resources/app/NOTICE" \
+      "${pkgdir}/usr/share/licenses/${pkgname}/NOTICE"
+
+  [[ -f "${pkgdir}/usr/share/${_pkgname}/resources/app/ThirdPartyNotices.txt" ]] &&
+    install -Dm644 \
+      "${pkgdir}/usr/share/${_pkgname}/resources/app/ThirdPartyNotices.txt" \
+      "${pkgdir}/usr/share/licenses/${pkgname}/ThirdPartyNotices.txt"
+
+  [[ -f "${pkgdir}/usr/share/${_pkgname}/LICENSES.chromium.html" ]] &&
+    install -Dm644 \
+      "${pkgdir}/usr/share/${_pkgname}/LICENSES.chromium.html" \
+      "${pkgdir}/usr/share/licenses/${pkgname}/LICENSES.chromium.html"
+
+  [[ -f "${pkgdir}/usr/share/${_pkgname}/chrome-sandbox" ]] &&
+    chmod 4755 "${pkgdir}/usr/share/${_pkgname}/chrome-sandbox"
+
+  find "${pkgdir}" -type f -perm -0002 -exec chmod o-w '{}' +
+}
