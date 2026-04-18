@@ -1,0 +1,84 @@
+pkgname=nccl-tests-cuda12
+_pkgname=nccl-tests
+pkgver=2.18.3
+pkgrel=1
+pkgdesc='NVIDIA NCCL test and benchmark binaries built against cuda12'
+arch=(x86_64)
+url='https://github.com/NVIDIA/nccl-tests'
+license=(BSD-3-Clause)
+
+_cuda_root=/opt/cuda
+_gcc_major=14
+_name_suffix=_cuda12
+
+depends=(
+  glibc
+  libstdc++
+  cuda12
+  nccl-cuda12
+)
+makedepends=(
+  "gcc${_gcc_major}"
+  git
+)
+
+source=("git+https://github.com/NVIDIA/nccl-tests.git#tag=v${pkgver}")
+sha256sums=('SKIP')
+
+build() {
+  cd "${srcdir}/${_pkgname}"
+
+  local _hostcc=
+  local _hostcxx=
+  local _candidate=
+
+  for _candidate in "/usr/bin/gcc-${_gcc_major}" "/usr/bin/gcc${_gcc_major}"; do
+    if [[ -x "${_candidate}" ]]; then
+      _hostcc="${_candidate}"
+      break
+    fi
+  done
+
+  for _candidate in "/usr/bin/g++-${_gcc_major}" "/usr/bin/g++${_gcc_major}"; do
+    if [[ -x "${_candidate}" ]]; then
+      _hostcxx="${_candidate}"
+      break
+    fi
+  done
+
+  if [[ -z "${_hostcc}" || -z "${_hostcxx}" ]]; then
+    printf 'Missing host compiler for gcc%s\n' "${_gcc_major}" >&2
+    printf 'Tried: /usr/bin/gcc-%s, /usr/bin/gcc%s, /usr/bin/g++-%s, /usr/bin/g++%s\n' \
+      "${_gcc_major}" "${_gcc_major}" "${_gcc_major}" "${_gcc_major}" >&2
+    return 1
+  fi
+
+  export CC="${_hostcc}"
+  export CXX="${_hostcxx}"
+  export CUDAHOSTCXX="${_hostcxx}"
+  export NVCC_CCBIN="${_hostcxx}"
+
+  make clean \
+    CUDA_HOME="${_cuda_root}" \
+    NCCL_HOME=/usr \
+    NAME_SUFFIX="${_name_suffix}"
+
+  make \
+    CUDA_HOME="${_cuda_root}" \
+    NCCL_HOME=/usr \
+    NAME_SUFFIX="${_name_suffix}"
+}
+
+package() {
+  cd "${srcdir}/${_pkgname}"
+
+  install -d "${pkgdir}/usr/bin"
+  local _bin
+  for _bin in build/*_perf"${_name_suffix}"; do
+    [[ -e "${_bin}" ]] || continue
+    install -m755 "${_bin}" "${pkgdir}/usr/bin/"
+  done
+
+  install -Dm644 LICENSE.txt "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE.txt"
+  install -Dm644 README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+}
