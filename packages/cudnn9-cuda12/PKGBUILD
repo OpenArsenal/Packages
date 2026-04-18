@@ -14,7 +14,7 @@ url="https://developer.nvidia.com/cuDNN"
 license=('custom')
 conflicts=('cudnn')
 provides=('cudnn=9.10')
-depends=('cuda-12')
+depends=('cuda12')
 # To figure out these URLs, check out the Dockerfiles at
 # https://gitlab.com/nvidia/container-images/cuda/-/tree/master/dist for the appropriate cuda version
 # or make an NVIDIA Developer account.
