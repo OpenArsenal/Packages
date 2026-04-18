@@ -1,4 +1,3 @@
-# Maintainer: Okiki <okiki@thunderstrike.co>
 # NOTE: This split PKGBUILD is for CUDA 12 only.
 # - Requires CUDA major version 12 at /opt/cuda
 # - Uses gcc14 host compiler for CUDA 12 compatibility
@@ -16,6 +15,7 @@ pkgrel=1
 arch=('x86_64')
 url='https://github.com/microsoft/onnxruntime'
 license=('MIT')
+options=(!lto !debug)
 depends=('abseil-cpp' 'boost-libs')
 # https://github.com/microsoft/onnxruntime/blob/main/onnxruntime/python/tools/transformers/requirements.txt
 _pydepends=('python-numpy' 'python-coloredlogs' 'python-psutil'
@@ -23,18 +23,20 @@ _pydepends=('python-numpy' 'python-coloredlogs' 'python-psutil'
             'python-flatbuffers' 'python-protobuf' 'python-packaging')
 makedepends=('git' 'cmake' 'ninja' 'boost' 'pybind11' 'nlohmann-json' 'chrono-date' 'cxxopts'
              'python-setuptools' 'python-installer' 'python-wheel' 'python-build' 'onednn' 'gcc14' 'protobuf' 'abseil-cpp'
-             'cuda-12' 'cudnn9-cuda12' 'nccl') # cuda, cudnn, and nccl are needed to build the CUDA variants; we check for them manually in the build function to avoid hard deps for non-CUDA variants.
+             'cuda12' 'cudnn9-cuda12' 'nccl-cuda12' 'lld') # cuda, cudnn, and nccl are needed to build the CUDA variants; we check for them manually in the build function to avoid hard deps for non-CUDA variants.
 makedepends+=("${_pydepends[@]}")
 #TODO: Add tensorrt for CUDA.
 source=("git+https://github.com/microsoft/onnxruntime#tag=v${pkgver}"
         "${pkgbase}-install-orttraining-files.patch"
         "${pkgbase}-system-dnnl.patch"
         "${pkgbase}-system-flatbuffers.patch"
+        "${pkgbase}-remove-pkg_resources.patch"
         fix-thrust-api.patch)
 b2sums=('4edead573c6b080e01e9afbcc13692b3016b757f761d48aaf10e0148bc371333e2e14d605158495bb84dca99359db0d7b3c98795816cdacc63d9d8487f194c93'
         'af5a5524dd9b5fe0052d2d0da232de7f219d4abffb37a7a321145b428d06fcb2901ab4e76b6754440146c223fc761bcbdfeee230167d33aa4434b82a1ebad5c0'
         '57c79382537f5bd25a891de3a99415a6dd8f490676df213016e897040c88e28fb5f5a5c3a8a98057e3f6630edb3ddcaeae36dcc47d5354abaafafc36e579f731'
         '207f020f310a7b447b4dc2fac74819f80099f088fdad6e42d67d0f01aa35bb5b9475bd006d9bec318127ae2db3d7ae3df33382fa16339d936c1dfb3832010837'
+        'dfa9e70fdcd0f2c2fafec7f1961e66fa9661a03b8dba08c7d2329d018d8ebd4481337c0ddc6de393d7f4a032bd6011ccfad28d89aa0142ce9e01ead0bafcf079'
         'b0b58e2eb42a38956ef9e86b853d413c2fd002737d37721962dd9e1fc5c39c1ef4594325c6f6081f2b4cdce39a14907dbebc156645fa25ff3f2bbbce6417cd14')
 
 _require_cuda12() {
@@ -53,8 +55,8 @@ _require_cuda12() {
   fi
 }
 
-_valid_sm() {
-  echo "50;52;53;60;61;62;70;72"
+valid_sm() {
+ echo "50;52;53;60;61;62;70;72"
 }
 
 prepare() {
@@ -83,6 +85,7 @@ prepare() {
 
   patch -Np1 -i "${srcdir}/${pkgbase}-install-orttraining-files.patch"
   patch -Np1 -i "${srcdir}/${pkgbase}-system-flatbuffers.patch"
+  patch -p1 -i "${srcdir}/${pkgbase}-remove-pkg_resources.patch"
 
   # Fix build with abseil 20250814; see https://github.com/microsoft/onnxruntime/issues/25815
   sed -i '/^absl::low_level_hash$/d' cmake/external/abseil-cpp.cmake
@@ -98,8 +101,31 @@ prepare() {
 build() {
   _require_cuda12
 
-  # Use -Donnxruntime_ENABLE_LAZY_TENSOR=OFF as it requires patched python-pytorch
-  # See: https://github.com/microsoft/onnxruntime/pull/10460 https://github.com/pytorch/pytorch/pulls/wschin
+  local _map_flags=(
+    "-ffile-prefix-map=${srcdir}=."
+    "-fmacro-prefix-map=${srcdir}=."
+    "-fdebug-prefix-map=${srcdir}=."
+    "-ffile-prefix-map=${srcdir}/${pkgbase}-cuda=."
+    "-fmacro-prefix-map=${srcdir}/${pkgbase}-cuda=."
+    "-fdebug-prefix-map=${srcdir}/${pkgbase}-cuda=."
+    "-ffile-prefix-map=${srcdir}/${pkgbase}-opt-cuda=."
+    "-fmacro-prefix-map=${srcdir}/${pkgbase}-opt-cuda=."
+    "-fdebug-prefix-map=${srcdir}/${pkgbase}-opt-cuda=."
+    "-ffile-prefix-map=${srcdir}/${pkgbase}-cuda/build=./build"
+    "-fmacro-prefix-map=${srcdir}/${pkgbase}-cuda/build=./build"
+    "-fdebug-prefix-map=${srcdir}/${pkgbase}-cuda/build=./build"
+    "-ffile-prefix-map=${srcdir}/${pkgbase}-opt-cuda/build=./build"
+    "-fmacro-prefix-map=${srcdir}/${pkgbase}-opt-cuda/build=./build"
+    "-fdebug-prefix-map=${srcdir}/${pkgbase}-opt-cuda/build=./build"
+  )
+  local _prefix_flags="${_map_flags[*]}"
+  local _cuda_inc="-I/opt/cuda/include -I/opt/cuda/targets/x86_64-linux/include"
+
+  export CPPFLAGS="${CPPFLAGS} ${_prefix_flags} ${_cuda_inc}"
+  export export CFLAGS="${CFLAGS/-flto=auto/} ${_prefix_flags} ${_cuda_inc} -DNDEBUG"
+  export CXXFLAGS="${CXXFLAGS/-flto=auto/} ${_prefix_flags} ${_cuda_inc} -DNDEBUG"
+  export LDFLAGS="${LDFLAGS/-flto=auto/}"
+
   local _cmake_args=(
     --compile-no-warning-as-error
     -S cmake
@@ -107,22 +133,22 @@ build() {
     -Wno-dev
     -G Ninja
     -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-    -DCMAKE_BUILD_TYPE=None
+    -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_INSTALL_PREFIX=/usr
+    -DCMAKE_LINKER_TYPE=LLD
+    "-DCMAKE_C_FLAGS=${CFLAGS}"
+    "-DCMAKE_CXX_FLAGS=${CXXFLAGS}"
+    "-DCMAKE_CUDA_FLAGS=-DNDEBUG -Xcompiler=-ffile-prefix-map=${srcdir}=. -Xcompiler=-fmacro-prefix-map=${srcdir}=. -Xcompiler=-fdebug-prefix-map=${srcdir}=. -Xcompiler=-ffile-prefix-map=${srcdir}/${pkgbase}-cuda=. -Xcompiler=-fmacro-prefix-map=${srcdir}/${pkgbase}-cuda=. -Xcompiler=-fdebug-prefix-map=${srcdir}/${pkgbase}-cuda=. -Xcompiler=-ffile-prefix-map=${srcdir}/${pkgbase}-cuda/build=./build -Xcompiler=-fmacro-prefix-map=${srcdir}/${pkgbase}-cuda/build=./build -Xcompiler=-fdebug-prefix-map=${srcdir}/${pkgbase}-cuda/build=./build -Xcompiler=-ffile-prefix-map=${srcdir}/${pkgbase}-opt-cuda=. -Xcompiler=-fmacro-prefix-map=${srcdir}/${pkgbase}-opt-cuda=. -Xcompiler=-fdebug-prefix-map=${srcdir}/${pkgbase}-opt-cuda=. -Xcompiler=-ffile-prefix-map=${srcdir}/${pkgbase}-opt-cuda/build=./build -Xcompiler=-fmacro-prefix-map=${srcdir}/${pkgbase}-opt-cuda/build=./build -Xcompiler=-fdebug-prefix-map=${srcdir}/${pkgbase}-opt-cuda/build=./build -Xcompiler=-I/opt/cuda/include -Xcompiler=-I/opt/cuda/targets/x86_64-linux/include"
     -Donnxruntime_ENABLE_PYTHON=ON
     -Donnxruntime_BUILD_SHARED_LIB=ON
     -Donnxruntime_BUILD_UNIT_TESTS=OFF
     -DBUILD_TESTING=OFF
     -Donnxruntime_ENABLE_TRAINING=ON
     -Donnxruntime_ENABLE_LAZY_TENSOR=OFF
-    # Stable release of eigen is too old for onnxruntime.
     -Donnxruntime_USE_PREINSTALLED_EIGEN=OFF
-    -DCMAKE_CXX_STANDARD=17)
-
-  # Use protobuf-lite instead of full protobuf to workaround symbol conflicts
-  # with onnx; see https://github.com/onnx/onnx/issues/1277 for details.
-  _cmake_args+=(
-    -Donnxruntime_USE_FULL_PROTOBUF=OFF)
+    -DCMAKE_CXX_STANDARD=17
+    -Donnxruntime_USE_FULL_PROTOBUF=OFF
+  )
 
   export PATH="/opt/cuda/bin:${PATH}"
   export CUDA_PATH="/opt/cuda"
@@ -137,12 +163,10 @@ build() {
   export CXX=g++-14
   export CUDAHOSTCXX=g++-14
 
-  CXXFLAGS+=" -I/opt/cuda/targets/x86_64-linux/include"
   local _cmake_cuda_args=("${_cmake_args[@]}"
     -DCMAKE_CUDA_ARCHITECTURES="$(_valid_sm)"
     -DCMAKE_CUDA_STANDARD_REQUIRED=ON
     -DCMAKE_CXX_STANDARD_REQUIRED=ON
-    # WARNING: too many threads will eat all your RAM
     -Donnxruntime_NVCC_THREADS=2
     -Donnxruntime_USE_DNNL=ON
     -Donnxruntime_USE_CUDA=ON
@@ -154,29 +178,34 @@ build() {
 
   echo "Build onnxruntime with CUDA without optimization"
   cd "${srcdir}/${pkgbase}-cuda"
+  mkdir -p build/tmp
+  export TMPDIR="$PWD/build/tmp"
+  export TMP="$TMPDIR"
+  export TEMP="$TMPDIR"
   cmake "${_cmake_cuda_args[@]}"
   cmake --build build
 
   # Manually fix https://github.com/microsoft/onnxruntime/issues/24570
-  mkdir onnxruntime/capi
+  mkdir -p onnxruntime/capi
   python setup.py --help # We have to call it like this once to generate the file we need.
   cp -r build/onnxruntime/* onnxruntime
   python -m build --wheel --no-isolation
-
 
   ##### onnxruntime-opt-cuda
 
   echo "Build onnxruntime with CUDA with AVX optimizations"
   cd "${srcdir}/${pkgbase}-opt-cuda"
-  echo 'string(APPEND CMAKE_C_FLAGS " -march=skylake")' \
-    >> cmake/adjust_global_compile_flags.cmake
-  echo 'string(APPEND CMAKE_CXX_FLAGS " -march=skylake")' \
-    >> cmake/adjust_global_compile_flags.cmake
+  echo 'string(APPEND CMAKE_C_FLAGS " -march=skylake")' >> cmake/adjust_global_compile_flags.cmake
+  echo 'string(APPEND CMAKE_CXX_FLAGS " -march=skylake")' >> cmake/adjust_global_compile_flags.cmake
+  mkdir -p build/tmp
+  export TMPDIR="$PWD/build/tmp"
+  export TMP="$TMPDIR"
+  export TEMP="$TMPDIR"
   cmake "${_cmake_cuda_args[@]}"
   cmake --build build
 
   # Manually fix https://github.com/microsoft/onnxruntime/issues/24570
-  mkdir onnxruntime/capi
+  mkdir -p onnxruntime/capi
   python setup.py --help # We have to call it like this once to generate the file we need.
   cp -r build/onnxruntime/* onnxruntime
   python -m build --wheel --no-isolation
@@ -184,7 +213,7 @@ build() {
 
 package_onnxruntime-cuda12() {
   pkgdesc="$_pkgdesc (with CUDA)"
-  depends+=('cuda-12' 'cudnn9-cuda12' 'nccl') # cuda, cudnn, and nccl are needed to build the CUDA variants; we check for them manually in the build function to avoid hard deps for non-CUDA variants.
+  depends+=('cuda12' 'cudnn9-cuda12' 'nccl-cuda12' 'onednn') # cuda, cudnn, and nccl are needed to build the CUDA variants; we check for them manually in the build function to avoid hard deps for non-CUDA variants.
   provides=("${pkgbase}=${pkgver}")
   conflicts=("${pkgbase}")
   replaces=("${pkgbase}")
@@ -198,7 +227,7 @@ package_onnxruntime-cuda12() {
 
 package_onnxruntime-opt-cuda12() {
   pkgdesc="$_pkgdesc (with CUDA and AVX2 CPU optimizations)"
-  depends+=('cuda-12' 'cudnn9-cuda12' 'nccl') # cuda, cudnn, and nccl are needed to build the CUDA variants; we check for them manually in the build function to avoid hard deps for non-CUDA variants.
+  depends+=('cuda12' 'cudnn9-cuda12' 'nccl-cuda12' 'onednn') # cuda, cudnn, and nccl are needed to build the CUDA variants; we check for them manually in the build function to avoid hard deps for non-CUDA variants.
   provides=("${pkgbase}=${pkgver}")
   conflicts=("${pkgbase}")
   replaces=("${pkgbase}-opt")
@@ -218,7 +247,9 @@ package_python-onnxruntime-cuda12() {
   replaces=("python-${pkgbase}")
 
   cd "${pkgbase}-cuda"
-  python -m installer --destdir="${pkgdir}" dist/*.whl
+  python -m installer --no-compile-bytecode --destdir="${pkgdir}" dist/*.whl
+  find "${pkgdir}" -type d -name __pycache__ -prune -exec rm -r {} +
+  find "${pkgdir}" -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete
   install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
   install -Dm644 ThirdPartyNotices.txt "${pkgdir}/usr/share/licenses/${pkgname}/ThirdPartyNotices.txt"
 }
@@ -231,7 +262,9 @@ package_python-onnxruntime-opt-cuda12() {
   replaces=("python-${pkgbase}-opt")
 
   cd "${pkgbase}-opt-cuda"
-  python -m installer --destdir="${pkgdir}" dist/*.whl
+  python -m installer --no-compile-bytecode --destdir="${pkgdir}" dist/*.whl
+  find "${pkgdir}" -type d -name __pycache__ -prune -exec rm -r {} +
+  find "${pkgdir}" -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete
   install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
   install -Dm644 ThirdPartyNotices.txt "${pkgdir}/usr/share/licenses/${pkgname}/ThirdPartyNotices.txt"
 }
