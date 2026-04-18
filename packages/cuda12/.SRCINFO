@@ -1,28 +1,17 @@
-pkgbase = cuda-12
+pkgbase = cuda12
 	pkgdesc = NVIDIA's GPU programming toolkit version 12 (Maxwell/Pascal/Volta support)
 	pkgver = 12.9.1
-	pkgrel = 1
+	pkgrel = 2
 	url = https://developer.nvidia.com/cuda-zone
-	install = cuda.install
 	arch = x86_64
 	license = custom
-	depends = opencl-nvidia
-	depends = nvidia-utils
-	depends = gcc
-	optdepends = gdb: for cuda-gdb
-	optdepends = jre-openjdk: for Nsight UI tools (when used)
-	provides = cuda=12.9.1
-	provides = cuda-toolkit=12.9.1
-	provides = cuda-sdk=12.9.1
-	conflicts = cuda
-	replaces = cuda-toolkit
-	replaces = cuda-sdk
-	options = !strip
-	options = staticlibs
-	backup = etc/profile.d/cuda.sh
-	backup = etc/ld.so.conf.d/cuda.conf
 	source = http://developer.download.nvidia.com/compute/cuda/12.9.1/local_installers/cuda_12.9.1_575.57.08_linux.run
 	source = cuda.sh
+	source = cuda.fish
+	source = cuda-nsight-compute.sh
+	source = cuda-nsight-compute.fish
+	source = cuda-nsight-systems.sh
+	source = cuda-nsight-systems.fish
 	source = cuda.conf
 	source = cuda-findgllib_mk.diff
 	source = accinj64.pc
@@ -57,7 +46,12 @@ pkgbase = cuda-12
 	source = fix-glibc242.patch
 	source = 4972.patch
 	sha256sums = 0f6d806ddd87230d2adbe8a6006a9d20144fdbda9de2d6acc677daa5d036417a
-	sha256sums = db1e96eaebde552942ca1f0bf550055d42e48207a8e3a55f552f4752f9c5a0dc
+	sha256sums = cf9c92bd5b15a4ca8754220eb9b48f5cb695f4f7f3d8a29f4668429c40315112
+	sha256sums = ef10ce9b196d78c9ab9c704a61f4f80d4bcc0cbcbea097d5051e1d9712045284
+	sha256sums = 397d5dcc84f1d8340bdc2d49f87491d3ee1a9c26e2b711b1c85a23ec94e2cb43
+	sha256sums = 38a62d4010a1e9c04c595790c03d01de779844642f2ff469fb800816d8b8bdfd
+	sha256sums = 3a21076083bdf5ae659b680bc1646270e07a42f21e9bac06648d3a1fc8b1c11f
+	sha256sums = c3d7046dea720303744486c82eadd0c17bffa1bfc7bf72b6fb1656c0bfb3e498
 	sha256sums = a65f7d96e2447eb40b1be9586b90eb0bd776a8938c93d21f9606d2880b548b28
 	sha256sums = b7c6dd5608baa3a5a724ef6a5212a8c4fcc65e7c241b13acc524f26759fd6d2f
 	sha256sums = 219289fa22075a4e251c217d01f4eda764f4ad25ff0f4c8b192b754ae6954c70
@@ -92,4 +86,47 @@ pkgbase = cuda-12
 	sha256sums = f61e8500a1a40cc026ddedf7ceed995820633bcf19f22a03fadc18d741bfc902
 	sha256sums = af2da6c6a28ff5f178cfab3fa757ff4ae70566d71a8b5feb63571789a36dfcdb
 
-pkgname = cuda-12
+pkgname = cuda12
+	pkgdesc = NVIDIA CUDA 12 core toolkit
+	install = cuda.install
+	depends = opencl-nvidia
+	depends = nvidia-utils
+	depends = python
+	depends = gcc
+	optdepends = gdb: for cuda-gdb
+	optdepends = cuda12-profiler: legacy nvprof/nvvp profiler tools
+	optdepends = cuda12-nsight-compute: Nsight Compute profiler
+	optdepends = cuda12-nsight-systems: Nsight Systems profiler
+	provides = cuda=12.9.1
+	provides = cuda-toolkit=12.9.1
+	provides = cuda-sdk=12.9.1
+	conflicts = cuda
+	replaces = cuda-toolkit
+	replaces = cuda-sdk
+	options = !strip
+	options = staticlibs
+	backup = etc/profile.d/cuda.sh
+	backup = etc/fish/conf.d/cuda.fish
+	backup = etc/ld.so.conf.d/cuda.conf
+
+pkgname = cuda12-profiler
+	pkgdesc = Legacy NVIDIA profiler tools for CUDA 12 (nvprof/nvvp)
+	depends = cuda12
+	optdepends = jre-openjdk: may be required for nvvp
+	options = !strip
+
+pkgname = cuda12-nsight-compute
+	pkgdesc = NVIDIA Nsight Compute for CUDA 12
+	depends = cuda12
+	depends = jre-openjdk
+	options = !strip
+	backup = etc/profile.d/cuda-nsight-compute.sh
+	backup = etc/fish/conf.d/cuda-nsight-compute.fish
+
+pkgname = cuda12-nsight-systems
+	pkgdesc = NVIDIA Nsight Systems for CUDA 12
+	depends = cuda12
+	depends = jre-openjdk
+	options = !strip
+	backup = etc/profile.d/cuda-nsight-systems.sh
+	backup = etc/fish/conf.d/cuda-nsight-systems.fish

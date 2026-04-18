@@ -1,0 +1,411 @@
+pkgbase=cuda12
+pkgname=(
+  cuda12
+  cuda12-profiler
+  cuda12-nsight-compute
+  cuda12-nsight-systems
+)
+pkgver=12.9.1
+_driverver=575.57.08
+pkgrel=2
+pkgdesc="NVIDIA's GPU programming toolkit version 12 (Maxwell/Pascal/Volta support)"
+arch=('x86_64')
+url="https://developer.nvidia.com/cuda-zone"
+license=('custom')
+makedepends=('patchelf')
+
+source=(
+  "http://developer.download.nvidia.com/compute/cuda/${pkgver}/local_installers/cuda_${pkgver}_${_driverver}_linux.run"
+  cuda.sh
+  cuda.fish
+  cuda-nsight-compute.sh
+  cuda-nsight-compute.fish
+  cuda-nsight-systems.sh
+  cuda-nsight-systems.fish
+  cuda.conf
+  cuda-findgllib_mk.diff
+  accinj64.pc
+  cublas.pc
+  cuda.pc
+  cudart.pc
+  cufft.pc
+  cufftw.pc
+  cuinj64.pc
+  curand.pc
+  cusolver.pc
+  cusparse.pc
+  nppc.pc
+  nppial.pc
+  nppicc.pc
+  nppicom.pc
+  nppidei.pc
+  nppif.pc
+  nppig.pc
+  nppim.pc
+  nppi.pc
+  nppist.pc
+  nppisu.pc
+  nppitc.pc
+  npps.pc
+  nvgraph.pc
+  nvidia-ml.pc
+  nvjpeg.pc
+  nvrtc.pc
+  nvToolsExt.pc
+  fix-glibc241.patch
+  fix-glibc242.patch
+  4972.patch
+)
+
+sha256sums=('0f6d806ddd87230d2adbe8a6006a9d20144fdbda9de2d6acc677daa5d036417a'
+            'df4d7cd2baa3d0039a29ded7dd67b1047d8406d6a1ee30405e60f7d70f0e6105'
+            'f1d605a721b62cfd1142f69845dba643b7ba5f91adc1152d2d7b6b22dd7f5fcf'
+            '397d5dcc84f1d8340bdc2d49f87491d3ee1a9c26e2b711b1c85a23ec94e2cb43'
+            '38a62d4010a1e9c04c595790c03d01de779844642f2ff469fb800816d8b8bdfd'
+            '3a21076083bdf5ae659b680bc1646270e07a42f21e9bac06648d3a1fc8b1c11f'
+            'c3d7046dea720303744486c82eadd0c17bffa1bfc7bf72b6fb1656c0bfb3e498'
+            'a65f7d96e2447eb40b1be9586b90eb0bd776a8938c93d21f9606d2880b548b28'
+            'b7c6dd5608baa3a5a724ef6a5212a8c4fcc65e7c241b13acc524f26759fd6d2f'
+            '219289fa22075a4e251c217d01f4eda764f4ad25ff0f4c8b192b754ae6954c70'
+            'e850884edb84fbcd66c4811065a747f970f932a6197ba97c1a76b7d521306106'
+            '66b5fc288dd664f9b9ab7d13e020a0abdb83b8b58afeaf7be0e7947433f6b600'
+            '43587560f6f3d2dc152b7c279b26e85b3bee82b9c3600032840c00a4ef2d763f'
+            '2a4a023a4ea26b47d67dc03774ccf38beb5017f419b0273016f8c8ff4b06e416'
+            '440b9f3db5cceedfe328b212a3950c62aa5af0846d2c2029300aa911366392c0'
+            'e0bc5c21d17eda26c6b55b128a3cda100866af1db8980f1cbb190514c9fdf5d0'
+            '5aac4934af121c8a9cc188ea0d5f1ab376aa1fccbf7e8529d0dc73d39740026c'
+            '17803435222eb579ac8e68b78fa104cec5b03d2c3d1eb1a65e47130109d24615'
+            '1b99a6c69ca3c1a9601317d9b7295d6c33999d9b2274394035033851e6d35112'
+            'dd9397ea4adee52bd823a0351bc032b80319d51ce3a223b1bf5628379e0bcf8e'
+            '68ac24264839fd7ae9daf8676532b952f94f2806af2133c4d039d47cc7a56682'
+            '161490a302336757a90ada1ca37c5b1ff69c4a81a1e50d44f99b65bdd6b1186a'
+            '10e2db3b379bb899b441faa1e9cf6b875ffa806a0e609fc381a7445ea031fe4b'
+            'd2fa1df2b71a339be0538d45a04e0db7263ae02bff30a9ea7b09ce8e1a034bcc'
+            'b0d3b92c30034716d95fcf6512dafede289337d611fdc3575db40680bde90a03'
+            '4643234c8555ff0f3b2353b87da764a1472eba80208d6b03a4ab7595f6652a48'
+            '164b407339e3b94cd9d3606ebc69c8cb617a2eaf420e214c1401bb8e384071a1'
+            'ead5d3fd246a79153133f5f8abaf5d39ac772e4df787b24b2e58825d77fac499'
+            '1e5f45f69ca6b4af9323d0bcb20e3c6089e24d95949090c735c5ae75d1259ba4'
+            '492b35d2a30ff54ee45ce1d31bfa1b3eb8b92f30230dc74c4ef07aa4b8fba908'
+            '34f293aeda2a8d3e5d92f7cdda43acf169ac6d0aff0194c5c2c45c48ad75806e'
+            '4f18d8a9447af77381e7ade8b484be6329fe53a42d04468a69f387ac0b08fcf0'
+            '953ad762952d832ede6bf7c5fe92e2ce352bcb12d9486e236bff4d2c3443535c'
+            'd83ef05671e14e39069263fcaed7378aca66a9a5f8a6125f3d67a6be154f8344'
+            'f94d1c0051e98800df146ef9782c61220ced8844798270ddd71ecd94aadb682d'
+            '0912f24dfb5fb5062846089aecd47a54c6d2e5298353a3baba87a14ba519bfa8'
+            '5e6eea80637b98957857e53582176e8da5f9c1f7634c005acadc25b26a871c79'
+            '516cc85e29c93ba926f125134a0d25fdfd621d8cc74a25c20a8160598e612b31'
+            'f61e8500a1a40cc026ddedf7ceed995820633bcf19f22a03fadc18d741bfc902'
+            'af2da6c6a28ff5f178cfab3fa757ff4ae70566d71a8b5feb63571789a36dfcdb')
+
+prepare() {
+  cd "${srcdir}"
+
+  chmod +x "cuda_${pkgver}_${_driverver}_linux.run"
+  sh "./cuda_${pkgver}_${_driverver}_linux.run" --target "${srcdir}" --noexec
+
+  # If you ever re-enable this, do it safely:
+  # while IFS= read -r -d '' f; do
+  #   patch --no-backup-if-mismatch "${f}" < "${srcdir}/cuda-findgllib_mk.diff"
+  # done < <(find "${srcdir}/builds/cuda_samples" -name findgllib.mk -print0)
+}
+
+_apply_common_fixes() {
+  local cuda_root="${pkgdir}/opt/cuda"
+  local targets_dir="${cuda_root}/targets/${CARCH}-linux"
+  local host_cfg="${targets_dir}/include/crt/host_config.h"
+  local cupti_root=
+  local broken
+
+  if [[ -f "${host_cfg}" ]]; then
+    sed -i '/.*unsupported GNU version.*/d' "${host_cfg}"
+    sed -i '/.*unsupported clang version.*/d' "${host_cfg}"
+  fi
+
+  while IFS= read -r -d '' f; do
+    sed -i 's|/usr/local/cuda|/opt/cuda|g' "${f}"
+  done < <(find "${cuda_root}" -name Makefile -print0)
+
+  if [[ -d "${cuda_root}/cuda_sanitizer_api/compute-sanitizer" && ! -e "${cuda_root}/compute-sanitizer" ]]; then
+    mv "${cuda_root}/cuda_sanitizer_api/compute-sanitizer" "${cuda_root}/compute-sanitizer"
+    rmdir --ignore-fail-on-non-empty "${cuda_root}/cuda_sanitizer_api" 2>/dev/null || true
+  fi
+
+  if [[ -x "${cuda_root}/compute-sanitizer/compute-sanitizer" && ! -e "${cuda_root}/bin/compute-sanitizer" ]]; then
+    install -d "${cuda_root}/bin"
+    ln -s ../compute-sanitizer/compute-sanitizer "${cuda_root}/bin/compute-sanitizer"
+  fi
+
+  if [[ -d "${targets_dir}/include" && ! -e "${cuda_root}/include" ]]; then
+    ln -s "targets/${CARCH}-linux/include" "${cuda_root}/include"
+  fi
+  if [[ -d "${targets_dir}/lib" && ! -e "${cuda_root}/lib64" ]]; then
+    ln -s "targets/${CARCH}-linux/lib" "${cuda_root}/lib64"
+  fi
+  if [[ -e "${cuda_root}/lib64" && ! -e "${cuda_root}/lib" ]]; then
+    ln -s lib64 "${cuda_root}/lib"
+  fi
+
+  for candidate in "${cuda_root}/extras/CUPTI" "${cuda_root}/CUPTI"; do
+    if [[ -d "${candidate}" ]]; then
+      cupti_root="${candidate}"
+      break
+    fi
+  done
+
+  if [[ -n "${cupti_root}" ]]; then
+    if [[ -d "${cupti_root}/include" ]]; then
+      install -d "${targets_dir}/include"
+      cp -a "${cupti_root}/include/." "${targets_dir}/include/"
+      rm -rf "${cupti_root}/include"
+    fi
+    if [[ -d "${cupti_root}/lib64" ]]; then
+      install -d "${targets_dir}/lib"
+      cp -a "${cupti_root}/lib64/." "${targets_dir}/lib/"
+      rm -rf "${cupti_root}/lib64"
+    fi
+    rmdir --ignore-fail-on-non-empty "${cupti_root}" 2>/dev/null || true
+    rmdir --ignore-fail-on-non-empty "${cuda_root}/extras" 2>/dev/null || true
+  fi
+
+  for broken in     "${cuda_root}/include/include"     "${cuda_root}/lib64/lib64"     "${targets_dir}/include/include"     "${targets_dir}/lib/lib"     "${targets_dir}/lib64/lib64"
+  do
+    [[ -L "${broken}" && ! -e "${broken}" ]] && rm -f "${broken}"
+  done
+
+  patch -p1 -d "${pkgdir}" -i "${srcdir}/fix-glibc241.patch" --no-backup-if-mismatch
+  patch -p1 -d "${pkgdir}" -i "${srcdir}/fix-glibc242.patch" --no-backup-if-mismatch
+
+  if [[ -d "${targets_dir}" ]]; then
+    patch -p2 -d "${targets_dir}" -i "${srcdir}/4972.patch" --no-backup-if-mismatch
+  fi
+}
+
+_package_base_tree() {
+  local entry
+
+  cd "${srcdir}/builds"
+
+  install -d "${pkgdir}/opt/cuda"
+  install -d "${pkgdir}/opt/cuda/extras"
+
+  for entry in integration nsight_compute nsight_systems EULA.txt; do
+    [[ -e "${entry}" ]] && cp -a -- "${entry}" "${pkgdir}/opt/cuda/"
+  done
+
+  shopt -s nullglob dotglob
+  for entry in *; do
+    [[ -d "${entry}" ]] || continue
+    case "${entry}" in
+      integration|nsight_compute|nsight_systems)
+        continue
+        ;;
+    esac
+    cp -a -- "${entry}/." "${pkgdir}/opt/cuda/"
+  done
+  shopt -u nullglob dotglob
+}
+
+_install_core_shell_env() {
+  install -Dm755 "${srcdir}/cuda.sh" "${pkgdir}/etc/profile.d/cuda.sh"
+  install -Dm644 "${srcdir}/cuda.fish" "${pkgdir}/etc/fish/conf.d/cuda.fish"
+}
+
+_install_nsight_compute_shell_env() {
+  install -Dm755 "${srcdir}/cuda-nsight-compute.sh" "${pkgdir}/etc/profile.d/cuda-nsight-compute.sh"
+  install -Dm644 "${srcdir}/cuda-nsight-compute.fish" "${pkgdir}/etc/fish/conf.d/cuda-nsight-compute.fish"
+}
+
+_install_nsight_systems_shell_env() {
+  install -Dm755 "${srcdir}/cuda-nsight-systems.sh" "${pkgdir}/etc/profile.d/cuda-nsight-systems.sh"
+  install -Dm644 "${srcdir}/cuda-nsight-systems.fish" "${pkgdir}/etc/fish/conf.d/cuda-nsight-systems.fish"
+}
+
+_install_eula_license() {
+  install -d "${pkgdir}/usr/share/licenses/${pkgname}"
+  ln -s /opt/cuda/doc/pdf/EULA.pdf "${pkgdir}/usr/share/licenses/${pkgname}/EULA.pdf"
+}
+
+_install_common_metadata() {
+  _install_core_shell_env
+  install -Dm644 "${srcdir}/cuda.conf" "${pkgdir}/etc/ld.so.conf.d/cuda.conf"
+  _install_eula_license
+}
+
+_install_pkgconfig_files() {
+  local pc
+
+  install -d "${pkgdir}/usr/lib/pkgconfig"
+  shopt -s nullglob
+  for pc in "${srcdir}"/*.pc; do
+    install -Dm644 "${pc}" "${pkgdir}/usr/lib/pkgconfig/$(basename "${pc}")"
+  done
+  shopt -u nullglob
+}
+
+
+_fix_nsight_host_rpaths() {
+  local root="$1"
+  local f
+  local rpath='$ORIGIN:$ORIGIN/..:$ORIGIN/../..:$ORIGIN/../../..'
+
+  [[ -d "${root}" ]] || return 0
+
+  while IFS= read -r -d '' f; do
+    if readelf -h "${f}" >/dev/null 2>&1; then
+      patchelf --set-rpath "${rpath}" "${f}"
+    fi
+  done < <(find "${root}" -type f \( -name '*.so' -o -name '*.so.*' -o -perm -u+x \) -print0)
+}
+
+package_cuda12() {
+  pkgdesc='NVIDIA CUDA 12 core toolkit'
+  depends=('opencl-nvidia' 'nvidia-utils' 'python' 'gcc')
+  optdepends=(
+    'gdb: for cuda-gdb'
+    'cuda12-profiler: legacy nvprof/nvvp tools'
+    'cuda12-nsight-compute: Nsight Compute profiler'
+    'cuda12-nsight-systems: Nsight Systems profiler'
+  )
+  conflicts=('cuda')
+  replaces=('cuda-toolkit' 'cuda-sdk')
+  provides=("cuda=${pkgver}" "cuda-toolkit=${pkgver}" "cuda-sdk=${pkgver}")
+  options=(!strip staticlibs)
+  install=cuda.install
+  backup=(
+    'etc/profile.d/cuda.sh'
+    'etc/fish/conf.d/cuda.fish'
+    'etc/ld.so.conf.d/cuda.conf'
+  )
+
+  cd "${srcdir}"
+
+  _package_base_tree
+
+  rm -rf "${pkgdir}/opt/cuda/NVIDIA"*.run
+
+  # Split out Nsight payloads from the core package.
+  rm -rf "${pkgdir}/opt/cuda/nsight_compute"
+  rm -rf "${pkgdir}/opt/cuda/nsight_systems"
+
+  # Also remove compatibility paths from the core package so the split packages can own them.
+  rm -rf "${pkgdir}/opt/cuda/integration/nsight-compute"
+  rm -rf "${pkgdir}/opt/cuda/integration/nsight-systems"
+  rm -rf "${pkgdir}/opt/cuda/integration/nsight_compute"
+  rm -rf "${pkgdir}/opt/cuda/integration/nsight_systems"
+
+  rm -f "${pkgdir}/opt/cuda/bin/cuda-uninstaller"
+  rm -f "${pkgdir}/opt/cuda/cuda-uninstaller"
+  rm -f "${pkgdir}/opt/cuda/ko-uninstaller"
+  rm -f "${pkgdir}/opt/cuda/bin/cuda-gdb-python3."*-tui
+
+  rm -f "${pkgdir}/opt/cuda/bin/computeprof"
+  rm -f "${pkgdir}/opt/cuda/bin/nvprof"
+  rm -f "${pkgdir}/opt/cuda/bin/nvvp"
+  rm -rf "${pkgdir}/opt/cuda/libnvvp"
+  rm -f "${pkgdir}/opt/cuda/doc/man/man1/computeprof.1.gz"
+  rm -f "${pkgdir}/opt/cuda/doc/man/man1/nvprof.1.gz"
+  rm -f "${pkgdir}/opt/cuda/doc/man/man1/nvvp.1.gz"
+
+  [[ -e "${pkgdir}/opt/cuda/bin/gcc" ]] || ln -s /usr/bin/gcc "${pkgdir}/opt/cuda/bin/gcc"
+  [[ -e "${pkgdir}/opt/cuda/bin/g++" ]] || ln -s /usr/bin/g++ "${pkgdir}/opt/cuda/bin/g++"
+
+  _install_pkgconfig_files
+  _install_common_metadata
+  _apply_common_fixes
+}
+
+package_cuda12-profiler() {
+  pkgdesc='NVIDIA legacy profiler tools for CUDA 12'
+  depends=('cuda12')
+  options=(!strip)
+
+  cd "${srcdir}"
+
+  _package_base_tree
+
+  rm -rf "${pkgdir}/opt/cuda/NVIDIA"*.run
+  rm -rf "${pkgdir}/opt/cuda/nsight_compute"
+  rm -rf "${pkgdir}/opt/cuda/nsight_systems"
+  rm -rf "${pkgdir}/opt/cuda/integration"
+  rm -f "${pkgdir}/opt/cuda/bin/cuda-uninstaller"
+  rm -f "${pkgdir}/opt/cuda/cuda-uninstaller"
+  rm -f "${pkgdir}/opt/cuda/ko-uninstaller"
+  rm -f "${pkgdir}/opt/cuda/bin/cuda-gdb-python3."*-tui
+
+  find "${pkgdir}/opt/cuda" -mindepth 1 -maxdepth 1     ! -name bin     ! -name libnvvp     ! -name doc     -exec rm -rf {} +
+
+  if [[ -d "${pkgdir}/opt/cuda/bin" ]]; then
+    find "${pkgdir}/opt/cuda/bin" -mindepth 1 -maxdepth 1       ! -name computeprof       ! -name nvprof       ! -name nvvp       -exec rm -rf {} +
+  fi
+
+  if [[ -d "${pkgdir}/opt/cuda/doc" ]]; then
+    find "${pkgdir}/opt/cuda/doc" -mindepth 1 -maxdepth 1       ! -name man       ! -name pdf       -exec rm -rf {} +
+  fi
+
+  if [[ -d "${pkgdir}/opt/cuda/doc/man" ]]; then
+    find "${pkgdir}/opt/cuda/doc/man" -mindepth 1 -maxdepth 1       ! -name man1       -exec rm -rf {} +
+  fi
+
+  if [[ -d "${pkgdir}/opt/cuda/doc/man/man1" ]]; then
+    find "${pkgdir}/opt/cuda/doc/man/man1" -mindepth 1 -maxdepth 1       ! -name computeprof.1.gz       ! -name nvprof.1.gz       ! -name nvvp.1.gz       -exec rm -rf {} +
+  fi
+
+  _install_eula_license
+}
+
+package_cuda12-nsight-systems() {
+  pkgdesc='NVIDIA Nsight Systems for CUDA 12'
+  depends=('cuda12' 'jre-openjdk')
+  options=(!strip)
+  backup=(
+    'etc/profile.d/cuda-nsight-systems.sh'
+    'etc/fish/conf.d/cuda-nsight-systems.fish'
+  )
+
+  cd "${srcdir}"
+
+  install -d "${pkgdir}/opt/cuda"
+  install -d "${pkgdir}/opt/cuda/integration"
+
+  if [[ -d "${srcdir}/builds/nsight_systems" ]]; then
+    cp -a "${srcdir}/builds/nsight_systems" "${pkgdir}/opt/cuda/"
+  fi
+
+  # Compatibility path expected by NVIDIA launcher scripts.
+  ln -sfn ../nsight_systems "${pkgdir}/opt/cuda/integration/nsight-systems"
+
+  _fix_nsight_host_rpaths "${pkgdir}/opt/cuda/nsight_systems/host-linux-x64"
+
+  _install_nsight_systems_shell_env
+  _install_eula_license
+}
+
+package_cuda12-nsight-compute() {
+  pkgdesc='NVIDIA Nsight Compute for CUDA 12'
+  depends=('cuda12' 'jre-openjdk')
+  options=(!strip)
+  backup=(
+    'etc/profile.d/cuda-nsight-compute.sh'
+    'etc/fish/conf.d/cuda-nsight-compute.fish'
+  )
+
+  cd "${srcdir}"
+
+  install -d "${pkgdir}/opt/cuda"
+  install -d "${pkgdir}/opt/cuda/integration"
+
+  if [[ -d "${srcdir}/builds/nsight_compute" ]]; then
+    cp -a "${srcdir}/builds/nsight_compute" "${pkgdir}/opt/cuda/"
+  fi
+
+  # Compatibility path expected by NVIDIA launcher scripts.
+  ln -sfn ../nsight_compute "${pkgdir}/opt/cuda/integration/nsight-compute"
+
+  _fix_nsight_host_rpaths "${pkgdir}/opt/cuda/nsight_compute/host/linux-desktop-glibc_2_11_3-x64"
+
+  _install_nsight_compute_shell_env
+  _install_eula_license
+}
+
+# vim:set ts=2 sw=2 et:

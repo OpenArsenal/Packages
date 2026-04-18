@@ -1,0 +1,6 @@
+!cuda*.sh
+!cuda*.fish
+!cuda.install
+!cuda.conf
+!cuda-findgllib_mk.diff
+!*.pc
