@@ -3,10 +3,6 @@
 # *.log
 # tmp/
 
-# Sensitive / local
-.gnupg/
-.cache/
-
 # GitHub workflows
 .github/workflows/
 
