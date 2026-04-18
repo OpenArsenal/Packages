@@ -5,7 +5,7 @@ pkgbase = cudnn9-cuda12
 	url = https://developer.nvidia.com/cuDNN
 	arch = x86_64
 	license = custom
-	depends = cuda-12
+	depends = cuda12
 	provides = cudnn=9.10
 	conflicts = cudnn
 	noextract = cudnn-linux-x86_64-9.10.2.21_cuda12-archive.tar.xz
