@@ -1,7 +1,2 @@
-*
-!.gitignore
-!.SRCINFO
-!PKGBUILD
 !*.install
-!*.patch
-!*.sh
+!visual-studio-code
