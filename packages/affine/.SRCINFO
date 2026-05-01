@@ -21,7 +21,7 @@ pkgbase = affine
 	source = affine.sh
 	source = affine.desktop
 	sha256sums = d2e42f1cd58f4e0656f506fcc47398dcb16c902d49c45e49552ffd3662dda708
-	sha256sums = 291f50480f5a61bc9c68db7d44cd0412071128706baa868a9cb854f8779a1980
-	sha256sums = 9f5dfc28bd7b70da8da754d96a562fd43d994866d59013b772ded343dd6be646
+	sha256sums = d871984a01d47c5c70f6f5d0ae3f6e2fbe1ae2da4c95306a2901f59d19d395ae
+	sha256sums = 454beba85b0c1996aaa28e633da8eb96bb2c7f9cc699fa31d3adde1b64e7ebca
 
 pkgname = affine
