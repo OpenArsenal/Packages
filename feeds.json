@@ -667,6 +667,7 @@
       "type": "github-release",
       "repo": "gcc-mirror/gcc",
       "channel": "stable"
+    },
     {
       "name": "ion-git",
       "type": "vcs",
@@ -680,6 +681,12 @@
     },
     {
       "name": "affine",
+      "type": "github-release",
+      "repo": "toeverything/AFFiNE",
+      "channel": "stable"
+    },
+    {
+      "name": "affine-bin",
       "type": "github-release",
       "repo": "toeverything/AFFiNE",
       "channel": "stable"
