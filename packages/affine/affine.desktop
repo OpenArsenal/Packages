@@ -1,0 +1,15 @@
+[Desktop Entry]
+Version=1.5
+Type=Application
+Name=AFFiNE
+GenericName=Productivity workspace
+Comment=All-in-one workspace for notes, whiteboards, and planning
+TryExec=affine
+Exec=affine %U
+Icon=affine
+Terminal=false
+StartupNotify=true
+Categories=Office;ProjectManagement;WordProcessor;Presentation;
+Keywords=notes;whiteboard;knowledge-base;wiki;kanban;database;productivity;planning;canvas;
+MimeType=x-scheme-handler/affine;
+

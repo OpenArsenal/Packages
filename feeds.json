@@ -677,6 +677,12 @@
       "type": "github-release",
       "repo": "Vencord/Vesktop",
       "channel": "stable"
+    },
+    {
+      "name": "affine",
+      "type": "github-release",
+      "repo": "toeverything/AFFiNE",
+      "channel": "stable"
     }
   ]
 }
