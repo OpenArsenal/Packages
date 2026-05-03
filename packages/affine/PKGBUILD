@@ -1,123 +1,288 @@
 # Maintainer: Okiki <okiki@thunderstrike.co>
+_nodeversion=22
+_electronversion=39
+
 pkgname=affine
 _pkgname=AFFiNE
-pkgver='0.26.3'
-_electronversion=39
+_upstream_name=AFFiNE
+pkgver=0.26.3
 pkgrel=1
-pkgdesc="Collaborative knowledge base and whiteboard desktop application"
+pkgdesc="Collaborative knowledge base and whiteboard desktop application (bundled Electron)"
 arch=('x86_64')
 url="https://affine.pro/"
 _ghurl="https://github.com/toeverything/AFFiNE"
-license=(
-    'LicenseRef-custom'
-    'MIT'
-)
-conflicts=('affine-bin')
-depends=(
-    "electron${_electronversion}"
-)
-makedepends=(
-    # Affine pins Node 22 in .nvmrc and targets node22 in the Electron build.
-    nodejs-lts-jod
-    corepack
-    yarn
-    # node gyp
-    python
-    # electron-packager
-    zip unzip
-    # Rust
-    cargo
-    # Misc
-    git jq
-)
-source=(
-    "${_pkgname}::git+https://github.com/toeverything/AFFiNE#tag=v${pkgver}"
-    "${pkgname}.sh"
-    "${pkgname}.desktop"
-)
-sha256sums=('d2e42f1cd58f4e0656f506fcc47398dcb16c902d49c45e49552ffd3662dda708'
-            'd871984a01d47c5c70f6f5d0ae3f6e2fbe1ae2da4c95306a2901f59d19d395ae'
-            '454beba85b0c1996aaa28e633da8eb96bb2c7f9cc699fa31d3adde1b64e7ebca')
+license=('LicenseRef-custom' 'MIT')
+options=('!debug' '!strip')
+install='affine.install'
 
 _arch=x64
+_pkgsrc="${_pkgname}-${pkgver}"
+_app_version="${pkgver}"
+
+conflicts=(
+  'affine-bin'
+  'affine-electron'
+  'affine-electron-git'
+  'affine-git'
+)
+
+depends=(
+  'alsa-lib'
+  'at-spi2-core'
+  'atk'
+  'bash'
+  'cairo'
+  'cups'
+  'dbus'
+  'expat'
+  'gcc-libs'
+  'glib2'
+  'glibc'
+  'gtk3'
+  'libdrm'
+  'libnotify'
+  'libx11'
+  'libxcb'
+  'libxcomposite'
+  'libxdamage'
+  'libxext'
+  'libxfixes'
+  'libxkbcommon'
+  'libxrandr'
+  'mesa'
+  'nspr'
+  'nss'
+  'pango'
+  'systemd-libs'
+  'xdg-utils'
+)
+
+makedepends=(
+  'nodejs-lts-jod'
+  'corepack'
+  'yarn'
+  'asar'
+  'python'
+  'zip'
+  'unzip'
+  'cargo'
+  'cmake'
+  'git'
+  'jq'
+)
+
+source=(
+  "${_pkgname}-${pkgver}.tar.gz::${_ghurl}/archive/refs/tags/v${pkgver}.tar.gz"
+  'affine.desktop'
+  'affine-flags-wrapper.sh'
+  'affine.install'
+)
+
+sha256sums=('4fbcd0d26eb894d652ea66fcf708e366a566ac0ef1d703ce41fe0000846e56fa'
+            '8ee4d9ae3d73c67e88d0813203240c9b6b381603f9beb3f04641aeff965b801c'
+            '2ea15d0a1244ce596f0c0d835739d2d041ed991dd8d64734a7e82af3da39b942'
+            '38a290c90b371a23d0a905e15251a40385b9641637e7d69eab43107bd370d1aa')
 
 _setup_build_toolchain() {
-    local package_manager
+  local package_manager
 
-    local node_major="$(node --version)" # node --version outputs a v prefix, e.g. v22.22.2
-    node_major="${node_major#v}" # remove the v prefix, e.g. 22.22.2
-    node_major="${node_major%%.*}" # extract the major version number, e.g. 22 from 22.22.2
+  local node_major="$(node --version)"
+  node_major="${node_major#v}"
+  node_major="${node_major%%.*}"
 
-    if [[ "${node_major}" != "22" ]]; then
-        echo "Node.js major version ${node_major} does not match upstream requirement 22"
-        exit 1
-    fi
+  if [[ "${node_major}" != "${_nodeversion}" ]]; then
+    echo "Node.js major version ${node_major} does not match upstream requirement ${_nodeversion}"
+    exit 1
+  fi
 
-    package_manager="$(jq -r '.packageManager' package.json)"
-    if [[ ! "${package_manager}" =~ ^yarn@ ]]; then
-        echo "Unsupported package manager ${package_manager}"
-        exit 1
-    fi
+  package_manager="$(jq -r '.packageManager' package.json)"
+  if [[ ! "${package_manager}" =~ ^yarn@ ]]; then
+    echo "Unsupported package manager ${package_manager}"
+    exit 1
+  fi
 
-    corepack prepare "${package_manager}" --activate >/dev/null
+  corepack prepare "${package_manager}" --activate >/dev/null
+}
+
+_ensure_git_metadata_for_tarball() {
+  # AFFiNE's build tooling opens the source tree as a Git repository while
+  # producing renderer assets. GitHub release tarballs do not include .git, so
+  # synthesize minimal local metadata before node_modules are installed.
+  if [[ -d .git ]]; then
+    return 0
+  fi
+
+  git init -q
+  git config user.name 'Arch Linux build'
+  git config user.email 'build@archlinux.local'
+  git add -A
+  git commit -q -m "Archive import v${pkgver}"
+  git tag -f "v${pkgver}" >/dev/null
+}
+
+_common_build_env() {
+  export HUSKY=0
+  export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+  export SENTRYCLI_SKIP_DOWNLOAD=1
+  export COREPACK_HOME="${SRCDEST:-${srcdir}}/${pkgname}-corepack"
+}
+
+_scrub_srcdir_references() {
+  local _root="$1"
+
+  [[ -d "${_root}" ]] || return 0
+
+  grep -IlRZ -F "${srcdir}" "${_root}" 2>/dev/null |
+    xargs -0 -r sed -i "s#${srcdir}#/usr/src/debug/${pkgname}#g"
+}
+
+_unpack_asar_payload() {
+  local _asar="$1"
+  local _app_dir="${_asar%.asar}"
+
+  [[ -f "${_asar}" ]] || return 0
+
+  rm -rf "${_app_dir}"
+  asar extract "${_asar}" "${_app_dir}"
+  rm -f "${_asar}"
+
+  find "${_app_dir}" -type f -name '*.map' -delete 2>/dev/null || true
+  _scrub_srcdir_references "${_app_dir}"
+}
+
+_assert_no_srcdir_references() {
+  local _hits=()
+
+  mapfile -d '' _hits < <(LC_ALL=C grep -aRZlF "${srcdir}" "${pkgdir}" 2>/dev/null || true)
+  if ((${#_hits[@]})); then
+    printf '%s\n' 'ERROR: package still contains references to $srcdir:'
+    printf '  %s\n' "${_hits[@]#${pkgdir}/}"
+    return 1
+  fi
+}
+
+_remove_updater_metadata() {
+  local _root="$1"
+
+  [[ -d "${_root}" ]] || return 0
+
+  # Pacman-managed builds must not point electron-updater at upstream release
+  # feeds. Keep AFFiNE's internal updater configuration harmless by removing
+  # updater metadata generated by electron-builder/electron-updater.
+  find "${_root}" -type f \( \
+    -name 'app-update.yml' -o \
+    -name 'dev-app-update.yml' -o \
+    -name 'latest*.yml' \
+  \) -delete 2>/dev/null || true
+}
+
+_affine_prepare() {
+  cd "${srcdir}/${_pkgsrc}"
+  _common_build_env
+  _ensure_git_metadata_for_tarball
+  _setup_build_toolchain
+
+  local electron_pkg_major
+  electron_pkg_major="$(jq -r .devDependencies.electron package.json | tr -d '^' | cut -d. -f1)"
+  if [[ "${_electronversion}" -ne "${electron_pkg_major}" ]]; then
+    echo "Electron version ${_electronversion} does not match ${electron_pkg_major} in package.json"
+    exit 1
+  fi
+
+  yarn install --immutable --inline-builds
+}
+
+_affine_build() {
+  cd "${srcdir}/${_pkgsrc}"
+  _common_build_env
+  _setup_build_toolchain
+
+  export APP_VERSION="${_app_version}"
+  ./scripts/set-version.sh "${APP_VERSION}"
+
+  CFLAGS+=' -ffat-lto-objects'
+  yarn affine @affine/native build
+
+  export BUILD_TYPE=stable
+  export RELEASE_VERSION="${_app_version}"
+
+  SKIP_NX_CACHE=1 yarn affine @affine/electron generate-assets
+  yarn config set nmMode classic
+  yarn config set nmHoistingLimits workspaces
+  find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +
+  yarn workspaces focus @affine/electron @affine/monorepo @affine/nbstore @toeverything/infra
+
+  node ./node_modules/electron/install.js
+  SKIP_WEB_BUILD=1 SKIP_BUNDLE=1 HOIST_NODE_MODULES=1 NODE_OPTIONS='--max-old-space-size=14384' DEBUG='affine:*,napi:*' yarn affine @affine/electron make --platform=linux --arch="${_arch}"
+  unzip -o packages/frontend/apps/electron/out/stable/make/zip/linux/${_arch}/${_upstream_name}-linux-${_arch}-${_app_version}.zip
 }
 
 prepare() {
-    local electron_pkg_ver
-
-    cd "$_pkgname"
-    export HUSKY=0
-    export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-    export ELECTRON_SKIP_BINARY_DOWNLOAD=1
-    export SENTRYCLI_SKIP_DOWNLOAD=1
-    _setup_build_toolchain
-    electron_pkg_ver="$(jq -r .devDependencies.electron package.json | tr -d '^' | cut -d. -f1)" # Extract major version number from ^39.0.0 -> 39
-    if [[ "$_electronversion" -ne "${electron_pkg_ver}" ]]; then
-        echo "Electron version ${_electronversion} does not match ${electron_pkg_ver} in package.json"
-	exit 1
-    fi
-    yarn install --immutable --inline-builds
+  _affine_prepare
 }
 
 build() {
-    # https://github.com/toeverything/AFFiNE/blob/canary/docs/building-desktop-client-app.md
-    cd "$_pkgname"
-    export HUSKY=0
-    export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
-    export ELECTRON_SKIP_BINARY_DOWNLOAD=1
-    export SENTRYCLI_SKIP_DOWNLOAD=1
-    _setup_build_toolchain
-    # https://github.com/toeverything/AFFiNE/blob/v0.18.2/.github/actions/setup-version/action.yml
-    export APP_VERSION="${pkgver}"
-    ./scripts/set-version.sh "${APP_VERSION}"
-    CFLAGS+=' -ffat-lto-objects' # https://github.com/launchbadge/sqlx/issues/3149
-    yarn affine @affine/native build
-    export BUILD_TYPE=stable
-    export RELEASE_VERSION="${pkgver}"
-    SKIP_NX_CACHE=1 yarn affine @affine/electron generate-assets
-    yarn config set nmMode classic
-    yarn config set nmHoistingLimits workspaces
-    find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +
-    yarn workspaces focus @affine/electron @affine/monorepo @affine/nbstore @toeverything/infra
-    node ./node_modules/electron/install.js
-    SKIP_WEB_BUILD=1 SKIP_BUNDLE=1 HOIST_NODE_MODULES=1 NODE_OPTIONS='--max-old-space-size=14384' DEBUG='affine:*,napi:*' yarn affine @affine/electron make --platform=linux --arch="${_arch}"
-    unzip packages/frontend/apps/electron/out/stable/make/zip/linux/${_arch}/${_pkgname}-linux-${_arch}-${pkgver}.zip
+  _affine_build
+}
+
+_package_bundled_affine() {
+  local _bundle="${srcdir}/${_pkgsrc}/${_upstream_name}-linux-${_arch}"
+  local _install_root="${pkgdir}/opt/affine"
+  local _app_exec="/opt/affine/${_upstream_name}"
+  local _electron_version=""
+  local _file
+
+  install -d "${_install_root}"
+  cp -a "${_bundle}/." "${_install_root}/"
+
+  _remove_updater_metadata "${_install_root}"
+  _unpack_asar_payload "${_install_root}/resources/app.asar"
+  find "${_install_root}/resources" -type f -name '*.map' -delete 2>/dev/null || true
+  _scrub_srcdir_references "${_install_root}/resources"
+
+  if [[ -x "${_install_root}/affine" ]]; then
+    _app_exec="/opt/affine/affine"
+  elif [[ -x "${_install_root}/AFFiNE" ]]; then
+    _app_exec="/opt/affine/AFFiNE"
+  fi
+
+  if [[ -f "${_install_root}/chrome-sandbox" ]]; then
+    chmod 4755 "${_install_root}/chrome-sandbox"
+  fi
+
+  install -Dm644 "${srcdir}/${_pkgsrc}/LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+  install -Dm644 "${srcdir}/${_pkgsrc}/LICENSE-MIT" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE-MIT"
+  install -Dm644 "${srcdir}/${_pkgsrc}/packages/frontend/apps/electron/resources/icons/icon_stable_64x64.png" "${pkgdir}/usr/share/icons/hicolor/64x64/apps/affine.png"
+  install -Dm644 "${srcdir}/${_pkgsrc}/packages/frontend/apps/electron/resources/icons/icon_stable_64x64.png" "${pkgdir}/usr/share/pixmaps/affine.png"
+  install -Dm644 "${srcdir}/affine.desktop" "${pkgdir}/usr/share/applications/affine.desktop"
+
+  sed -e "s#@AFFINE_EXEC@#${_app_exec}#g" \
+    "${srcdir}/affine-flags-wrapper.sh" >"${srcdir}/affine"
+
+  if grep -q '@[A-Z_][A-Z_]*@' "${srcdir}/affine"; then
+    printf '%s\n' "ERROR: unresolved wrapper placeholder(s):"
+    grep -n '@[A-Z_][A-Z_]*@' "${srcdir}/affine"
+    return 1
+  fi
+
+  install -Dm755 "${srcdir}/affine" "${pkgdir}/usr/bin/affine"
+
+  for _file in "${_install_root}/${_upstream_name}" "${_install_root}/affine" "${_install_root}/AFFiNE"; do
+    if [[ -x "${_file}" ]]; then
+      _electron_version="$(strings "${_file}" | grep -Pom1 'Electron/[0-9.]+' || true)"
+      [[ -n "${_electron_version}" ]] && break
+    fi
+  done
+
+  _electron_version="${_electron_version#Electron/}"
+  if [[ -n "${_electron_version}" ]]; then
+    install -Dm644 /dev/stdin "${_install_root}/electron_version" <<<"${_electron_version}"
+  fi
+
+  _assert_no_srcdir_references
+
 }
 
 package() {
-    sed -e "
-        s/@electronversion@/${_electronversion}/g
-        s/@appname@/${pkgname}/g
-        s/@runname@/app.asar/g
-        s/@cfgdirname@/${_pkgname}/g
-    " -i "${srcdir}/${pkgname}.sh"
-    install -Dm755 "${srcdir}/${pkgname}.sh" "${pkgdir}/usr/bin/${pkgname}"
-    cd "$_pkgname/${_pkgname}-linux-${_arch}"
-    install -Dm755 -d "${pkgdir}/usr/lib/${pkgname}"
-    cp -a resources/. "${pkgdir}/usr/lib/${pkgname}/"
-    install -Dm644 "../LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
-    install -Dm644 "../LICENSE-MIT" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE-MIT"
-    install -Dm644 "../packages/frontend/apps/electron/resources/icons/icon_stable_64x64.png" "${pkgdir}/usr/share/icons/hicolor/64x64/apps/${pkgname}.png"
-    install -Dm644 "../packages/frontend/apps/electron/resources/icons/icon_stable_64x64.png" "${pkgdir}/usr/share/pixmaps/${pkgname}.png"
-    install -Dm644 "${srcdir}/${pkgname}.desktop" -t "${pkgdir}/usr/share/applications"
+  _package_bundled_affine
 }
