@@ -2,40 +2,86 @@
 
 pkgname=cherry-studio-bin
 _pkgname=cherry-studio
-pkgver='1.8.4'
-pkgrel=1
-pkgdesc="🍒 Cherry Studio is a desktop client that supports for multiple LLM providers "
+pkgver='1.9.3'
+pkgrel=3
+pkgdesc="Prebuilt desktop client for multiple LLM providers with bundled Electron runtime"
 arch=('x86_64')
 url="https://github.com/cherryHQ/cherry-studio"
-license=('AGPL-3.0')
+license=('AGPL-3.0-only')
 options=('!strip' '!debug')
-depends=('fuse2')
-source=("${_pkgname}-${pkgver}.AppImage::${url}/releases/download/v${pkgver}/Cherry-Studio-${pkgver}-${arch}.AppImage"
-  "${_pkgname}.desktop"
-  "${_pkgname}.png"
-  "${pkgname}.sh")
+depends=(
+  'alsa-lib'
+  'at-spi2-core'
+  'atk'
+  'cairo'
+  'cups'
+  'dbus'
+  'expat'
+  'gcc-libs'
+  'glib2'
+  'glibc'
+  'gtk3'
+  'libdrm'
+  'libx11'
+  'libxcb'
+  'libxcomposite'
+  'libxdamage'
+  'libxext'
+  'libxfixes'
+  'libxkbcommon'
+  'libxrandr'
+  'mesa'
+  'nspr'
+  'nss'
+  'pango'
+  'systemd-libs'
+)
+optdepends=(
+  'libnotify: desktop notifications'
+  'ollama: use your local LLM'
+  'xdg-utils: open links in the default desktop applications'
+)
+provides=("${pkgname%-bin}=${pkgver}")
+source=(
+  "${_pkgname}-${pkgver}.AppImage::${url}/releases/download/v${pkgver}/Cherry-Studio-${pkgver}-${arch}.AppImage"
+  "LICENSE-${pkgver}::${url}/raw/v${pkgver}/LICENSE"
+  "${pkgname}.sh"
+)
 noextract=("${_pkgname}-${pkgver}.AppImage")
 conflicts=("$_pkgname")
 replaces=("${pkgname%-bin}")
-sha256sums=('495cc84efc1cdf0e26f970b19c8ef7932de2f276183115685f902ef13d131fae'
-            'fd0b11ca782c9c0de6dbf34143b7f14560b4a7020e316c58e9a5e1115551c7ee'
-            '597463003798254ab97505e2374485e55262152483f717f3169da3444de60f94'
+sha256sums=('e8df43c6568c8cbc263244d11d01b3ffb2a4948a4b61a2f31c1b9bffa8029c63'
+            '0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0'
             '6aed5e7ca95679b2545540241dc9e6b055da1dfde696006a1712f90cfbfaec92')
+
+prepare() {
+  cd "$srcdir"
+  rm -rf squashfs-root
+  chmod +x "${_pkgname}-${pkgver}.AppImage"
+  "./${_pkgname}-${pkgver}.AppImage" --appimage-extract >/dev/null
+  sed -i \
+    -e 's|^Exec=.*|Exec=cherry-studio %U|' \
+    -e 's|^Icon=.*|Icon=cherry-studio|' \
+    squashfs-root/CherryStudio.desktop
+}
 
 package() {
   cd "$srcdir"
 
-  # Create directories
-  install -dm755 "$pkgdir/usr/bin/$pkgname"
-  install -dm755 "$pkgdir/usr/share/applications"
-  install -dm755 "$pkgdir/usr/share/icons/hicolor/256x256/apps"
+  install -dm755 "${pkgdir}/opt/${_pkgname}" "${pkgdir}/usr/share/licenses/${pkgname}"
+  install -Dm755 "${pkgname}.sh" "${pkgdir}/usr/bin/${_pkgname}"
+  cp -a squashfs-root/. "${pkgdir}/opt/${_pkgname}/"
+  chmod 4755 "${pkgdir}/opt/${_pkgname}/chrome-sandbox"
 
-  # Install AppImage
-  install -Dm755 "${_pkgname}-${pkgver}.AppImage" "${pkgdir}/opt/${pkgname}/${_pkgname}.AppImage"
-  # Install icon
-  install -Dm644 "$_pkgname.png" "$pkgdir/usr/share/icons/hicolor/256x256/apps/$_pkgname.png"
-  # Install desktop file
-  install -Dm644 "$_pkgname.desktop" "$pkgdir/usr/share/applications/$_pkgname.desktop"
-  # Install cherry-studio-bin.sh
-  install -m755 "${pkgname}.sh" "${pkgdir}/usr/bin/${_pkgname}"
+  while IFS= read -r -d '' icon; do
+    local size
+    size="$(basename "$(dirname "$(dirname "$icon")")")"
+    install -Dm644 "$icon" "${pkgdir}/usr/share/icons/hicolor/${size}/apps/${_pkgname}.png"
+  done < <(find squashfs-root/usr/share/icons/hicolor -type f -path '*/apps/CherryStudio.png' -print0)
+
+  install -Dm644 squashfs-root/usr/share/icons/hicolor/1024x1024/apps/CherryStudio.png "${pkgdir}/usr/share/pixmaps/${_pkgname}.png"
+  install -Dm644 squashfs-root/CherryStudio.desktop "${pkgdir}/usr/share/applications/${_pkgname}.desktop"
+  install -Dm644 "LICENSE-${pkgver}" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+  install -Dm644 squashfs-root/LICENSE.electron.txt "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE.electron.txt"
+  install -Dm644 squashfs-root/LICENSES.chromium.html "${pkgdir}/usr/share/licenses/${pkgname}/LICENSES.chromium.html"
 }
