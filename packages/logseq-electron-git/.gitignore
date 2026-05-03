@@ -1,0 +1,4 @@
+!*.install
+!logseq
+!*.desktop
+!*.sh
