@@ -1,0 +1,111 @@
+pkgname=logseq-bin
+pkgver=0.10.15
+pkgrel=1
+pkgdesc="Privacy-first, open-source platform for knowledge sharing and management (prebuilt release; bundled Electron)"
+arch=('x86_64' 'aarch64')
+url='https://github.com/logseq/logseq'
+license=('AGPL-3.0-or-later')
+
+provides=("logseq=${pkgver}")
+conflicts=(
+  'logseq'
+  'logseq-git'
+  'logseq-electron'
+  'logseq-electron-git'
+)
+
+options=('!debug' '!strip')
+install='logseq.install'
+
+depends=(
+  'alsa-lib'
+  'at-spi2-core'
+  'bash'
+  'cairo'
+  'curl'
+  'dbus'
+  'expat'
+  'glib2'
+  'gtk3'
+  'libcups'
+  'libx11'
+  'libxcb'
+  'libxcomposite'
+  'libxdamage'
+  'libxext'
+  'libxfixes'
+  'libxkbcommon'
+  'libxrandr'
+  'mesa'
+  'nodejs'
+  'nspr'
+  'nss'
+  'pango'
+  'perl'
+  'systemd-libs'
+  'zlib'
+)
+
+_pkgsrc='Logseq-linux-x64'
+[[ "${CARCH}" == 'aarch64' ]] && _pkgsrc='Logseq-linux-arm64'
+
+source=(
+  'logseq.desktop'
+  'logseq-flags-wrapper.sh'
+)
+source_x86_64=(
+  "${url}/releases/download/${pkgver}/Logseq-linux-x64-${pkgver}.zip"
+)
+source_aarch64=(
+  "${url}/releases/download/${pkgver}/Logseq-linux-arm64-${pkgver}.zip"
+)
+
+sha256sums=(
+  'SKIP'
+  'SKIP'
+)
+sha256sums_x86_64=(
+  'cfa7afc2d4311efedb1d21508858ebeaff2f3eb896254c2b569a5dc8e2aa3803'
+)
+sha256sums_aarch64=(
+  'cc7e00e8cca676fd962640d7f50a2c7e05ab6a83ed2501df35cb91baf097f478'
+)
+
+package() {
+  install -d "${pkgdir}/opt/logseq"
+  cp -a "${_pkgsrc}/." "${pkgdir}/opt/logseq/"
+
+  install -Dm644 "${_pkgsrc}/resources/app/icon.png" \
+    "${pkgdir}/usr/share/pixmaps/logseq.png"
+  install -Dm644 "${srcdir}/logseq.desktop" \
+    "${pkgdir}/usr/share/applications/logseq.desktop"
+
+  local _app_exec="/opt/logseq/Logseq"
+
+  if [[ -x "${pkgdir}/opt/logseq/logseq" ]]; then
+    _app_exec="/opt/logseq/logseq"
+  fi
+
+  sed -e "s#@LOGSEQ_EXEC@#${_app_exec}#g" \
+    "${srcdir}/logseq-flags-wrapper.sh" >"${srcdir}/logseq"
+
+  if grep -q '@[A-Z_][A-Z_]*@' "${srcdir}/logseq"; then
+    printf '%s\n' "ERROR: unresolved wrapper placeholder(s):"
+    grep -n '@[A-Z_][A-Z_]*@' "${srcdir}/logseq"
+    return 1
+  fi
+
+  install -Dm755 "${srcdir}/logseq" \
+    "${pkgdir}/usr/bin/logseq"
+
+  local electron_version
+  electron_version="$(strings "${pkgdir}/opt/logseq/Logseq" | grep -Pom1 'Electron/[0-9.]+' || true)"
+  electron_version="${electron_version#Electron/}"
+
+  if [[ -n "${electron_version}" ]]; then
+    install -Dm644 /dev/stdin \
+      "${pkgdir}/opt/logseq/electron_version" <<<"${electron_version}"
+  fi
+
+  chmod -R u=rwX,go=rX "${pkgdir}"
+}
