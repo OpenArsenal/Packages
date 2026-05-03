@@ -1,0 +1,20 @@
+[Desktop Entry]
+Type=Application
+Name=Logseq
+Comment=Privacy-first, open-source platform for knowledge sharing and management
+Exec=/usr/bin/logseq %U
+Icon=logseq
+Terminal=false
+StartupNotify=true
+Categories=Office;
+MimeType=x-scheme-handler/logseq;
+StartupWMClass=Logseq
+Actions=Wayland;X11;
+
+[Desktop Action Wayland]
+Name=Wayland Backend
+Exec=/usr/bin/logseq --wayland %U
+
+[Desktop Action X11]
+Name=X11 / XWayland Backend
+Exec=/usr/bin/logseq --x11 %U
