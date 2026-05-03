@@ -1,7 +1,7 @@
 pkgbase = affine-bin
 	pkgdesc = Prebuilt collaborative knowledge base and whiteboard desktop application (bundled Electron)
 	pkgver = 0.26.3
-	pkgrel = 1
+	pkgrel = 2
 	url = https://affine.pro/
 	install = affine.install
 	arch = x86_64
