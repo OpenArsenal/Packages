@@ -1,0 +1,36 @@
+pkgbase = affine-electron-git
+	pkgdesc = Collaborative knowledge base and whiteboard desktop application (git version; system Electron)
+	pkgver = 0.26.3.r0.g0000000
+	pkgrel = 1
+	url = https://affine.pro/
+	install = affine.install
+	arch = x86_64
+	license = LicenseRef-custom
+	license = MIT
+	makedepends = nodejs-lts-jod
+	makedepends = corepack
+	makedepends = yarn
+	makedepends = asar
+	makedepends = python
+	makedepends = zip
+	makedepends = unzip
+	makedepends = cargo
+	makedepends = cmake
+	makedepends = git
+	makedepends = jq
+	depends = electron39
+	depends = bash
+	provides = affine
+	conflicts = affine
+	options = !debug
+	options = !strip
+	source = affine-electron-git::git+https://github.com/toeverything/AFFiNE.git#branch=canary
+	source = affine.desktop
+	source = affine-flags-wrapper.sh
+	source = affine.install
+	sha256sums = SKIP
+	sha256sums = 8ee4d9ae3d73c67e88d0813203240c9b6b381603f9beb3f04641aeff965b801c
+	sha256sums = 655f857035aeed0883ae28622256af2a3b06764b684d22f7607c41e83325fb5d
+	sha256sums = 421f4d8b761a2289f87a3c0b695ab5bc24875b86ba69a47e91f6618098daf1c8
+
+pkgname = affine-electron-git
