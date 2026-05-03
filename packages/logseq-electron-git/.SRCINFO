@@ -1,0 +1,31 @@
+pkgbase = logseq-electron-git
+	pkgdesc = Privacy-first, open-source platform for knowledge sharing and management (git version; system Electron)
+	pkgver = 0.10.15.r24214.g6f5b000217
+	pkgrel = 1
+	url = https://github.com/logseq/logseq
+	install = logseq.install
+	arch = x86_64
+	license = AGPL-3.0-or-later
+	makedepends = asar
+	makedepends = clojure
+	makedepends = git
+	makedepends = nvm
+	makedepends = patchelf
+	makedepends = python
+	makedepends = python-setuptools
+	depends = electron39
+	depends = bash
+	provides = logseq
+	conflicts = logseq
+	options = !debug
+	options = !strip
+	source = logseq-electron-git::git+https://github.com/logseq/logseq.git#branch=master
+	source = logseq.desktop
+	source = logseq-flags-wrapper.sh
+	source = disable-linux-self-update.patch
+	sha256sums = SKIP
+	sha256sums = 01f52e36f035af6393503f39941c0b03b553eae886cdab9e6d0d67e8a15f20df
+	sha256sums = 888d2e76546a501aa0c49487eb203fd0f1f36170edd984e8cf3374378b37d60c
+	sha256sums = 4888172553d920b6f40e65ec24f63b82fbe6f92dca0711c06017d928c85fb6f1
+
+pkgname = logseq-electron-git
