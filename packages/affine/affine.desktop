@@ -5,11 +5,20 @@ Name=AFFiNE
 GenericName=Productivity workspace
 Comment=All-in-one workspace for notes, whiteboards, and planning
 TryExec=affine
-Exec=affine %U
+Exec=/usr/bin/affine %U
 Icon=affine
 Terminal=false
 StartupNotify=true
+StartupWMClass=AFFiNE
 Categories=Office;ProjectManagement;WordProcessor;Presentation;
 Keywords=notes;whiteboard;knowledge-base;wiki;kanban;database;productivity;planning;canvas;
 MimeType=x-scheme-handler/affine;
+Actions=Wayland;X11;
 
+[Desktop Action Wayland]
+Name=Wayland Backend
+Exec=/usr/bin/affine --wayland %U
+
+[Desktop Action X11]
+Name=X11 / XWayland Backend
+Exec=/usr/bin/affine --x11 %U
