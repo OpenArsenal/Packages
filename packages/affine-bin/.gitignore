@@ -1,9 +1,4 @@
-*
-!.gitignore
-!.SRCINFO
-!PKGBUILD
-!*.patch
-!affine.sh
 !*.install
-!update.sh
+!affine
 !*.desktop
+!*.sh
