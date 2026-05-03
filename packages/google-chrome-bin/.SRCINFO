@@ -1,11 +1,11 @@
 pkgbase = google-chrome-bin
 	pkgdesc = The popular web browser by Google (Stable Channel)
-	pkgver = 146.0.7680.164
-	pkgrel = 1
+	pkgver = 147.0.7727.137
+	pkgrel = 2
 	url = https://www.google.com/chrome
 	install = google-chrome-bin.install
 	arch = x86_64
-	license = custom:chrome
+	license = LicenseRef-Google-Chrome-Proprietary
 	depends = alsa-lib
 	depends = gtk3
 	depends = libcups
@@ -21,10 +21,10 @@ pkgbase = google-chrome-bin
 	replaces = google-chrome
 	options = !emptydirs
 	options = !strip
-	source = https://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_146.0.7680.164-1_amd64.deb
+	source = https://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_147.0.7727.137-1_amd64.deb
 	source = eula_text.html
 	source = google-chrome-stable.sh
-	sha512sums = 325e4d9b1c9813d2dd8bea0096a41c11a2fa870c4f9eb5ad8905264b21ff2d39a76e34a55138dc77e5613ded7dd863894c4b5e057d14978bedde865479fb4b4e
+	sha512sums = f9548c62c554aa11f2ec55495131a99dc890060ea4290ea911e4b3336c1d54b5939d406655d924a63d15aade8985b56c8d5e3a82946e5be6edb10e959b44e244
 	sha512sums = a225555c06b7c32f9f2657004558e3f996c981481dbb0d3cd79b1d59fa3f05d591af88399422d3ab29d9446c103e98d567aeafe061d9550817ab6e7eb0498396
 	sha512sums = de02b498a4b5b93e21622c8dba57befe795d733a04656be911cc38e28bfef0e20470450f44be523bbde8d4de28f79c10434846ca01fc2a2f4e67707b79332f94
 
