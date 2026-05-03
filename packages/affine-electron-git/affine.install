@@ -1,0 +1,20 @@
+if tput bold &> /dev/null; then
+  ALL_OFF="$(tput sgr0)"
+  BOLD="${ALL_OFF}$(tput bold)"
+  YELLOW="$(tput setaf 3)"
+fi
+
+_eol_electron_warning() {
+  local _electron_version=""
+  [[ -r usr/lib/affine/electron_version ]] && _electron_version="$(<usr/lib/affine/electron_version)"
+  local _warning_eol="AFFiNE uses Electron ${_electron_version}. To check whether this version of Electron still receives security updates, see https://endoflife.date/electron"
+  printf "${BOLD}${YELLOW}WARNING:${ALL_OFF} %s\n" "${_warning_eol:-see https://endoflife.date/electron}"
+}
+
+post_install() {
+  _eol_electron_warning
+}
+
+post_upgrade() {
+  _eol_electron_warning
+}
