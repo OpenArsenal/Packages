@@ -59,12 +59,6 @@
       "channel": "stable"
     },
     {
-      "name": "cherry-studio-electron-bin",
-      "type": "github-release",
-      "repo": "CherryHQ/cherry-studio",
-      "channel": "stable"
-    },
-    {
       "name": "cherry-studio-git",
       "type": "vcs",
       "repo": "CherryHQ/cherry-studio",
@@ -287,12 +281,6 @@
     },
     {
       "name": "logseq-desktop-electron",
-      "type": "github-release",
-      "repo": "logseq/logseq",
-      "channel": "stable"
-    },
-    {
-      "name": "logseq-desktop-electron-bin",
       "type": "github-release",
       "repo": "logseq/logseq",
       "channel": "stable"
