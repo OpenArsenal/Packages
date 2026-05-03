@@ -1,0 +1,21 @@
+diff --git a/src/electron/electron/core.cljs b/src/electron/electron/core.cljs
+index 978dbb9..f81d5dd 100644
+--- a/src/electron/electron/core.cljs
++++ b/src/electron/electron/core.cljs
+@@ -41,9 +41,13 @@
+ 
+ (defn setup-updater! [^js win]
+   ;; manual/auto updater
+-  (when-not linux?
+-    (init-updater {:repo   "logseq/logseq"
+-                   :win    win})))
++  (let [platform (.-platform js/process)
++        appimage? (some? (.. js/process -env -APPIMAGE))]
++    ;; Pacman-managed Linux builds should not enter the AppImage updater path.
++    ;; Keep updater support for Windows/macOS, and for real AppImage runs.
++    (when (or (not= platform "linux") appimage?)
++      (init-updater {:repo   "logseq/logseq"
++                     :win    win}))))
+ 
+ (defn open-url-handler
+   "win - the main window instance (first renderer process)
