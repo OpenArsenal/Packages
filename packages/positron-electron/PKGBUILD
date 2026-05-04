@@ -1,0 +1,314 @@
+# Maintainer: Okiki <okiki@thunderstrike.co>
+_electronversion=39
+
+pkgname=positron-electron
+_pkgname=positron
+pkgver='2026.04.1.10'
+_upstream_ver="${pkgver%.*}-${pkgver##*.}"
+_srcdir_name="${_pkgname}-${_upstream_ver}"
+pkgrel=1
+pkgdesc="A next-generation data science IDE from Posit built from source (system Electron)"
+arch=('x86_64' 'aarch64')
+url="https://positron.posit.co/"
+license=('Elastic-2.0')
+options=('!debug' '!strip')
+install=positron-electron.install
+
+provides=("positron=${pkgver}")
+conflicts=(
+  'positron'
+  'positron-bin'
+)
+
+depends=(
+  "electron${_electronversion}"
+  'bash'
+  'gnupg'
+  'hicolor-icon-theme'
+  'libsecret'
+  'lsof'
+  'shared-mime-info'
+  'xdg-utils'
+)
+
+optdepends=(
+  'python: Python interpreter support'
+  "python-ipykernel: external Python kernels when not using Positron's bundled IPython kernel"
+  'r: R language support'
+  'libdbusmenu-glib: KDE global menu integration'
+  'org.freedesktop.secrets: settings sync and secret storage integration'
+)
+
+makedepends=(
+  'git'
+  'jq'
+  'nodejs-lts-jod'
+  'corepack'
+  'python'
+  'python-setuptools'
+  'python-pip'
+  'asar'
+  'zip'
+  'unzip'
+  'cargo'
+  'cmake'
+)
+
+checkdepends=(
+  'desktop-file-utils'
+)
+
+source=(
+  "${_pkgname}-${_upstream_ver}.tar.gz::https://github.com/posit-dev/positron/archive/refs/tags/${_upstream_ver}.tar.gz"
+  'positron.desktop'
+  'positron-electron-wrapper.sh'
+)
+
+sha256sums=('056d2838fe6902dfa5981dd38aa3ce6040db5ba60165a31f5152675ffccaf6a2'
+            'd4902f301b72d4fba86094ddda7c3b82e4f875cbbb8c3facc19eb53c3c378980'
+            '87ef9f415dbc4fb51b7bd50c05d841933ee8addb5d88ce017929cd587b9981e8')
+
+_get_vscode_arch() {
+  case "${CARCH}" in
+    x86_64)
+      printf '%s\n' 'x64'
+      ;;
+    aarch64)
+      printf '%s\n' 'arm64'
+      ;;
+    *)
+      printf 'Unsupported architecture: %s\n' "${CARCH}" >&2
+      return 1
+      ;;
+  esac
+}
+
+_build_env() {
+  local _vscode_arch
+  _vscode_arch="$(_get_vscode_arch)"
+
+  export CI=1
+  export HUSKY=0
+  export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+  export ELECTRON_SKIP_BINARY_DOWNLOAD=1
+  export ELECTRON_OVERRIDE_DIST_PATH="/usr/lib/electron${_electronversion}"
+
+  export HOME="${srcdir}/home"
+  export COREPACK_HOME="${srcdir}/corepack-cache"
+  export npm_config_cache="${srcdir}/npm-cache"
+  export npm_config_audit=false
+  export npm_config_fund=false
+  export npm_config_update_notifier=false
+
+  export VSCODE_ARCH="${_vscode_arch}"
+  export npm_config_arch="${_vscode_arch}"
+  export npm_config_target='39.3.0'
+  export npm_config_runtime='electron'
+  export npm_config_disturl='https://electronjs.org/headers'
+  export npm_config_build_from_source=true
+  export POSITRON_PARALLEL_INSTALL=0
+
+  local _package_manager
+  _package_manager="$(jq -r '.packageManager' package.json)"
+  corepack prepare "${_package_manager}" --activate
+}
+
+_assert_source_contract() {
+  local _node_version
+  local _electron_target
+  local _package_manager
+
+  _node_version="$(<.nvmrc)"
+  _electron_target="$(sed -n 's/^target="\([^"]*\)"/\1/p' .npmrc)"
+  _package_manager="$(jq -r '.packageManager' package.json)"
+
+  [[ "${_node_version}" == '22.22.0' ]] || {
+    printf 'Unexpected Node version in .nvmrc: %s\n' "${_node_version}" >&2
+    return 1
+  }
+
+  [[ "${_electron_target}" == '39.3.0' ]] || {
+    printf 'Unexpected Electron target in .npmrc: %s\n' "${_electron_target}" >&2
+    return 1
+  }
+
+  [[ "${_package_manager}" == 'npm@10.9.2' ]] || {
+    printf 'Unexpected packageManager: %s\n' "${_package_manager}" >&2
+    return 1
+  }
+}
+
+_remove_updater_metadata() {
+  local _root="$1"
+
+  [[ -d "${_root}" ]] || return 0
+
+  find "${_root}" -type f \( \
+    -name 'app-update.yml' -o \
+    -name 'dev-app-update.yml' -o \
+    -name 'latest*.yml' \
+  \) -delete 2>/dev/null || true
+}
+
+_patch_product_metadata() {
+  local _product_json="$1"
+
+  [[ -f "${_product_json}" ]] || return 0
+
+  jq '
+    del(.updateUrl)
+    | del(.releaseNotesUrl)
+    | .downloadUrl = "https://positron.posit.co/download"
+  ' "${_product_json}" > "${_product_json}.tmp"
+  mv "${_product_json}.tmp" "${_product_json}"
+}
+
+_disable_stale_vendor_patches() {
+  local _python_ext_root='extensions/positron-python'
+  local _requirements_file="${_python_ext_root}/python_files/positron_requirements/requirements.txt"
+  local _patch_file="${_python_ext_root}/scripts/patches/pydantic.patch"
+
+  [[ -f "${_requirements_file}" && -f "${_patch_file}" ]] || return 0
+
+  if grep -Fqx 'pydantic==1.10.26 \' "${_requirements_file}" && \
+     grep -Fq '_vendor/pydantic/_hypothesis_plugin.py' "${_patch_file}"; then
+    rm -f "${_patch_file}"
+  fi
+}
+
+_fix_vendor_patch_cwd() {
+  local _vendor_py='extensions/positron-python/scripts/vendor.py'
+
+  [[ -f "${_vendor_py}" ]] || return 0
+
+  perl -0pi -e 's/\n\s*run\(\n\s*\[\n\s*"git",\n\s*"apply",\n\s*# TODO\(seem\): I couldn\x27t find any other way to get git to apply our patches\n\s*# on Windows, even though neither the patch\/patched files have CRLF line endings\.\n\s*# Hopefully this doesn\x27t cause any incorrect matches since whitespaces are part\n\s*# of Python\x27s syntax\.\n\s*"--ignore-whitespace",\n\s*"--verbose",\n\s*str\(patch_file\),\n\s*\],\n\s*\)/\n            run(\n                [\n                    "git",\n                    "apply",\n                    # TODO(seem): I couldn\x27t find any other way to get git to apply our patches\n                    # on Windows, even though neither the patch\/patched files have CRLF line endings.\n                    # Hopefully this doesn\x27t cause any incorrect matches since whitespaces are part\n                    # of Python\x27s syntax.\n                    "--ignore-whitespace",\n                    "--verbose",\n                    str(patch_file),\n                ],\n                cwd=str(Path(__file__).resolve().parents[3]),\n            )/s' "${_vendor_py}"
+}
+
+prepare() {
+  cd "${srcdir}/${_srcdir_name}"
+
+  _build_env
+  _assert_source_contract
+
+  mkdir -p "${HOME}" "${npm_config_cache}"
+  export BUILD_SOURCEVERSION
+  BUILD_SOURCEVERSION="$(jq -r '.distro' package.json)"
+
+  _fix_vendor_patch_cwd
+  _disable_stale_vendor_patches
+  _patch_product_metadata 'product.json'
+}
+
+build() {
+  cd "${srcdir}/${_srcdir_name}"
+
+  local _vscode_arch
+  _vscode_arch="$(_get_vscode_arch)"
+
+  _build_env
+  _assert_source_contract
+  export BUILD_SOURCEVERSION
+  BUILD_SOURCEVERSION="$(jq -r '.distro' package.json)"
+
+  corepack npm install
+
+  corepack npm run gulp -- --tasks-simple | grep -qx "vscode-linux-${_vscode_arch}-min" || {
+    printf 'Missing expected gulp task: vscode-linux-%s-min\n' "${_vscode_arch}" >&2
+    return 1
+  }
+
+  corepack npm run gulp core-ci
+  corepack npm run gulp "vscode-linux-${_vscode_arch}-min"
+}
+
+check() {
+  cd "${srcdir}/${_srcdir_name}"
+
+  local _vscode_arch
+  local _bundle_dir
+  _vscode_arch="$(_get_vscode_arch)"
+  _bundle_dir="${srcdir}/VSCode-linux-${_vscode_arch}"
+
+  _build_env
+  _assert_source_contract
+  export BUILD_SOURCEVERSION
+  BUILD_SOURCEVERSION="$(jq -r '.distro' package.json)"
+
+  desktop-file-validate "${srcdir}/positron.desktop"
+  corepack npm run test-build-scripts
+
+  test -d "${_bundle_dir}"
+  test -d "${_bundle_dir}/resources/app"
+  test -f "${_bundle_dir}/resources/app/product.json"
+
+  jq -e '
+    .applicationName == "positron"
+    and .linuxIconName == "co.posit.positron"
+    and (.builtInExtensions | type == "array")
+    and (.bootstrapExtensions | type == "array")
+  ' "${_bundle_dir}/resources/app/product.json" >/dev/null
+}
+
+package() {
+  local _vscode_arch
+  local _bundle_dir
+  local _install_root="${pkgdir}/usr/lib/positron"
+  local _app_root="${_install_root}/app"
+  local _wrapper_out="${srcdir}/positron-electron"
+
+  _vscode_arch="$(_get_vscode_arch)"
+  _bundle_dir="${srcdir}/VSCode-linux-${_vscode_arch}"
+
+  install -d "${pkgdir}/usr/lib"
+  install -d "${pkgdir}/usr/bin"
+  install -d "${pkgdir}/usr/share/licenses/${pkgname}"
+
+  if [[ ! -d "${_bundle_dir}/resources/app" ]]; then
+    echo "Missing built app payload under ${_bundle_dir}/resources/app" >&2
+    return 1
+  fi
+
+  install -d "${_install_root}"
+  cp -a "${_bundle_dir}/resources/app" "${_app_root}"
+
+  _remove_updater_metadata "${_app_root}"
+  _patch_product_metadata "${_app_root}/product.json"
+
+  sed \
+    -e "s#@POSITRON_EXEC@#/usr/bin/electron${_electronversion} /usr/lib/positron/app#g" \
+    "${srcdir}/positron-electron-wrapper.sh" > "${_wrapper_out}"
+
+  if grep -q '@[A-Z_][A-Z_]*@' "${_wrapper_out}"; then
+    printf '%s\n' 'ERROR: unresolved wrapper placeholder(s):'
+    grep -n '@[A-Z_][A-Z_]*@' "${_wrapper_out}"
+    return 1
+  fi
+
+  install -Dm755 "${_wrapper_out}" "${pkgdir}/usr/bin/positron"
+  install -Dm644 "${srcdir}/positron.desktop" "${pkgdir}/usr/share/applications/positron.desktop"
+  install -Dm644 "/usr/lib/electron${_electronversion}/version" "${_install_root}/electron_version"
+
+  if [[ -f "${pkgdir}/usr/share/applications/positron-url-handler.desktop" ]]; then
+    sed -i 's|^Exec=.*|Exec=/usr/bin/positron --open-url %U|' \
+      "${pkgdir}/usr/share/applications/positron-url-handler.desktop"
+  fi
+
+  install -Dm644 \
+    "${srcdir}/${_srcdir_name}/LICENSE.txt" \
+    "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE.txt"
+
+  install -Dm644 \
+    "${srcdir}/${_srcdir_name}/NOTICE" \
+    "${pkgdir}/usr/share/licenses/${pkgname}/NOTICE"
+
+  install -Dm644 \
+    "${srcdir}/${_srcdir_name}/ThirdPartyNotices.txt" \
+    "${pkgdir}/usr/share/licenses/${pkgname}/ThirdPartyNotices.txt"
+
+  if LC_ALL=C grep -aR -F -e "${srcdir}" -e "${pkgdir}" "${_app_root}" >/dev/null 2>&1; then
+    printf '%s\n' 'ERROR: build path leaked into packaged app.' >&2
+    return 1
+  fi
+
+  find "${pkgdir}" -type f -perm -0002 -exec chmod o-w '{}' +
+}
