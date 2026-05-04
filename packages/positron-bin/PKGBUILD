@@ -1,42 +1,77 @@
+# Maintainer: Okiki <okiki@thunderstrike.co>
 pkgname=positron-bin
 _pkgname=positron
-_wrapper=${_pkgname}
 pkgver='2026.04.1.10'
 _upstream_ver="${pkgver%.*}-${pkgver##*.}"
-pkgrel=1
-pkgdesc="A next-generation data science IDE from Posit (official binary version)"
+pkgrel=4
+pkgdesc="A next-generation data science IDE from Posit (official bundled-runtime binary repack)"
 arch=('x86_64' 'aarch64')
 url="https://positron.posit.co/"
-license=('custom')
-provides=('positron')
-options=(!strip)
-install=${pkgname}.install
+license=('LicenseRef-Positron-Proprietary')
+provides=("positron=${pkgver}")
+conflicts=(
+  'positron'
+  'positron-electron'
+)
+options=('!strip')
+install="positron.install"
+
+makedepends=(
+  'jq'
+)
+
+checkdepends=(
+  'desktop-file-utils'
+)
 
 depends=(
-  libxkbfile
-  gnupg
-  gtk3
-  libsecret
-  nss
-  gcc-libs
-  libnotify
-  libxss
-  glibc
-  lsof
-  shared-mime-info
-  xdg-utils
-  alsa-lib
+  'alsa-lib'
+  'at-spi2-core'
+  'atk'
+  'bash'
+  'cairo'
+  'cups'
+  'dbus'
+  'expat'
+  'gcc-libs'
+  'glib2'
+  'glibc'
+  'gnupg'
+  'gtk3'
+  'hicolor-icon-theme'
+  'libdrm'
+  'libnotify'
+  'libsecret'
+  'libx11'
+  'libxcb'
+  'libxcomposite'
+  'libxdamage'
+  'libxext'
+  'libxfixes'
+  'libxkbcommon'
+  'libxkbfile'
+  'libxrandr'
+  'libxss'
+  'lsof'
+  'mesa'
+  'nspr'
+  'nss'
+  'pango'
+  'shared-mime-info'
+  'systemd-libs'
+  'xdg-utils'
 )
 
 optdepends=(
-  'glib2: needed for move to trash functionality'
-  'libdbusmenu-glib: needed for KDE global menu'
-  'org.freedesktop.secrets: needed for settings sync'
+  'python: Python interpreter support'
+  "python-ipykernel: external Python kernels when not using Positron's bundled IPython kernel"
+  'r: R language support'
+  'libdbusmenu-glib: KDE global menu integration'
+  'org.freedesktop.secrets: settings sync and secret storage integration'
 )
 
 source=(
-  "${_wrapper}"
-  "${pkgname}.install"
+  "positron-flags-wrapper.sh"
 )
 
 source_x86_64=(
@@ -47,14 +82,99 @@ source_aarch64=(
   "Positron-${_upstream_ver}-arm64.rpm::https://cdn.posit.co/positron/releases/rpm/arm64/Positron-${_upstream_ver}-arm64.rpm"
 )
 
-sha256sums=('3d0cdecacb396ba175b7fe2cfc8c220b2aed9b12f2927696223019028b14d4cf'
-  'ceba13aa3616b484cdc2dc7909017770024d6393d2e7a88da15d0f5b246bd6d8')
+sha256sums=('cc8f00ce7b3147f82dda6f3f43aaf911a3f9fcbec64c36f96ab4c6fadadd3d07')
 sha256sums_x86_64=('2b0db0e1fd7087b5f7041044b601323de7ea5c8fd8b0ba94e684141c64c2b28c')
 sha256sums_aarch64=('f5253c875ee671fd8fb724a35083925773b96e72c0cfeb61bd36793db199e99c')
 
+_remove_updater_metadata() {
+  local _root="$1"
+
+  [[ -d "${_root}" ]] || return 0
+
+  find "${_root}" -type f \( \
+    -name 'app-update.yml' -o \
+    -name 'dev-app-update.yml' -o \
+    -name 'latest*.yml' \
+  \) -delete 2>/dev/null || true
+}
+
+_record_electron_version() {
+  local _binary="$1"
+  local _output="$2"
+  local _electron_version
+
+  [[ -x "${_binary}" ]] || return 0
+
+  _electron_version="$(strings "${_binary}" 2>/dev/null | sed -n 's|.*Electron/\([0-9][0-9.]*\).*|\1|p' | head -n1 || true)"
+  [[ -n "${_electron_version}" ]] || return 0
+
+  printf '%s\n' "${_electron_version}" > "${_output}"
+}
+
+_patch_product_metadata() {
+  local _product_json="$1"
+
+  [[ -f "${_product_json}" ]] || return 0
+
+  jq '
+    del(.updateUrl)
+    | del(.releaseNotesUrl)
+    | .downloadUrl = "https://positron.posit.co/download"
+  ' "${_product_json}" > "${_product_json}.tmp"
+  mv "${_product_json}.tmp" "${_product_json}"
+}
+
+check() {
+  local _rpm
+  local _check_root
+  local _payload_root
+  local _product_json
+
+  case "${CARCH}" in
+    x86_64)
+      _rpm="${srcdir}/Positron-${_upstream_ver}-x64.rpm"
+      ;;
+    aarch64)
+      _rpm="${srcdir}/Positron-${_upstream_ver}-arm64.rpm"
+      ;;
+    *)
+      echo "Unsupported architecture: ${CARCH}" >&2
+      return 1
+      ;;
+  esac
+
+  _check_root="$(mktemp -d "${srcdir}/positron-bin-check.XXXXXX")"
+  trap 'rm -rf "${_check_root}"' RETURN
+
+  bsdtar -xpf "${_rpm}" -C "${_check_root}"
+
+  _payload_root="${_check_root}/usr/share/${_pkgname}"
+  _product_json="${_payload_root}/resources/app/product.json"
+
+  test -d "${_payload_root}"
+  test -f "${_product_json}"
+
+  jq -e '
+    .applicationName == "positron"
+    and .linuxIconName == "co.posit.positron"
+    and (.builtInExtensions | type == "array")
+    and (.bootstrapExtensions | type == "array")
+  ' "${_product_json}" >/dev/null
+
+  if [[ -f "${_check_root}/usr/share/applications/positron.desktop" ]]; then
+    desktop-file-validate "${_check_root}/usr/share/applications/positron.desktop"
+  fi
+
+  if [[ -f "${_check_root}/usr/share/applications/positron-url-handler.desktop" ]]; then
+    desktop-file-validate "${_check_root}/usr/share/applications/positron-url-handler.desktop"
+  fi
+}
+
 package() {
   local _rpm
+  local _install_root="${pkgdir}/opt/${_pkgname}"
 
+  install -d "${pkgdir}/opt"
   install -d "${pkgdir}/usr/share"
   install -d "${pkgdir}/usr/bin"
   install -d "${pkgdir}/usr/share/licenses/${pkgname}"
@@ -74,30 +194,48 @@ package() {
 
   bsdtar -xpf "${_rpm}" -C "${pkgdir}" || return 1
 
-  install -Dm755 "${srcdir}/${_wrapper}" "${pkgdir}/usr/bin/positron"
+  if [[ ! -d "${pkgdir}/usr/share/${_pkgname}" ]]; then
+    echo "Missing extracted payload under /usr/share/${_pkgname}" >&2
+    return 1
+  fi
 
-  [[ -f "${pkgdir}/usr/share/${_pkgname}/resources/app/LICENSE.txt" ]] &&
+  mv "${pkgdir}/usr/share/${_pkgname}" "${_install_root}"
+  _remove_updater_metadata "${_install_root}"
+  _patch_product_metadata "${_install_root}/resources/app/product.json"
+  _record_electron_version "${_install_root}/bin/positron" "${_install_root}/electron_version"
+
+  install -Dm755 "${srcdir}/positron-flags-wrapper.sh" "${pkgdir}/usr/bin/positron"
+
+  [[ -f "${pkgdir}/usr/share/applications/positron.desktop" ]] &&
+    sed -i 's|^Exec=.*|Exec=/usr/bin/positron %F|' \
+      "${pkgdir}/usr/share/applications/positron.desktop"
+
+  [[ -f "${pkgdir}/usr/share/applications/positron-url-handler.desktop" ]] &&
+    sed -i 's|^Exec=.*|Exec=/usr/bin/positron --open-url %U|' \
+      "${pkgdir}/usr/share/applications/positron-url-handler.desktop"
+
+  [[ -f "${_install_root}/resources/app/LICENSE.txt" ]] &&
     install -Dm644 \
-      "${pkgdir}/usr/share/${_pkgname}/resources/app/LICENSE.txt" \
+      "${_install_root}/resources/app/LICENSE.txt" \
       "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 
-  [[ -f "${pkgdir}/usr/share/${_pkgname}/resources/app/NOTICE" ]] &&
+  [[ -f "${_install_root}/resources/app/NOTICE" ]] &&
     install -Dm644 \
-      "${pkgdir}/usr/share/${_pkgname}/resources/app/NOTICE" \
+      "${_install_root}/resources/app/NOTICE" \
       "${pkgdir}/usr/share/licenses/${pkgname}/NOTICE"
 
-  [[ -f "${pkgdir}/usr/share/${_pkgname}/resources/app/ThirdPartyNotices.txt" ]] &&
+  [[ -f "${_install_root}/resources/app/ThirdPartyNotices.txt" ]] &&
     install -Dm644 \
-      "${pkgdir}/usr/share/${_pkgname}/resources/app/ThirdPartyNotices.txt" \
+      "${_install_root}/resources/app/ThirdPartyNotices.txt" \
       "${pkgdir}/usr/share/licenses/${pkgname}/ThirdPartyNotices.txt"
 
-  [[ -f "${pkgdir}/usr/share/${_pkgname}/LICENSES.chromium.html" ]] &&
+  [[ -f "${_install_root}/LICENSES.chromium.html" ]] &&
     install -Dm644 \
-      "${pkgdir}/usr/share/${_pkgname}/LICENSES.chromium.html" \
+      "${_install_root}/LICENSES.chromium.html" \
       "${pkgdir}/usr/share/licenses/${pkgname}/LICENSES.chromium.html"
 
-  [[ -f "${pkgdir}/usr/share/${_pkgname}/chrome-sandbox" ]] &&
-    chmod 4755 "${pkgdir}/usr/share/${_pkgname}/chrome-sandbox"
+  [[ -f "${_install_root}/chrome-sandbox" ]] &&
+    chmod 4755 "${_install_root}/chrome-sandbox"
 
   find "${pkgdir}" -type f -perm -0002 -exec chmod o-w '{}' +
 }
