@@ -1,0 +1,17 @@
+_positron_notice() {
+    local _electron_version=""
+    [[ -r usr/lib/positron/electron_version ]] && _electron_version="$(<usr/lib/positron/electron_version)"
+
+    printf "NOTE: Custom flags should be put directly in: ~/.config/positron-flags.conf\n"
+    if [[ -n "${_electron_version}" ]]; then
+        printf "WARNING: Positron uses system Electron %s. To check whether this version of Electron still receives security updates, see https://endoflife.date/electron\n" "${_electron_version}"
+    fi
+}
+
+post_install() {
+    _positron_notice
+}
+
+post_upgrade() {
+    _positron_notice
+}
