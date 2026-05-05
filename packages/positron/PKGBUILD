@@ -69,10 +69,16 @@ makedepends=(
   'git'
   'jq'
   'nodejs-lts-jod'
+  'node-gyp'
   'corepack'
   'python'
   'python-setuptools'
   'python-pip'
+  'krb5'
+  'libxkbfile'
+  'libsodium'
+  'pkgconf'
+  'clang'
   'asar'
   'zip'
   'unzip'
@@ -111,6 +117,7 @@ _get_vscode_arch() {
 
 _build_env() {
   local _vscode_arch
+  local _package_manager
   _vscode_arch="$(_get_vscode_arch)"
 
   export CI=1
@@ -224,7 +231,7 @@ prepare() {
   export BUILD_SOURCEVERSION
   BUILD_SOURCEVERSION="$(jq -r '.distro' package.json)"
 
-  _disable_stale_vendor_patches
+  # _disable_stale_vendor_patches
   _patch_product_metadata 'product.json'
 }
 
@@ -241,15 +248,11 @@ build() {
 
   # The release source tree does not currently ship a root npm lockfile, so the
   # first source-built package follows upstream's multi-project npm install path.
-  corepack npm install
-
-  corepack npm run gulp -- --tasks-simple | grep -qx "vscode-linux-${_vscode_arch}-min" || {
-    printf 'Missing expected gulp task: vscode-linux-%s-min\n' "${_vscode_arch}" >&2
-    return 1
-  }
-
-  corepack npm run gulp core-ci
-  corepack npm run gulp "vscode-linux-${_vscode_arch}-min"
+  corepack npm --prefix build ci --no-audit --no-fund --cache "${npm_config_cache}"
+  corepack npm install --no-audit --no-fund --cache "${npm_config_cache}"
+  corepack npm --prefix remote install --no-audit --no-fund --cache "${npm_config_cache}"
+  corepack npm exec -- npm-run-all --max-old-space-size=8192 -p compile "electron ${_vscode_arch}"
+  corepack npm run prelaunch
 }
 
 check() {
