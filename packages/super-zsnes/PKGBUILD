@@ -1,0 +1,122 @@
+pkgname=super-zsnes-bin
+_pkgname=super-zsnes
+_srcname=SuperZSNES
+pkgver=0.110
+pkgrel=1
+pkgdesc='GPU-powered Super Nintendo Entertainment System emulator'
+arch=('x86_64')
+url='https://www.zsnes.com/'
+license=('LicenseRef-SuperZSNES-Proprietary')
+depends=(
+  'libglvnd'
+  'libx11'
+  'libxcursor'
+  'libxi'
+  'libxrandr'
+)
+optdepends=(
+  'vulkan-icd-loader: Vulkan renderer support if selected by the Unity player'
+  'wayland: Wayland backend support if selected by the Unity player'
+  'libxkbcommon: keyboard handling for Wayland sessions'
+)
+provides=("${_pkgname}=${pkgver}")
+conflicts=("${_pkgname}")
+options=('!strip' '!debug')
+source=("${_srcname}_v${pkgver}.tar.gz::https://www.zsnes.com/files/${_srcname}_v${pkgver}.tar.gz")
+sha256sums=('157b7f469e74a153f83b10de0fe03394c9c015b8d34af8062ac443e6e1b78d72')
+
+package() {
+  local _srcroot
+  local _entries
+  local _exe
+  local _icon
+  local _license
+
+  shopt -s dotglob nullglob
+  _entries=("${srcdir}"/*)
+
+  if ((${#_entries[@]} == 1)) && [[ -d "${_entries[0]}" ]]; then
+    _srcroot="${_entries[0]}"
+  else
+    _srcroot="${srcdir}"
+  fi
+
+  install -d "${pkgdir}/opt/${_pkgname}"
+  cp -a "${_srcroot}/." "${pkgdir}/opt/${_pkgname}/"
+
+  # Unity Linux builds normally ship an executable next to *_Data/.
+  _exe="$({
+    find "${pkgdir}/opt/${_pkgname}" -maxdepth 2 -type f -perm -111 \
+      \( -iname 'SuperZSNES' -o -iname 'SuperZSNES.x86_64' -o -iname 'Super ZSNES' -o -iname 'Super ZSNES.x86_64' \) \
+      -printf '%P\n'
+    find "${pkgdir}/opt/${_pkgname}" -maxdepth 2 -type f -perm -111 \
+      \( -iname '*Super*ZSNES*' -o -iname '*zsnes*' \) \
+      -printf '%P\n'
+  } | head -n 1)"
+
+  if [[ -z "${_exe}" ]]; then
+    echo 'ERROR: Could not locate the Super ZSNES executable in the extracted archive.' >&2
+    echo '       Inspect src/ and update the executable search pattern in package().' >&2
+    return 1
+  fi
+
+  install -d "${pkgdir}/usr/bin"
+  cat >"${pkgdir}/usr/bin/${_pkgname}" <<EOF_WRAPPER
+#!/bin/sh
+cd /opt/${_pkgname} || exit 1
+exec "./${_exe}" "\$@"
+EOF_WRAPPER
+  chmod 0755 "${pkgdir}/usr/bin/${_pkgname}"
+
+  _icon="$({
+    find "${pkgdir}/opt/${_pkgname}" -maxdepth 5 -type f \
+      \( -iname '*.png' -o -iname '*.svg' \) \
+      \( -iname '*icon*' -o -iname '*zsnes*' -o -iname '*super*' \) \
+      -printf '%p\n'
+    find "${pkgdir}/opt/${_pkgname}" -maxdepth 5 -type f \
+      \( -iname '*.png' -o -iname '*.svg' \) \
+      -printf '%p\n'
+  } | head -n 1)"
+
+  if [[ -n "${_icon}" ]]; then
+    case "${_icon##*.}" in
+    svg | SVG)
+      install -Dm644 "${_icon}" "${pkgdir}/usr/share/icons/hicolor/scalable/apps/${_pkgname}.svg"
+      ;;
+    *)
+      install -Dm644 "${_icon}" "${pkgdir}/usr/share/pixmaps/${_pkgname}.png"
+      ;;
+    esac
+  fi
+
+  install -Dm644 /dev/stdin "${pkgdir}/usr/share/applications/${_pkgname}.desktop" <<EOF_DESKTOP
+[Desktop Entry]
+Type=Application
+Name=Super ZSNES
+Comment=Super Nintendo Entertainment System emulator
+Exec=${_pkgname} %f
+Icon=${_pkgname}
+Terminal=false
+Categories=Game;Emulator;
+StartupNotify=false
+EOF_DESKTOP
+
+  _license="$(find "${pkgdir}/opt/${_pkgname}" -maxdepth 5 -type f \
+    \( -iname 'LICENSE*' -o -iname 'COPYING*' -o -iname 'EULA*' -o -iname 'LEGAL*' \) \
+    -printf '%p\n' | head -n 1)"
+
+  if [[ -n "${_license}" ]]; then
+    install -Dm644 "${_license}" "${pkgdir}/usr/share/licenses/${pkgname}/${_license##*/}"
+  else
+    install -Dm644 /dev/stdin "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE" <<EOF_LICENSE
+Super ZSNES is distributed by ZEMU Software Inc. from:
+${url}
+
+No separate free/open-source license text was included in the upstream Linux
+tarball when this PKGBUILD was written. Consult upstream before redistributing
+or modifying the binary package.
+EOF_LICENSE
+  fi
+
+  chmod -R u+rwX,go+rX,go-w "${pkgdir}/opt/${_pkgname}"
+}
