@@ -1,0 +1,23 @@
+pkgbase = super-zsnes-bin
+	pkgdesc = GPU-powered Super Nintendo Entertainment System emulator
+	pkgver = 0.110
+	pkgrel = 1
+	url = https://www.zsnes.com/
+	arch = x86_64
+	license = LicenseRef-SuperZSNES-Proprietary
+	depends = libglvnd
+	depends = libx11
+	depends = libxcursor
+	depends = libxi
+	depends = libxrandr
+	optdepends = vulkan-icd-loader: Vulkan renderer support if selected by the Unity player
+	optdepends = wayland: Wayland backend support if selected by the Unity player
+	optdepends = libxkbcommon: keyboard handling for Wayland sessions
+	provides = super-zsnes=0.110
+	conflicts = super-zsnes
+	options = !strip
+	options = !debug
+	source = SuperZSNES_v0.110.tar.gz::https://www.zsnes.com/files/SuperZSNES_v0.110.tar.gz
+	sha256sums = 157b7f469e74a153f83b10de0fe03394c9c015b8d34af8062ac443e6e1b78d72
+
+pkgname = super-zsnes-bin
