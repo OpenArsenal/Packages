@@ -1,0 +1,32 @@
+pkgbase = gg-git
+	pkgdesc = A GUI for the version control system Jujutsu. (git version)
+	pkgver = 0.39.1.r0.g0000000
+	pkgrel = 1
+	url = https://github.com/gulbanana/gg
+	arch = x86_64
+	arch = aarch64
+	license = Apache-2.0
+	makedepends = cargo
+	makedepends = git
+	makedepends = npm
+	makedepends = pkgconf
+	depends = bash
+	depends = gdk-pixbuf2
+	depends = glibc
+	depends = glib2
+	depends = gtk3
+	depends = pango
+	depends = webkit2gtk-4.1
+	provides = gg=0.39.1.r0.g0000000
+	conflicts = gg
+	conflicts = gg-bin
+	options = !lto
+	options = !debug
+	source = gg::git+https://github.com/gulbanana/gg.git
+	source = gg-flags-wrapper.sh
+	source = gg.desktop
+	b2sums = SKIP
+	b2sums = 3a34ed2e3bbd93a79b347b24658ce2b81c26182159986ea9cccabed6aa6d27aa0120567a8c2e836e89f32b82f0c8eac58d53c0c9169c79cc856b9e59072f58c3
+	b2sums = f1e3259ec7ac227d872d76dd3b3faaad86d8f16497d80e457247a2bc1a1b50ee511bfdd310052475d1b337ed127c09e1337c42bc98c04c4c459a48a43fd30297
+
+pkgname = gg-git
