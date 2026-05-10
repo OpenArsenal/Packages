@@ -1,0 +1,79 @@
+pkgname=gg
+pkgver=0.39.1
+pkgrel=1
+pkgdesc='A GUI for the version control system Jujutsu.'
+arch=(x86_64 aarch64)
+url='https://github.com/gulbanana/gg'
+license=(Apache-2.0)
+depends=(
+  bash
+  gdk-pixbuf2
+  glibc
+  glib2
+  gtk3
+  pango
+  webkit2gtk-4.1
+)
+makedepends=(
+  cargo
+  git
+  npm
+  pkgconf
+)
+conflicts=(
+  gg-bin
+  gg-git
+)
+options=(
+  !lto
+)
+source=(
+  "${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/v${pkgver}.tar.gz"
+  "gg-flags-wrapper.sh"
+  "gg.desktop"
+)
+sha256sums=('SKIP'
+  '3c576e9b645624991067bb8ec22f0e6b8572250cba58497dc1b797b494f880d0'
+  '0ca4096e28fed3dc039a1d43f2291bb1c8b34021869dccb673a93e198a1faf1e')
+
+_archive="gg-${pkgver}"
+_wrapper_target='/usr/lib/gg/gg'
+
+_install_wrapper() {
+  install -Dm755 /dev/null "${pkgdir}/usr/bin/gg"
+  sed -e "s#@GG_EXEC@#${_wrapper_target}#g" \
+    "${srcdir}/gg-flags-wrapper.sh" >"${pkgdir}/usr/bin/gg"
+}
+
+prepare() {
+  export RUSTUP_TOOLCHAIN=stable
+  cd "${srcdir}/${_archive}"
+  cargo fetch --locked --target "$(rustc -vV | sed -n 's/^host: //p')"
+}
+
+build() {
+  export RUSTUP_TOOLCHAIN=stable
+  export GG_VERSION="${pkgver}"
+
+  cd "${srcdir}/${_archive}"
+  npm ci
+  npm run build
+  cargo build --release --locked --features app
+}
+
+package() {
+  cd "${srcdir}/${_archive}"
+
+  install -Dm755 target/release/gg "${pkgdir}/usr/lib/gg/gg"
+  _install_wrapper
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+
+  install -Dm644 res/icons/32x32.png \
+    "${pkgdir}/usr/share/icons/hicolor/32x32/apps/gg.png"
+  install -Dm644 res/icons/128x128.png \
+    "${pkgdir}/usr/share/icons/hicolor/128x128/apps/gg.png"
+  install -Dm644 res/icons/128x128@2x.png \
+    "${pkgdir}/usr/share/icons/hicolor/256x256/apps/gg.png"
+
+  install -Dm644 "${srcdir}/gg.desktop" "${pkgdir}/usr/share/applications/gg.desktop"
+}
