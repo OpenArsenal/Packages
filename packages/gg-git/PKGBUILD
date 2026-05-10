@@ -1,0 +1,84 @@
+pkgname=gg-git
+pkgver=0.39.1.r9.g6da2677
+pkgrel=1
+pkgdesc='A GUI for the version control system Jujutsu. (git version)'
+arch=(x86_64 aarch64)
+url='https://github.com/gulbanana/gg'
+license=(Apache-2.0)
+depends=(
+  bash
+  gdk-pixbuf2
+  glibc
+  glib2
+  gtk3
+  pango
+  webkit2gtk-4.1
+)
+makedepends=(
+  cargo
+  git
+  npm
+  pkgconf
+)
+provides=(gg="${pkgver}")
+conflicts=(
+  gg
+  gg-bin
+)
+options=(
+  !lto
+  !debug
+)
+source=(
+  "gg::git+${url}.git"
+  "gg-flags-wrapper.sh"
+  "gg.desktop"
+)
+b2sums=('SKIP'
+        '3a34ed2e3bbd93a79b347b24658ce2b81c26182159986ea9cccabed6aa6d27aa0120567a8c2e836e89f32b82f0c8eac58d53c0c9169c79cc856b9e59072f58c3'
+        'f1e3259ec7ac227d872d76dd3b3faaad86d8f16497d80e457247a2bc1a1b50ee511bfdd310052475d1b337ed127c09e1337c42bc98c04c4c459a48a43fd30297')
+_wrapper_target='/usr/lib/gg/gg'
+
+_install_wrapper() {
+  install -Dm755 /dev/null "${pkgdir}/usr/bin/gg"
+  sed -e "s#@GG_EXEC@#${_wrapper_target}#g" \
+    "${srcdir}/gg-flags-wrapper.sh" >"${pkgdir}/usr/bin/gg"
+}
+
+pkgver() {
+  cd "${srcdir}/gg"
+  git describe --tags --long --abbrev=7 | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+prepare() {
+  export RUSTUP_TOOLCHAIN=stable
+  cd "${srcdir}/gg"
+  cargo fetch --locked --target "$(rustc -vV | sed -n 's/^host: //p')"
+}
+
+build() {
+  export RUSTUP_TOOLCHAIN=stable
+  export GG_VERSION="${pkgver}"
+
+  cd "${srcdir}/gg"
+  npm ci
+  npm run build
+  cargo build --release --locked --features app
+}
+
+package() {
+  cd "${srcdir}/gg"
+
+  install -Dm755 target/release/gg "${pkgdir}/usr/lib/gg/gg"
+  _install_wrapper
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+
+  install -Dm644 res/icons/32x32.png \
+    "${pkgdir}/usr/share/icons/hicolor/32x32/apps/gg.png"
+  install -Dm644 res/icons/128x128.png \
+    "${pkgdir}/usr/share/icons/hicolor/128x128/apps/gg.png"
+  install -Dm644 res/icons/128x128@2x.png \
+    "${pkgdir}/usr/share/icons/hicolor/256x256/apps/gg.png"
+
+  install -Dm644 "${srcdir}/gg.desktop" "${pkgdir}/usr/share/applications/gg.desktop"
+}

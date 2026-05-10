@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=GG
+Comment=A GUI for the Jujutsu version control system
+Exec=gg
+Icon=gg
+Terminal=false
+Categories=Development;RevisionControl;
+Keywords=jj;jujutsu;git;vcs;scm;
+StartupNotify=true
