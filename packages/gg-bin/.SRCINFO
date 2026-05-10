@@ -1,0 +1,30 @@
+pkgbase = gg-bin
+	pkgdesc = A GUI for the version control system Jujutsu. (binary version)
+	pkgver = 0.39.1
+	pkgrel = 1
+	url = https://github.com/gulbanana/gg
+	arch = x86_64
+	license = Apache-2.0
+	depends = bash
+	depends = gdk-pixbuf2
+	depends = glibc
+	depends = glib2
+	depends = gtk3
+	depends = pango
+	depends = webkit2gtk-4.1
+	provides = gg=0.39.1
+	conflicts = gg
+	conflicts = gg-git
+	noextract = gg-bin-0.39.1.rpm
+	options = !strip
+	options = !emptydirs
+	source = gg-bin-0.39.1.rpm::https://github.com/gulbanana/gg/releases/download/v0.39.1/gg-0.39.1-1.x86_64.rpm
+	source = gg-bin-0.39.1.LICENSE::https://github.com/gulbanana/gg/raw/refs/tags/v0.39.1/LICENSE
+	source = gg-flags-wrapper.sh
+	source = gg.desktop
+	b2sums = 9b85edb44d70322c809bb7ae0d890c7ef5622d359b5c9a1c37663613efe85a577277d06f61a61c5392f6e54d581a7a2b689796a4be1605ba3f9a9ec5c44a4bc5
+	b2sums = 1bbdb8ea81b42a8ce554f92fd57009eef6b296472f910c5542d8a445e34bb0eee0e627a74462b9f453fe9d8853bde71fdb0eea11102bb604129753de6ecc6e06
+	b2sums = 3a34ed2e3bbd93a79b347b24658ce2b81c26182159986ea9cccabed6aa6d27aa0120567a8c2e836e89f32b82f0c8eac58d53c0c9169c79cc856b9e59072f58c3
+	b2sums = f1e3259ec7ac227d872d76dd3b3faaad86d8f16497d80e457247a2bc1a1b50ee511bfdd310052475d1b337ed127c09e1337c42bc98c04c4c459a48a43fd30297
+
+pkgname = gg-bin
