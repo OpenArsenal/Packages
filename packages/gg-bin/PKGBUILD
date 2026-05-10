@@ -1,0 +1,63 @@
+pkgname=gg-bin
+pkgver=0.39.1
+pkgrel=1
+pkgdesc='A GUI for the version control system Jujutsu. (binary version)'
+arch=(x86_64)
+url='https://github.com/gulbanana/gg'
+license=(Apache-2.0)
+depends=(
+  bash
+  gdk-pixbuf2
+  glibc
+  glib2
+  gtk3
+  pango
+  webkit2gtk-4.1
+)
+provides=(gg="${pkgver}")
+conflicts=(
+  gg
+  gg-git
+)
+options=(
+  !strip
+  !emptydirs
+)
+source=(
+  "${pkgname}-${pkgver}.rpm::${url}/releases/download/v${pkgver}/gg-${pkgver}-1.x86_64.rpm"
+  "${pkgname}-${pkgver}.LICENSE::${url}/raw/refs/tags/v${pkgver}/LICENSE"
+  "gg-flags-wrapper.sh"
+  "gg.desktop"
+)
+b2sums=('SKIP'
+  '1bbdb8ea81b42a8ce554f92fd57009eef6b296472f910c5542d8a445e34bb0eee0e627a74462b9f453fe9d8853bde71fdb0eea11102bb604129753de6ecc6e06'
+  '3a34ed2e3bbd93a79b347b24658ce2b81c26182159986ea9cccabed6aa6d27aa0120567a8c2e836e89f32b82f0c8eac58d53c0c9169c79cc856b9e59072f58c3'
+  'f1e3259ec7ac227d872d76dd3b3faaad86d8f16497d80e457247a2bc1a1b50ee511bfdd310052475d1b337ed127c09e1337c42bc98c04c4c459a48a43fd30297')
+noextract=("${pkgname}-${pkgver}.rpm")
+
+_wrapper_target='/usr/lib/gg/gg'
+
+_install_wrapper() {
+  install -Dm755 /dev/null "${pkgdir}/usr/bin/gg"
+  sed -e "s#@GG_EXEC@#${_wrapper_target}#g" \
+    "${srcdir}/gg-flags-wrapper.sh" >"${pkgdir}/usr/bin/gg"
+}
+
+prepare() {
+  bsdtar -xf "${srcdir}/${pkgname}-${pkgver}.rpm" -C "${srcdir}"
+}
+
+package() {
+  install -d "${pkgdir}/usr"
+  cp -a "${srcdir}/usr/." "${pkgdir}/usr/"
+
+  install -Dm755 "${pkgdir}/usr/bin/gg" "${pkgdir}/usr/lib/gg/gg"
+  rm -f "${pkgdir}/usr/bin/gg"
+  _install_wrapper
+
+  install -Dm644 \
+    "${srcdir}/${pkgname}-${pkgver}.LICENSE" \
+    "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+
+  install -Dm644 "${srcdir}/gg.desktop" "${pkgdir}/usr/share/applications/gg.desktop"
+}
