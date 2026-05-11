@@ -1,0 +1,5 @@
+[ktailctl]
+source = "github"
+github = "f-koehler/KTailctl"
+use_max_tag = true
+prefix = "v"
