@@ -1,0 +1,4 @@
+[ntfsplus-dkms-git]
+source = "git"
+git = "https://github.com/namjaejeon/linux-ntfs.git"
+use_commit = true
