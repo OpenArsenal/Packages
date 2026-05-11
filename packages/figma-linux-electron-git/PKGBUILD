@@ -2,11 +2,12 @@
 _pkgname=figma-linux
 pkgname=${_pkgname}-electron-git
 pkgver=0.11.4.r10.gd9a7a03
-pkgrel=1
+pkgrel=2
 pkgdesc="Unofficial Electron-based Figma desktop client for Linux (system Electron, git HEAD)"
 arch=('x86_64' 'aarch64')
 url="https://github.com/Figma-Linux/figma-linux"
 license=('GPL-2.0-only')
+options=('debug' 'strip')
 
 provides=('figma-linux')
 conflicts=('figma-linux' 'figma-linux-electron' 'figma-linux-git')
