@@ -1,0 +1,3 @@
+[python-sensai-utils]
+source = "pypi"
+pypi = "sensai-utils"
