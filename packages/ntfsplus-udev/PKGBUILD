@@ -1,0 +1,24 @@
+pkgname=ntfsplus-udev
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="udev and udisks2 rules for preferring the ntfsplus/new ntfs driver"
+arch=('any')
+license=('GPL-2.0-only')
+depends=('udev')
+optdepends=(
+  'udisks2: desktop automount integration for Dolphin/Nautilus/Thunar'
+)
+source=(
+  '90-udev-prefer-ntfsplus.rules'
+  '99-udisks2-prefer-ntfsplus.rules'
+  'README.md'
+)
+sha256sums=('5ab94954500a6fd4fe8252ce84c343a3b1b60fd7478c18c14fe9352c6c523d48'
+            'adc9493f562e0d85035788917161bac4e920ed7733f7d174207a93577322762f'
+            '2711410ea8ef8d6ad6d2ab46cab1b59f0f982104e74157315eb7a96213d263cc')
+
+package() {
+  install -Dm644 90-udev-prefer-ntfsplus.rules "$pkgdir/usr/lib/udev/rules.d/90-udev-prefer-ntfsplus.rules"
+  install -Dm644 99-udisks2-prefer-ntfsplus.rules "$pkgdir/usr/lib/udev/rules.d/99-udisks2-prefer-ntfsplus.rules"
+  install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+}

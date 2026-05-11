@@ -1,0 +1,11 @@
+# Prefer the new ntfs filesystem driver for UDisks-managed NTFS mounts.
+# This affects desktop automounters such as Dolphin/Nautilus/Thunar through udisks2.
+#
+# UDisks reads UDISKS_MOUNT_OPTIONS_* udev properties as mount-option overrides.
+# For the ntfs filesystem signature, this makes the driver priority list just:
+#   ntfs
+#
+# It does not install a kernel module. The ntfs module must already exist, either
+# from the kernel itself or from an explicit backport/DKMS package.
+
+SUBSYSTEM=="block", ENV{ID_FS_TYPE}=="ntfs", ENV{UDISKS_MOUNT_OPTIONS_NTFS_DRIVERS}="ntfs"
