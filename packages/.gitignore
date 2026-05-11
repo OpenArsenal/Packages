@@ -5,3 +5,11 @@
 !.gitignore
 !PKGBUILD
 !.SRCINFO
+!*.patch
+!*.hook
+!*.install
+!*.desktop
+!*.service
+!*.conf
+!*.d
+!*.sh
