@@ -1,0 +1,5 @@
+[sourcegit]
+source = "github"
+github = "sourcegit-scm/sourcegit"
+use_max_tag = true
+prefix = "v"
