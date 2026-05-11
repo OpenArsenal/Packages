@@ -42,7 +42,7 @@ SCRIPTS = "{{env.PKGBUILDS_ROOT}}/scripts"
 
 # Repo automation inputs
 FEEDS_JSON = "{{env.PKGBUILDS_ROOT}}/feeds.json"
-PKG_DIR    = "{{env.PKGBUILDS_ROOT}}/pkgs"
+PKG_DIR    = "{{env.PKGBUILDS_ROOT}}/packages"
 AURDEST    = "{{env.PKGBUILDS_ROOT}}"
 
 # Packager metadata
