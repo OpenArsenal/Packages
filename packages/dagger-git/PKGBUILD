@@ -1,7 +1,7 @@
 # Maintainer: <you>
 pkgname=dagger-git
 _pkgname=dagger
-pkgver=0.19.11.36.g40a44e8
+pkgver=0.20.6.59.g87a3e64
 pkgrel=1
 pkgdesc="An open-source runtime for composable workflows (development version)"
 arch=('x86_64' 'aarch64')
@@ -10,7 +10,7 @@ license=('Apache-2.0')
 
 depends=('glibc')
 makedepends=('go' 'git')
-options=('!lto' '!debug')
+options=('!lto' 'debug')
 
 # Dagger runs an engine as a container; you need a container runtime available.
 optdepends=(
