@@ -1,0 +1,5 @@
+[python-mcp]
+source = "github"
+github = "modelcontextprotocol/python-sdk"
+use_max_tag = true
+prefix = "v"
