@@ -1,7 +1,7 @@
 pkgbase = chromium-ffmpeg-git
 	pkgdesc = Add codecs to Chromium (libavcodec ??)
 	pkgver = 8.1.r121759.ge096a592cb
-	pkgrel = 1
+	pkgrel = 2
 	url = https://git.ffmpeg.org/ffmpeg
 	install = chromium-ffmpeg.install
 	arch = x86_64

@@ -1,7 +1,7 @@
 # Maintainer: Okiki <okiki@thunderstrike.co>
 
 pkgname=chromium-ffmpeg-git
-pkgver=8.1.r121759.ge096a592cb
+pkgver=8.2.r124429.gfd25b35dd2
 pkgver(){
   printf '%s.r%s.g%s' $(git -C ffmpeg describe --tags --long | awk -F'-' '{ sub(/^n/, "", $1); print $1 }') \
     $(git -C ffmpeg describe --tags --match 'N' | awk -F'-' '{ print $2 }') $(git -C ffmpeg rev-parse --short HEAD)
@@ -60,7 +60,7 @@ build() {
   # ${_url}/+/refs/heads/master/chromium/config/Chrome/linux/x64/
   # BUILD.gn
   ./configure \
-    --disable-{debug,all,autodetect,doc,iconv,network,symver,large-tests} \
+    --disable-{all,autodetect,doc,iconv,network,symver,large-tests} \
     --disable-{error-resilience,faan,iamf} \
     --enable-static --disable-shared \
     --enable-av{format,codec,util} \
@@ -68,7 +68,7 @@ build() {
     --enable-demuxer=ogg,matroska,wav,flac,mp3,mov,aac \
     --enable-decoder=vorbis,opus,flac,pcm_s16le,mp3,aac,h264 \
     --enable-parser=aac,flac,h264,mpegaudio,opus,vorbis,vp9 \
-    --extra-cflags="-fno-math-errno -fno-signed-zeros -fno-semantic-interposition -fomit-frame-pointer ${LTOFLAGS}" \
+    --extra-cflags="-fno-math-errno -fno-signed-zeros -fno-semantic-interposition ${LTOFLAGS}" \
     --enable-{pic,asm,hardcoded-tables} \
     --libdir=/
   make DESTDIR=.. install
