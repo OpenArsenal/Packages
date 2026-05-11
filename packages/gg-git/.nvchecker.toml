@@ -1,0 +1,4 @@
+[gg-git]
+source = "git"
+git = "https://github.com/gulbanana/gg.git"
+use_commit = true
