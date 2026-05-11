@@ -1,0 +1,4 @@
+[ntfsprogs-plus-git]
+source = "git"
+git = "https://github.com/ntfsprogs-plus/ntfsprogs-plus.git"
+use_commit = true
