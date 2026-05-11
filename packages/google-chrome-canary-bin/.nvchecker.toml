@@ -1,4 +1,4 @@
-[google-chrome-canary]
+[google-chrome-canary-bin]
 source = "apt"
 mirror = "https://dl.google.com/linux/chrome/deb/"
 pkg = "google-chrome-canary"
