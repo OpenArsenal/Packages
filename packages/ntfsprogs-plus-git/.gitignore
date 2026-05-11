@@ -1,9 +1,0 @@
-# Ignore source repo
-ntfsprogs-plus/
-
-# Ignore build directories
-src/
-pkg/
-
-# Ignore build artifacts
-*.pkg.tar*

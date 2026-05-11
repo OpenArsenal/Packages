@@ -1,4 +1,4 @@
 !*.install
-!logseq
 !*.desktop
 !*.sh
+!*.patch
