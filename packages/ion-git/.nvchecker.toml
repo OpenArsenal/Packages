@@ -1,0 +1,4 @@
+[ion-git]
+source = "git"
+git = "https://gitlab.redox-os.org/redox-os/ion.git"
+use_commit = true
