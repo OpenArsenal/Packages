@@ -1,0 +1,4 @@
+[pupu-git]
+source = "git"
+git = "https://github.com/haoxiang-xu/PuPu.git"
+use_commit = true
