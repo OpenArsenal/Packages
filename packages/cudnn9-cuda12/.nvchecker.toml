@@ -1,0 +1,4 @@
+[cudnn9-cuda12]
+source = "regex"
+url = "https://developer.download.nvidia.com/compute/cudnn/redist/cudnn/linux-x86_64/"
+regex = 'cudnn-linux-x86_64-([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)_cuda12-archive\.tar\.xz'
