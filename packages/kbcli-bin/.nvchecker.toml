@@ -1,0 +1,5 @@
+[kbcli-bin]
+source = "github"
+github = "apecloud/kbcli"
+use_max_tag = true
+prefix = "v"
