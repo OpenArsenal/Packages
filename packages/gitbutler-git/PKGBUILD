@@ -1,0 +1,139 @@
+pkgname=gitbutler-git
+_pkgname=${pkgname%-git}
+pkgver=0.19.10.r139.ga95c193
+pkgrel=1
+pkgdesc="Version control client, backed by Git, powered by Tauri/Rust/Svelte (git version)"
+arch=('x86_64')
+url='https://github.com/gitbutlerapp/gitbutler'
+license=('LicenseRef-FSL-1.1-MIT')
+provides=("${_pkgname}")
+conflicts=('gitbutler' 'gitbutler-bin')
+options=('!lto')
+depends=('bash' 'git' 'gtk3' 'hicolor-icon-theme' 'libayatana-appindicator' 'xdotool' 'openssl' 'webkit2gtk-4.1' 'xdg-utils')
+makedepends=('cargo' 'cmake' 'git' 'jq' 'nodejs' 'perl' 'pnpm' 'rust')
+
+source=("${_pkgname}::git+${url}.git"
+  "gitbutler-flags-wrapper.sh")
+sha256sums=('SKIP'
+            '9a34df546f30e5aa0e0c3309d0f4ce0b95af456936b2ef79223f6602d235e3bc')
+b2sums=('SKIP'
+        'af6a176a6430a292c158f55573ac17fb543bed5af71a814d0ff0e34cf2c1fbc1892e477261b2150c51e1c89021b5e01b103700e4cc845ff143f6e9b80b3bed44')
+
+_wrapper_target='/usr/lib/gitbutler/gitbutler-tauri'
+
+_install_wrapper() {
+  install -Dm755 /dev/null "${pkgdir}/usr/bin/gitbutler"
+  sed -e "s#@GITBUTLER_EXEC@#${_wrapper_target}#g" \
+    "${srcdir}/gitbutler-flags-wrapper.sh" >"${pkgdir}/usr/bin/gitbutler"
+
+  ln -sf gitbutler "${pkgdir}/usr/bin/gitbutler-tauri"
+}
+
+_fix_desktop_exec() {
+  local _desktop
+
+  while IFS= read -r -d '' _desktop; do
+    sed -i 's#^Exec=gitbutler-tauri#Exec=gitbutler#' "${_desktop}"
+  done < <(find "${pkgdir}/usr/share/applications" -type f -name '*.desktop' -print0 2>/dev/null)
+}
+
+_scrub_srcdir_refs() {
+  local _file="$1"
+
+  if grep -aFq "${srcdir}" "${_file}"; then
+    local _srcdir_replacement
+    printf -v _srcdir_replacement '%*s' "${#srcdir}" ''
+    _srcdir_replacement="${_srcdir_replacement// /.}"
+    SRC_DIR_REF="${srcdir}" SRC_DIR_REPL="${_srcdir_replacement}" \
+      perl -0pi -e 's/\Q$ENV{SRC_DIR_REF}\E/$ENV{SRC_DIR_REPL}/g' "${_file}"
+  fi
+
+  if grep -aFq "${srcdir}" "${_file}"; then
+    echo "ERROR: ${_file} still contains a reference to \$srcdir" >&2
+    return 1
+  fi
+}
+
+pkgver() {
+  cd "${srcdir}/${_pkgname}"
+  git describe --tags --long --abbrev=7 --match 'release/*' | sed 's#^release/##;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+prepare() {
+  cd "${srcdir}/${_pkgname}"
+
+  export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+  export PNPM_HOME="${srcdir}/pnpm-home"
+  export npm_config_cache="${srcdir}/npm-cache"
+  export CARGO_HOME="${srcdir}/cargo-home"
+
+  pnpm install --frozen-lockfile
+}
+
+build() {
+  cd "${srcdir}/${_pkgname}"
+
+  export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+  export PNPM_HOME="${srcdir}/pnpm-home"
+  export npm_config_cache="${srcdir}/npm-cache"
+  export CARGO_HOME="${srcdir}/cargo-home"
+  export CARGO_TARGET_DIR="${srcdir}/${_pkgname}/target"
+  export CARGO_INCREMENTAL=0
+
+  local _encoded_rustflags=''
+  local _rustflag
+  for _rustflag in ${RUSTFLAGS:-}; do
+    _encoded_rustflags+="${_rustflag}"$'\x1f'
+  done
+  _encoded_rustflags+="--remap-path-prefix=${srcdir}/${_pkgname}=."$'\x1f'
+  _encoded_rustflags+="--remap-path-prefix=${srcdir}=."$'\x1f'
+  _encoded_rustflags+="--remap-path-prefix=${pkgdir}=."$'\x1f'
+  export CARGO_ENCODED_RUSTFLAGS="${_encoded_rustflags%$'\x1f'}"
+  unset RUSTFLAGS
+
+  local _tauri_version
+  _tauri_version="$(git describe --tags --abbrev=0 --match 'release/*' | sed 's#^release/##')"
+
+  export VERSION="${_tauri_version}"
+  export CHANNEL=release
+
+  local _tauri_config="${srcdir}/tauri.conf.release.${pkgname}.json"
+  jq --arg version "${_tauri_version}" '
+    .version = $version
+    | .bundle.externalBin = ["gitbutler-git-askpass"]
+    | .bundle.createUpdaterArtifacts = false
+    | del(.plugins.updater)
+  ' crates/gitbutler-tauri/tauri.conf.release.json >"${_tauri_config}"
+
+  cargo build --release --locked --package but --features packaged-but-distribution
+
+  pnpm tauri build \
+    --features "builtin-but packaged-but-distribution disable-auto-updates" \
+    --config "${_tauri_config}" \
+    --bundles rpm
+}
+
+package() {
+  cd "${srcdir}/${_pkgname}"
+
+  local _rpm
+  _rpm="$(find target/tauri/release/bundle/rpm target/release/bundle/rpm \
+    -type f -name 'GitButler-*.x86_64.rpm' -print -quit 2>/dev/null)"
+
+  bsdtar -xf "${_rpm}" -C "${pkgdir}"
+
+  local _bin="${pkgdir}${_wrapper_target}"
+  install -Dm755 "${pkgdir}/usr/bin/gitbutler-tauri" "${_bin}"
+  rm -f "${pkgdir}/usr/bin/gitbutler-tauri"
+
+  _scrub_srcdir_refs "${_bin}"
+
+  _install_wrapper
+  _fix_desktop_exec
+
+  local _but="${pkgdir}/usr/bin/but"
+  install -Dm755 target/release/but "${_but}"
+  _scrub_srcdir_refs "${_but}"
+
+  install -Dm644 LICENSE.md "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE.md"
+}

@@ -1,0 +1,4 @@
+[gitbutler-git]
+source = "git"
+git = "https://github.com/gitbutlerapp/gitbutler.git"
+use_commit = true
