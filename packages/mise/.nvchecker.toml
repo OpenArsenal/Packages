@@ -1,0 +1,5 @@
+[mise]
+source = "github"
+github = "jdx/mise"
+use_max_tag = true
+prefix = "v"
