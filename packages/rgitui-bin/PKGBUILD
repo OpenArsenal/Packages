@@ -1,0 +1,57 @@
+pkgname=rgitui-bin
+_name=${pkgname%-bin}
+pkgver=0.1.8
+pkgrel=1
+pkgdesc="A GPU-accelerated desktop Git client built in Rust with GPUI (prebuilt release)"
+arch=('x86_64')
+url='https://github.com/noahbclarkson/rgitui'
+license=('MIT')
+provides=("${_name}=${pkgver}")
+conflicts=('rgitui' 'rgitui-git')
+depends=('glibc' 'hicolor-icon-theme' 'libgcc' 'libxcb' 'libxkbcommon' 'libxkbcommon-x11' 'openssl' 'zlib')
+options=('!strip')
+
+_gitversion="v${pkgver}"
+_ghurlraw="https://raw.githubusercontent.com/noahbclarkson/${_name}/${_gitversion}"
+_archive_arch='x86_64-linux'
+source=("${_name}-icon-16-${pkgver}.png::${_ghurlraw}/assets/icons/app-icon-16.png"
+        "${_name}-icon-32-${pkgver}.png::${_ghurlraw}/assets/icons/app-icon-32.png"
+        "${_name}-icon-48-${pkgver}.png::${_ghurlraw}/assets/icons/app-icon-48.png"
+        "${_name}-icon-256-${pkgver}.png::${_ghurlraw}/assets/icons/app-icon-256.png"
+        "${_name}-icon-512-${pkgver}.png::${_ghurlraw}/assets/icons/app-icon-512.png"
+        "${_name}-${pkgver}.desktop::${_ghurlraw}/crates/${_name}/resources/linux/${_name}.desktop"
+        "com.${_name}.app-${pkgver}.metainfo.xml::${_ghurlraw}/crates/${_name}/resources/linux/com.${_name}.app.metainfo.xml")
+source_x86_64=("${_name}-${pkgver}-${_archive_arch}.tar.gz::${url}/releases/download/${_gitversion}/${_name}-${pkgver}-${_archive_arch}.tar.gz")
+sha256sums=('25fd44f8c7bea68b876c37322e42bb898587d585394af069359cf419d3c5eb04'
+            'd4cadcb19207ec3168211655e7b9e61a23f09791429f781ab094d3612ebdbee8'
+            '954641a99499db3be1d0127b3aa1d6121af4fdd356be55ee6565e115b3b0fe16'
+            'f3c9ab74c5d4e4eb8c6d664d4beb971030b3cd2ae6495655b922539e4c5f03d2'
+            '84c8d8c1ffa2114a14d9fa1be70b1b16897416e7d86d4d2801850fb49fe871c9'
+            '1d7798802d4b382ba42cada0dd1324b6c86ad1a3c2cf2b3e01b12428f4a3669f'
+            '9a52a1c5efd55e9c7d7b6d09e81d72101b44f7a490367c7771c0c22059e28248')
+sha256sums_x86_64=('1d6233655f79284e8062b804d2e33e566ef4a6268b7f102aa5bd6432f49a17cd')
+b2sums=('f375a1b83f1cbbd48219434af60f244738aa0577b8de5cbc85092c564a5a586618514b01038cb41ec709224dba21f6fe7cb2eb5d1ba5fc261e8fb6b5800dba5c'
+        '9252c0b8cda2bafcf08ac340198b421bc8f235d8802dc16de20c6a8181a2ede061da38af9b27fe3452d90549b52cc4febc689ce866130b804a22fc46d6f09495'
+        'fee2878d46bd08b63925903663a60e43c1aa5361d8df1e3a00a4394c17d9418a34fc577b154aa545482db684acf9e1b74ad6fca499e97885dbc46397615a3151'
+        '844f522b9b75399602f201d3fa7dafd7ba1314b1c21bd0829689cf168a41bede70346d20f9cde1516a446e1b0faac81f705745ada53483605fea6a29426684a3'
+        '6e426d4072cdd58a07040d7595190e16d6da2b8d33ab6c9a1b35266eed562611845e9f251333bcf8890a504c0f8cbcb94c63de5470f1bd94476b5f457d3600bb'
+        '46d1f25271189391b40c58eadad78630c59571024d5676dab9a10c308b5c61c3aecce05acd9a97e13fb00442cdac64a1dcde364b29448b44db32d62988626c2c'
+        '39045ea08eb6efc2e92e67f1f69ba26a7fceda618cc30dec103fa8d15d9af6c0fb57a130daafa3773e142273ce4bdaa0397abb679796ad25e2ce045b69830aa7')
+b2sums_x86_64=('80af75e7c2e81255f2823a7adbbaa898918a55af025aa7d8f73968cdb5066d60f3e31fb50539744b9ed0d4760c3d5819ae9ea9fa6e9669003c080fbd7689eab9')
+
+package() {
+  cd "${srcdir}"
+
+  install -Dm644 "${_name}-icon-16-${pkgver}.png" "${pkgdir}/usr/share/icons/hicolor/16x16/apps/${_name}.png"
+  install -Dm644 "${_name}-icon-32-${pkgver}.png" "${pkgdir}/usr/share/icons/hicolor/32x32/apps/${_name}.png"
+  install -Dm644 "${_name}-icon-48-${pkgver}.png" "${pkgdir}/usr/share/icons/hicolor/48x48/apps/${_name}.png"
+  install -Dm644 "${_name}-icon-256-${pkgver}.png" "${pkgdir}/usr/share/icons/hicolor/256x256/apps/${_name}.png"
+  install -Dm644 "${_name}-icon-512-${pkgver}.png" "${pkgdir}/usr/share/icons/hicolor/512x512/apps/${_name}.png"
+
+  install -Dm644 "${_name}-${pkgver}.desktop" "${pkgdir}/usr/share/applications/${_name}.desktop"
+  install -Dm644 "com.${_name}.app-${pkgver}.metainfo.xml" "${pkgdir}/usr/share/metainfo/com.${_name}.app.metainfo.xml"
+
+  install -Dm755 "${_name}/${_name}" "${pkgdir}/usr/bin/${_name}"
+  install -Dm644 "${_name}/README.md" "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+  install -Dm644 "${_name}/LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
