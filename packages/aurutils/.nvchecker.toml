@@ -1,0 +1,4 @@
+[aurutils]
+source = "github"
+github = "AladW/aurutils"
+use_max_tag = true
