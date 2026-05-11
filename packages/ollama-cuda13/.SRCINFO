@@ -1,0 +1,45 @@
+pkgbase = ollama
+	pkgdesc = Create, run and share large language models (LLMs)
+	pkgver = 0.22.0
+	pkgrel = 1
+	url = https://github.com/ollama/ollama
+	arch = x86_64
+	license = MIT
+	makedepends = cmake
+	makedepends = ninja
+	makedepends = git
+	makedepends = go
+	makedepends = gcc14
+	makedepends = rocm-toolchain
+	makedepends = rocm-hip-sdk
+	makedepends = hipblas
+	makedepends = cuda
+	makedepends = clblast
+	makedepends = vulkan-headers
+	makedepends = vulkan-icd-loader
+	makedepends = shaderc
+	depends = gcc-libs
+	depends = glibc
+	options = !lto
+	source = git+https://github.com/ollama/ollama#tag=v0.22.0
+	source = ollama-ld.conf
+	source = ollama.service
+	source = sysusers.conf
+	source = tmpfiles.d
+	b2sums = 5ae7076ac0706ff581b344fa8718917e467c238b5939f28a514eb2eb21d73aa1da0e7754155cbf24712e837eedf2a3ac9d95096110ab9c571d3681f099b84513
+	b2sums = 121a7854b5a7ffb60226aaf22eed1f56311ab7d0a5630579525211d5c096040edbcfd2608169a4b6d83e8b4e4855dbb22f8ebf3d52de78a34ea3d4631b7eff36
+	b2sums = 031e0809a7f564de87017401c83956d43ac29bd0e988b250585af728b952a27d139b3cad0ab1e43750e2cd3b617287d3b81efc4a70ddd61709127f68bd15eabd
+	b2sums = 68622ac2e20c1d4f9741c57d2567695ec7b5204ab43356d164483cd3bc9da79fad72489bb33c8a17c2e5cb3b142353ed5f466ce857b0f46965426d16fb388632
+	b2sums = e8f2b19e2474f30a4f984b45787950012668bf0acb5ad1ebb25cd9776925ab4a6aa927f8131ed53e35b1c71b32c504c700fe5b5145ecd25c7a8284373bb951ed
+
+pkgname = ollama
+
+pkgname = ollama-cuda13
+	pkgdesc = CUDA 13 support for Ollama (Ampere, Ada Lovelace, Hopper, Blackwell)
+	depends = ollama
+	depends = cuda
+	provides = ollama-cuda
+	conflicts = ollama-cuda12
+
+pkgname = ollama-docs
+	pkgdesc = Documentation for Ollama
