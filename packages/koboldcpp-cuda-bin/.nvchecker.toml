@@ -1,0 +1,5 @@
+[koboldcpp-cuda-bin]
+source = "github"
+github = "LostRuins/koboldcpp"
+use_max_tag = true
+prefix = "v"
