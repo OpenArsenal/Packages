@@ -1,0 +1,5 @@
+[jan-bin]
+source = "github"
+github = "janhq/jan"
+use_max_tag = true
+prefix = "v"
