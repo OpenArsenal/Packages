@@ -1,0 +1,46 @@
+pkgname=sourcegit-bin
+_name=${pkgname%-bin}
+pkgver=2026.10
+pkgrel=1
+pkgdesc="GUI client for GIT users (prebuilt release)"
+arch=('x86_64' 'aarch64')
+url='https://github.com/sourcegit-scm/sourcegit'
+license=('MIT')
+provides=("${_name}=${pkgver}")
+conflicts=('sourcegit' 'sourcegit-git')
+depends=('git' 'xdg-utils')
+optdepends=('git-credential-manager: third-party authentication support')
+makedepends=('desktop-file-utils')
+options=('!strip')
+
+_rpmrel=1
+source=("${_name}_${pkgver}.LICENSE::${url}/raw/refs/tags/v${pkgver}/LICENSE")
+source_x86_64=("${_name}-${pkgver}-${_rpmrel}.x86_64.rpm::${url}/releases/download/v${pkgver}/${_name}-${pkgver}-${_rpmrel}.x86_64.rpm")
+source_aarch64=("${_name}-${pkgver}-${_rpmrel}.aarch64.rpm::${url}/releases/download/v${pkgver}/${_name}-${pkgver}-${_rpmrel}.aarch64.rpm")
+sha256sums=('ec746490472d7ae4317d257df27ea8077f68c6079b07f8ff32ac6ae12db9f32f')
+sha256sums_x86_64=('21c62294585f003d9a72531a1f1be7c0e919e9f99daa40ad11f2e5187e0db8b7')
+sha256sums_aarch64=('e5aafa982ba1bc83c7695665cdf0386b3830740110c82bef7ebb2f9cb3d8b5b9')
+b2sums=('6ab18c3f004b400902c4cd4cb4471f00373187feff420a20cd2a6466dd0ca57f227771f0137cedfb82ee027d5d2d3ef52b6df10e21aca2b6f106cd44c36e6eaf')
+b2sums_x86_64=('1ef7aabf9c5f25218fea1a207f6ba0c1909c77e9ce2d46c390fd9bd0e7c3fc9daaa7e0bba0a437492cf2c9e8e9a9eb4ab8c330cb6a451638ed4bc6bb011d8133')
+b2sums_aarch64=('a2bff44a5eb122a5a8242f3a35b53f567bc5bb6ab81ff755c31ccf8a8f4a701b6f16ea37a7e83686740f05a833315a7de62ab6ec3120758fd30884bd41d53596')
+
+prepare() {
+  bsdtar -xf "${_name}-${pkgver}-${_rpmrel}.${CARCH}.rpm"
+
+  desktop-file-edit usr/share/applications/sourcegit.desktop \
+    --set-icon=sourcegit --set-key=Exec --set-value=sourcegit
+}
+
+package() {
+  install -d "${pkgdir}/opt/${_name}/" "${pkgdir}/usr/bin/"
+
+  cp -r opt/sourcegit/* "${pkgdir}/opt/${_name}/"
+  ln -s "/opt/${_name}/${_name}" "${pkgdir}/usr/bin/${_name}"
+
+  install -Dm644 usr/share/icons/sourcegit.png \
+    "${pkgdir}/usr/share/icons/hicolor/256x256/apps/${_name}.png"
+  install -Dm644 usr/share/applications/sourcegit.desktop \
+    "${pkgdir}/usr/share/applications/${_name}.desktop"
+  install -Dm644 "${_name}_${pkgver}.LICENSE" \
+    "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
