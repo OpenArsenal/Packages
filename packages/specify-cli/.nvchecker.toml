@@ -1,0 +1,5 @@
+[specify-cli]
+source = "github"
+github = "github/spec-kit"
+use_max_tag = true
+prefix = "v"
