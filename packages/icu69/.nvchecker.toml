@@ -1,0 +1,4 @@
+[icu69]
+source = "github"
+github = "unicode-org/icu"
+use_max_tag = true
