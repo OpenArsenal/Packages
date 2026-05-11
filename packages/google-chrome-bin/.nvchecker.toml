@@ -1,4 +1,4 @@
-[google-chrome]
+[google-chrome-bin]
 source = "apt"
 mirror = "https://dl.google.com/linux/chrome/deb/"
 pkg = "google-chrome-stable"
