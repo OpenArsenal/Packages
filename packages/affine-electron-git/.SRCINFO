@@ -1,7 +1,7 @@
 pkgbase = affine-electron-git
 	pkgdesc = Collaborative knowledge base and whiteboard desktop application (git version; system Electron)
-	pkgver = 0.26.3.r0.g0000000
-	pkgrel = 1
+	pkgver = 0.26.6.r11214.g7046ad7bf4
+	pkgrel = 2
 	url = https://affine.pro/
 	install = affine.install
 	arch = x86_64
@@ -22,8 +22,8 @@ pkgbase = affine-electron-git
 	depends = bash
 	provides = affine
 	conflicts = affine
-	options = !debug
-	options = !strip
+	options = debug
+	options = strip
 	source = affine-electron-git::git+https://github.com/toeverything/AFFiNE.git#branch=canary
 	source = affine.desktop
 	source = affine-flags-wrapper.sh
