@@ -1,0 +1,69 @@
+pkgname=sourcegit
+pkgver=2026.10
+pkgrel=1
+pkgdesc="GUI client for GIT users"
+arch=('x86_64')
+url='https://github.com/sourcegit-scm/sourcegit'
+license=('MIT')
+depends=('dotnet-runtime-10.0' 'git' 'xdg-utils')
+optdepends=('git-credential-manager: third-party authentication support')
+makedepends=('desktop-file-utils' 'dotnet-sdk-10.0' 'git')
+conflicts=('sourcegit-bin' 'sourcegit-git')
+
+_avaloniaedit_commit=1e6f595ff0da0dc20637322cbab9531892c12cbc
+source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/v${pkgver}.tar.gz"
+  "AvaloniaEdit-${_avaloniaedit_commit}.tar.gz::https://github.com/love-linger/AvaloniaEdit/archive/${_avaloniaedit_commit}.tar.gz")
+sha256sums=('63dd1ffbb00dd7ab02ca19b4f009cb12d2d028617cf62f707b6294e9ac4f73b9'
+            '971b4a1a40310f10b197fe42456c24a776f26d0b0edd89efb7d993ab29160f7b')
+b2sums=('1f3662ff336aa7950730af428c75adf7f814f8bfc10784611cd0655dc8419f4cf98ab1a862a544626cf36c11faa34236c5fa316a48c50f0e1a5ca5c9aa7812cf'
+        '2d7336c8b3c1cc93b4d8cb8bab57bd450f52f8b31088cf1f427d1b912ed820f4493b64d3da33c4809130af63d5d0d69eb80d8c67e1b404ebdd81c40df047d95f')
+
+prepare() {
+  cd "${srcdir}/${pkgname}-${pkgver}"
+
+  rm -rf depends/AvaloniaEdit
+  mkdir -p depends/AvaloniaEdit
+
+  local _avaloniaedit_src
+  _avaloniaedit_src="$(find "${srcdir}" -maxdepth 1 -type d -name "AvaloniaEdit-${_avaloniaedit_commit}*" -print -quit)"
+  cp -a "${_avaloniaedit_src}/." depends/AvaloniaEdit/
+
+  desktop-file-edit build/resources/_common/applications/sourcegit.desktop \
+    --set-icon=sourcegit --set-key=Exec --set-value=sourcegit
+}
+
+build() {
+  cd "${srcdir}/${pkgname}-${pkgver}"
+
+  export DOTNET_CLI_TELEMETRY_OPTOUT=1
+  export DOTNET_SKIP_FIRST_TIME_EXPERIENCE=true
+  export DOTNET_NOLOGO=true
+  export NUGET_PACKAGES="${srcdir}/${pkgname}-${pkgver}/nuget"
+
+  dotnet publish src/SourceGit.csproj -c Release -r linux-x64 -o publish \
+    -p:DisableAot=true \
+    -p:DisableUpdateDetection=true \
+    -p:DebugType=None \
+    -p:DebugSymbols=false \
+    -p:ContinuousIntegrationBuild=true \
+    -p:Deterministic=true \
+    -p:PathMap="${srcdir}=."
+
+  find publish -name '*.pdb' -delete
+  mv publish/SourceGit "publish/${pkgname}"
+}
+
+package() {
+  cd "${srcdir}/${pkgname}-${pkgver}"
+
+  install -d "${pkgdir}/opt/${pkgname}/" "${pkgdir}/usr/bin/"
+
+  cp -Pr publish/* "${pkgdir}/opt/${pkgname}/"
+  ln -s "/opt/${pkgname}/${pkgname}" "${pkgdir}/usr/bin/${pkgname}"
+
+  install -Dm644 build/resources/_common/applications/sourcegit.desktop \
+    "${pkgdir}/usr/share/applications/${pkgname}.desktop"
+  install -Dm644 build/resources/_common/icons/sourcegit.png \
+    "${pkgdir}/usr/share/icons/hicolor/256x256/apps/${pkgname}.png"
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
