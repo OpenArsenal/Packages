@@ -1,13 +1,13 @@
 _nodeversion=22
 
 pkgname=logseq-git
-pkgver=0.10.15.r24229.gc6ac84cd28
+pkgver=0.10.15.r24338.gcba65ee479
 pkgrel=1
 pkgdesc="Privacy-first, open-source platform for knowledge sharing and management (git version; bundled Electron)"
 arch=('x86_64')
 url="https://github.com/logseq/logseq"
 license=('AGPL-3.0-or-later')
-options=('!debug')
+options=('!debug' '!strip')
 
 _repo="https://github.com/logseq/logseq.git"
 _branch="master"
@@ -161,12 +161,9 @@ package() {
     "${_install_root}/resources/app/node_modules/electron-deeplink/build" \
     "${_install_root}/resources/app.asar.unpacked/node_modules/electron-deeplink/build"
 
-  find "${_install_root}/resources" -type f -name '*.map' -delete 2>/dev/null || true
-
   if [[ -f "${_app_asar}" ]]; then
     rm -rf "${_app_asar_stage}"
     asar extract "${_app_asar}" "${_app_asar_stage}"
-    find "${_app_asar_stage}" -type f -name '*.map' -delete
     _scrub_srcdir_references "${_app_asar_stage}"
     asar pack "${_app_asar_stage}" "${_app_asar}"
     rm -rf "${_app_asar_stage}"
