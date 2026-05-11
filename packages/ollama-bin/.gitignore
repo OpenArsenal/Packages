@@ -1,10 +1,4 @@
-*
-!.gitignore
-!LICENSE*
-!README*.md
-!ollama.conf
-!ollama.service
-!PKGBUILD
-!sysusers.conf
+!*.conf
+!*.service
+!*.conf
 !tmpfiles.d
-!.SRCINFO

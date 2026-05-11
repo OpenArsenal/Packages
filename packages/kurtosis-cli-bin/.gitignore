@@ -1,6 +1,2 @@
-*
-!PKGBUILD
-!.SRCINFO
-!.gitignore
-!kurtosis.service
-!kurtosis-cli-bin.install
+!*.service
+!*.install
