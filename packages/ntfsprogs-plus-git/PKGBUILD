@@ -1,15 +1,13 @@
-# Maintainer: Okiki <okiki@thunderstrike.co>
-
 _pkgname=ntfsprogs-plus
 pkgname=${_pkgname}-git
 
 _repo=ntfsprogs-plus/$_pkgname
 url="https://github.com/${_repo}"
 
-pkgver=1.0.0.r19.g0a1dd18
+pkgver=1.0.0.r21.g53943da
 pkgrel=1
 
-pkgdesc='NTFS filesystem driver and utilities'
+pkgdesc='Optional NTFS userspace utilities for the new ntfs driver'
 arch=('x86_64')
 license=('GPL-2.0-or-later')
 depends=('util-linux')
@@ -21,9 +19,8 @@ makedepends=(
   'libgcrypt'
   'pkgconf'
 )
-conflicts=('ntfsprogs' 'ntfs-3g' "$_pkgname")
-replaces=('ntfsprogs' 'ntfs-3g' "$_pkgname")
 provides=('ntfsprogs' 'ntfs-3g' "$_pkgname")
+conflicts=('ntfsprogs' 'ntfs-3g' "$_pkgname")
 
 source=("${_pkgname}::git+${url}.git")
 sha256sums=('SKIP')
@@ -34,12 +31,12 @@ pkgver() {
 }
 
 prepare() {
-  cd ${srcdir}/${_pkgname}
+  cd "${srcdir}/${_pkgname}"
   ./autogen.sh
 }
 
 build() {
-  cd ${srcdir}/${_pkgname}
+  cd "${srcdir}/${_pkgname}"
   ./configure \
     --prefix=/usr \
     --sbin=/usr/bin \
@@ -55,10 +52,8 @@ build() {
 }
 
 package() {
-  cd ${srcdir}/${_pkgname}
+  cd "${srcdir}/${_pkgname}"
   make DESTDIR="${pkgdir}" rootbindir=/usr/bin rootsbindir=/usr/bin rootlibdir=/usr/lib install
 
-  # License
-  install -dm644 "${pkgdir}/usr/share/licenses/${_pkgname}"
   install -Dm644 COPYING "${pkgdir}/usr/share/licenses/${_pkgname}/LICENSE"
 }
