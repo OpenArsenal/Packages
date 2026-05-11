@@ -1,0 +1,7 @@
+[positron-bin]
+source = "github"
+github = "posit-dev/positron"
+use_latest_release = true
+prefix = "v"
+from_pattern = '^([0-9]+\.[0-9]+\.[0-9]+)-([0-9]+)$'
+to_pattern = '\1.\2'
