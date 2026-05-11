@@ -1,0 +1,5 @@
+[arch-mcp]
+source = "github"
+github = "nihalxkumar/arch-mcp"
+use_max_tag = true
+prefix = "v"
