@@ -1,0 +1,72 @@
+pkgname=sourcegit-git
+_pkgname=${pkgname%-git}
+pkgver=2026.10.r0.g57c9151
+pkgrel=1
+pkgdesc="GUI client for GIT users (git version)"
+arch=('x86_64')
+url='https://github.com/sourcegit-scm/sourcegit'
+license=('MIT')
+provides=("${_pkgname}")
+conflicts=('sourcegit' 'sourcegit-bin')
+depends=('dotnet-runtime-10.0' 'git' 'xdg-utils')
+optdepends=('git-credential-manager: third-party authentication support')
+makedepends=('desktop-file-utils' 'dotnet-sdk-10.0' 'git')
+
+source=("${_pkgname}::git+${url}.git"
+  'AvaloniaEdit::git+https://github.com/love-linger/AvaloniaEdit.git')
+sha256sums=('SKIP'
+            'SKIP')
+b2sums=('SKIP'
+        'SKIP')
+
+pkgver() {
+  cd "${srcdir}/${_pkgname}"
+  git describe --tags --long --abbrev=7 | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+prepare() {
+  cd "${srcdir}/${_pkgname}"
+
+  git submodule init
+  git config submodule.depends/AvaloniaEdit.url "${srcdir}/AvaloniaEdit"
+  git -c protocol.file.allow=always submodule update
+
+  desktop-file-edit build/resources/_common/applications/sourcegit.desktop \
+    --set-icon=sourcegit --set-key=Exec --set-value=sourcegit
+}
+
+build() {
+  cd "${srcdir}/${_pkgname}"
+
+  export DOTNET_CLI_TELEMETRY_OPTOUT=1
+  export DOTNET_SKIP_FIRST_TIME_EXPERIENCE=true
+  export DOTNET_NOLOGO=true
+  export NUGET_PACKAGES="${srcdir}/${_pkgname}/nuget"
+
+  dotnet publish src/SourceGit.csproj -c Release -r linux-x64 -o publish \
+    -p:DisableAot=true \
+    -p:DisableUpdateDetection=true \
+    -p:DebugType=None \
+    -p:DebugSymbols=false \
+    -p:ContinuousIntegrationBuild=true \
+    -p:Deterministic=true \
+    -p:PathMap="${srcdir}=."
+
+  find publish -name '*.pdb' -delete
+  mv publish/SourceGit "publish/${_pkgname}"
+}
+
+package() {
+  cd "${srcdir}/${_pkgname}"
+
+  install -d "${pkgdir}/opt/${_pkgname}/" "${pkgdir}/usr/bin/"
+
+  cp -Pr publish/* "${pkgdir}/opt/${_pkgname}/"
+  ln -s "/opt/${_pkgname}/${_pkgname}" "${pkgdir}/usr/bin/${_pkgname}"
+
+  install -Dm644 build/resources/_common/applications/sourcegit.desktop \
+    "${pkgdir}/usr/share/applications/${_pkgname}.desktop"
+  install -Dm644 build/resources/_common/icons/sourcegit.png \
+    "${pkgdir}/usr/share/icons/hicolor/256x256/apps/${_pkgname}.png"
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
