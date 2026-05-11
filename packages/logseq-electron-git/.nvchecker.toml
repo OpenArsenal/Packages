@@ -1,0 +1,4 @@
+[logseq-electron-git]
+source = "git"
+git = "https://github.com/logseq/logseq.git"
+use_commit = true
