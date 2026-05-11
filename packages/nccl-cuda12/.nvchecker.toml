@@ -1,0 +1,4 @@
+[nccl-cuda12]
+source = "github"
+github = "NVIDIA/nccl"
+use_max_tag = true
