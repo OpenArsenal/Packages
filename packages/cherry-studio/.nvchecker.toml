@@ -1,0 +1,5 @@
+[cherry-studio]
+source = "github"
+github = "CherryHQ/cherry-studio"
+use_max_tag = true
+prefix = "v"
