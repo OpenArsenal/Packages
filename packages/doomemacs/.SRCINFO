@@ -1,0 +1,27 @@
+pkgbase = doomemacs
+	pkgdesc = Configuration framework for GNU Emacs
+	pkgver = 2.1.0
+	pkgrel = 1
+	url = https://github.com/doomemacs/doomemacs
+	install = doomemacs.install
+	arch = any
+	license = MIT
+	checkdepends = desktop-file-utils
+	makedepends = git
+	depends = emacs>=27.1
+	depends = git>=2.23
+	depends = ripgrep>=11.0
+	optdepends = fd: faster file indexing for Doom features that use fd
+	provides = doom-emacs
+	conflicts = doom-emacs
+	conflicts = doomemacs-git
+	source = doomemacs::git+https://github.com/doomemacs/doomemacs.git#tag=v2.1.0?signed
+	source = doomemacs-wrapper.sh
+	source = doomemacs-launcher.sh
+	source = doomemacs.desktop
+	sha256sums = ffb1ab9a722d52b59afc1d9abc973c9d7dfc62c4ae024c67094caa37c590de22
+	sha256sums = 93ba1883cfef41760a57ccabcf37662ff788b0916f4e009e130d4126fce541b5
+	sha256sums = c48c37887a8490ad60201902f7edc0c129a843ca452346f0174d8a4f4d408d35
+	sha256sums = 259409c547e67ba22a676b8d49aa947051b320cb7e42ba46bc81574202999a97
+
+pkgname = doomemacs

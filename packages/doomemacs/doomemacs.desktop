@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Doom Emacs
+GenericName=Text Editor
+Comment=Launch GNU Emacs with Doom Emacs
+TryExec=doomemacs
+Exec=doomemacs %F
+Icon=emacs
+Terminal=false
+Categories=Development;TextEditor;
+Keywords=Text;Editor;Emacs;Doom;
+StartupNotify=true
+StartupWMClass=Emacs

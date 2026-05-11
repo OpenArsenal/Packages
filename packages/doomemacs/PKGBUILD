@@ -1,0 +1,79 @@
+pkgname=doomemacs
+pkgver=2.1.0
+pkgrel=1
+pkgdesc='Configuration framework for GNU Emacs'
+arch=('any')
+url='https://github.com/doomemacs/doomemacs'
+license=('MIT')
+
+depends=(
+  'emacs>=27.1'
+  'git>=2.23'
+  'ripgrep>=11.0'
+)
+
+makedepends=(
+  'git'
+)
+
+checkdepends=(
+  'desktop-file-utils'
+)
+
+optdepends=(
+  'fd: faster file indexing for Doom features that use fd'
+)
+
+provides=(
+  'doom-emacs'
+)
+
+conflicts=(
+  'doom-emacs'
+  'doomemacs-git'
+)
+
+install="$pkgname.install"
+
+source=(
+  "doomemacs::git+https://github.com/doomemacs/doomemacs.git#tag=v${pkgver}?signed"
+  'doomemacs-wrapper.sh'
+  'doomemacs-launcher.sh'
+  'doomemacs.desktop'
+)
+
+sha256sums=('ffb1ab9a722d52b59afc1d9abc973c9d7dfc62c4ae024c67094caa37c590de22'
+            '93ba1883cfef41760a57ccabcf37662ff788b0916f4e009e130d4126fce541b5'
+            'c48c37887a8490ad60201902f7edc0c129a843ca452346f0174d8a4f4d408d35'
+            '259409c547e67ba22a676b8d49aa947051b320cb7e42ba46bc81574202999a97')
+
+check() {
+  desktop-file-validate "$srcdir/doomemacs.desktop"
+}
+
+package() {
+  cd "$srcdir/doomemacs"
+
+  install -dm755 "$pkgdir/usr/share/doom-emacs"
+  cp -a . "$pkgdir/usr/share/doom-emacs"
+
+  rm -rf \
+    "$pkgdir/usr/share/doom-emacs/.git" \
+    "$pkgdir/usr/share/doom-emacs/.github" \
+    "$pkgdir/usr/share/doom-emacs/shell.nix"
+
+  install -Dm755 "$srcdir/doomemacs-wrapper.sh" \
+    "$pkgdir/usr/bin/doom"
+
+  install -Dm755 "$srcdir/doomemacs-launcher.sh" \
+    "$pkgdir/usr/bin/doomemacs"
+
+  install -Dm644 "$srcdir/doomemacs.desktop" \
+    "$pkgdir/usr/share/applications/doomemacs.desktop"
+
+  install -Dm644 LICENSE \
+    "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+
+  install -Dm644 README.md \
+    "$pkgdir/usr/share/doc/$pkgname/README.md"
+}
