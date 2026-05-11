@@ -1,0 +1,25 @@
+pkgbase = sourcegit-git
+	pkgdesc = GUI client for GIT users (git version)
+	pkgver = 2026.10.r0.g57c9151
+	pkgrel = 1
+	url = https://github.com/sourcegit-scm/sourcegit
+	arch = x86_64
+	license = MIT
+	makedepends = desktop-file-utils
+	makedepends = dotnet-sdk-10.0
+	makedepends = git
+	depends = dotnet-runtime-10.0
+	depends = git
+	depends = xdg-utils
+	optdepends = git-credential-manager: third-party authentication support
+	provides = sourcegit
+	conflicts = sourcegit
+	conflicts = sourcegit-bin
+	source = sourcegit::git+https://github.com/sourcegit-scm/sourcegit.git
+	source = AvaloniaEdit::git+https://github.com/love-linger/AvaloniaEdit.git
+	sha256sums = SKIP
+	sha256sums = SKIP
+	b2sums = SKIP
+	b2sums = SKIP
+
+pkgname = sourcegit-git
