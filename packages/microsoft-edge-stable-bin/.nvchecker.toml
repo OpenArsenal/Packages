@@ -1,0 +1,5 @@
+[microsoft-edge-stable-bin]
+source = "rpmrepo"
+repo = "https://packages.microsoft.com/yumrepos/edge"
+pkg = "microsoft-edge-stable"
+arch = "x86_64"
