@@ -1,0 +1,4 @@
+[alpaca]
+source = "github"
+github = "Jeffser/Alpaca"
+use_max_tag = true
