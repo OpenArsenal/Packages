@@ -1,0 +1,5 @@
+[affine-bin]
+source = "github"
+github = "toeverything/AFFiNE"
+use_max_tag = true
+prefix = "v"
