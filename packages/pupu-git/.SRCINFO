@@ -1,7 +1,7 @@
 pkgbase = pupu-git
 	pkgdesc = A simple and easy to use UI for the Ollama.(Use system-wide electron)
 	pkgver = 0.0.5.r0.ga37a5d0
-	pkgrel = 1
+	pkgrel = 2
 	url = https://github.com/haoxiang-xu/PuPu
 	arch = any
 	license = 0BSD
@@ -16,6 +16,8 @@ pkgbase = pupu-git
 	provides = pupu=0.0.5
 	conflicts = pupu
 	replaces = pupu
+	options = debug
+	options = strip
 	source = pupu.git::git+https://github.com/haoxiang-xu/PuPu.git
 	source = pupu.sh
 	sha256sums = SKIP

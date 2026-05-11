@@ -4,11 +4,12 @@ _pkgname=PuPu
 pkgver=0.0.5.r0.ga37a5d0
 _electronversion=30
 _nodeversion=20
-pkgrel=1
+pkgrel=2
 pkgdesc="A simple and easy to use UI for the Ollama.(Use system-wide electron)"
 arch=('any')
 url="https://github.com/haoxiang-xu/PuPu"
 license=('0BSD')
+options=('debug' 'strip')
 provides=("${pkgname%-git}=${pkgver%.r*}")
 conflicts=("${pkgname%-git}")
 replaces=("${pkgname%-git}")
