@@ -1,0 +1,5 @@
+[logseq]
+source = "github"
+github = "logseq/logseq"
+use_max_tag = true
+prefix = "v"
