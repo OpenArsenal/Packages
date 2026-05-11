@@ -1,0 +1,44 @@
+pkgname=rgitui
+pkgver=0.1.8
+pkgrel=1
+pkgdesc="A GPU-accelerated desktop Git client built in Rust with GPUI"
+arch=('x86_64')
+url='https://github.com/noahbclarkson/rgitui'
+license=('MIT')
+conflicts=('rgitui-bin' 'rgitui-git')
+options=(
+  !lto
+)
+depends=('glibc' 'hicolor-icon-theme' 'libgcc' 'libxcb' 'libxkbcommon' 'libxkbcommon-x11' 'openssl' 'zlib')
+makedepends=('alsa-lib' 'cargo' 'clang' 'cmake' 'fontconfig' 'freetype2' 'git' 'glib2' 'libdrm' 'libgit2' 'libx11' 'libxcomposite' 'libxcursor' 'libxdamage' 'libxext' 'libxfixes' 'libxi' 'libxrandr' 'lld' 'mesa' 'pkgconf' 'sqlite' 'vulkan-headers' 'vulkan-icd-loader' 'wayland' 'zstd')
+
+source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/v${pkgver}.tar.gz")
+sha256sums=('83225dc85abdd3e8935df9834dab3b478f0d17cbed263f9fcab72f1783ba4a40')
+b2sums=('256d7a8b29e3f55de89a6a0190ffce10a33b0defca3c6f70a53c7b7bc525b47d8f0ffc51452a2eb09cc52fd8d88b1685e703b9302c7bb3e87701a307f70de5cb')
+
+build() {
+  cd "${srcdir}/${pkgname}-${pkgver}"
+
+  export CARGO_TARGET_DIR=target
+  cargo build --release --locked --bin "${pkgname}"
+}
+
+package() {
+  cd "${srcdir}/${pkgname}-${pkgver}"
+
+  install -Dm755 "target/release/${pkgname}" "${pkgdir}/usr/bin/${pkgname}"
+
+  install -Dm644 assets/icons/app-icon-16.png "${pkgdir}/usr/share/icons/hicolor/16x16/apps/${pkgname}.png"
+  install -Dm644 assets/icons/app-icon-32.png "${pkgdir}/usr/share/icons/hicolor/32x32/apps/${pkgname}.png"
+  install -Dm644 assets/icons/app-icon-48.png "${pkgdir}/usr/share/icons/hicolor/48x48/apps/${pkgname}.png"
+  install -Dm644 assets/icons/app-icon-256.png "${pkgdir}/usr/share/icons/hicolor/256x256/apps/${pkgname}.png"
+  install -Dm644 assets/icons/app-icon-512.png "${pkgdir}/usr/share/icons/hicolor/512x512/apps/${pkgname}.png"
+
+  install -Dm644 "crates/${pkgname}/resources/linux/${pkgname}.desktop" \
+    "${pkgdir}/usr/share/applications/${pkgname}.desktop"
+  install -Dm644 "crates/${pkgname}/resources/linux/com.${pkgname}.app.metainfo.xml" \
+    "${pkgdir}/usr/share/metainfo/com.${pkgname}.app.metainfo.xml"
+
+  install -Dm644 README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
