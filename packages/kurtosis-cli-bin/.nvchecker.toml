@@ -1,0 +1,5 @@
+[kurtosis-cli-bin]
+source = "github"
+github = "kurtosis-tech/kurtosis-cli-release-artifacts"
+use_max_tag = true
+prefix = "v"
