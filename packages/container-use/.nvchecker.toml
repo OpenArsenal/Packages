@@ -1,0 +1,5 @@
+[container-use]
+source = "github"
+github = "dagger/container-use"
+use_max_tag = true
+prefix = "v"
