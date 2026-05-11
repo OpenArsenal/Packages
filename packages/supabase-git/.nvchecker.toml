@@ -1,0 +1,4 @@
+[supabase-git]
+source = "git"
+git = "https://github.com/supabase/cli.git"
+use_commit = true
