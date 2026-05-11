@@ -2,13 +2,13 @@ _nodeversion=22
 _electron_version=39
 
 pkgname=logseq-electron-git
-pkgver=0.10.15.r24215.g7c3986bcbe
+pkgver=0.10.15.r24338.gcba65ee479
 pkgrel=1
 pkgdesc="Privacy-first, open-source platform for knowledge sharing and management (git version; system Electron)"
 arch=('x86_64')
 url="https://github.com/logseq/logseq"
 license=('AGPL-3.0-or-later')
-options=('!debug' '!strip')
+options=('debug' 'strip')
 
 _repo="https://github.com/logseq/logseq.git"
 _branch="master"
@@ -200,8 +200,6 @@ package() {
   ln -s app "${pkgdir}/usr/lib/logseq/app.asar"
 
   rm -rf "${_app_dir}/node_modules/electron-deeplink/build"
-
-  find "${_app_dir}" -type f -name '*.map' -delete
 
   grep -IlRZ -F "${srcdir}" "${_app_dir}" 2>/dev/null |
     xargs -0 -r sed -i "s#${srcdir}#/usr/src/debug/${pkgname}#g"
