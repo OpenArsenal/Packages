@@ -1,0 +1,5 @@
+[dagger]
+source = "github"
+github = "dagger/dagger"
+use_max_tag = true
+prefix = "v"
