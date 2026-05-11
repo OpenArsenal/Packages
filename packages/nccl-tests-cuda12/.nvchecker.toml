@@ -1,0 +1,5 @@
+[nccl-tests-cuda12]
+source = "github"
+github = "NVIDIA/nccl-tests"
+use_max_tag = true
+prefix = "v"
