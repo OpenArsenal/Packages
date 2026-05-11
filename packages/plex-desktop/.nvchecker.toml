@@ -1,0 +1,4 @@
+[plex-desktop]
+source = "github"
+github = "flathub/tv.plex.PlexDesktop"
+use_max_tag = true
