@@ -1,0 +1,4 @@
+!*.patch
+!*.py
+!*.sh
+!*.desktop

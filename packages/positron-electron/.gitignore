@@ -1,5 +1,3 @@
 !*.install
-!positron.desktop
-!positron-electron-wrapper.sh
-!.SRCINFO
-!PKGBUILD
+!*.sh
+!*.desktop

@@ -1,5 +1,3 @@
 !*.install
-!positron-flags-wrapper.sh
-!positron.desktop
-!.SRCINFO
-!PKGBUILD
+!*.sh
+!*.desktop

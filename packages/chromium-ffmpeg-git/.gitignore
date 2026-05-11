@@ -1,6 +1,1 @@
-*
-!PKGBUILD
-!.gitignore
-!*.patch
-!*.hook
 !*.install

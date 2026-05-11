@@ -1,6 +1,0 @@
-src
-pkg
-*.log
-*.log.*
-*.pkg.tar.?z
-chromium-ffmpeg

@@ -1,5 +1,1 @@
-src
-pkg
-*.log
-*.log.*
-*.pkg.tar.?z
+!*.patch

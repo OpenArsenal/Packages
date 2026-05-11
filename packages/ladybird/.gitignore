@@ -1,8 +1,1 @@
-*
-!PKGBUILD
-!.SRCINFO
-!.gitignore
-!*.install
-!*.desktop
 !*.patch
-!*.sh
