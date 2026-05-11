@@ -6,3 +6,4 @@
 !PKGBUILD
 !sysusers.conf
 !tmpfiles.d
+!.SRCINFO
