@@ -1,0 +1,5 @@
+[gitbutler-bin]
+source = "github"
+github = "gitbutlerapp/gitbutler"
+use_max_tag = true
+prefix = "release/"
