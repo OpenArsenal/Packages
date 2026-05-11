@@ -1,0 +1,4 @@
+[sourcegit-git]
+source = "git"
+git = "https://github.com/sourcegit-scm/sourcegit.git"
+use_commit = true
