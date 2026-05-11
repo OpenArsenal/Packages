@@ -1,0 +1,90 @@
+pkgname=gitbutler
+pkgver=0.19.10
+pkgrel=7
+pkgdesc="Version control client, backed by Git, powered by Tauri/Rust/Svelte"
+arch=('x86_64')
+url='https://github.com/gitbutlerapp/gitbutler'
+license=('LicenseRef-FSL-1.1-MIT')
+depends=('git' 'gtk3' 'hicolor-icon-theme' 'libayatana-appindicator' 'xdotool' 'openssl' 'webkit2gtk-4.1' 'xdg-utils')
+makedepends=('cargo' 'cmake' 'jq' 'nodejs' 'perl' 'pnpm' 'rust')
+conflicts=('gitbutler-bin' 'gitbutler-git')
+options=('!lto')
+
+source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/release/${pkgver}.tar.gz")
+sha256sums=('9124713d1dad27650172e519aa5a3b7fce6ed991429be768fa7ebb307826e624')
+b2sums=('ddc0a671c6efbae556f063ddf24bcc55d88f73c84f2746508fe6502822c6e9dc3e887a93b4b2d9aab57b3aebab511e470c64f7523e478612d61a2f51a361ad57')
+
+prepare() {
+  cd "${srcdir}/${pkgname}-release-${pkgver}"
+
+  export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+  export PNPM_HOME="${srcdir}/pnpm-home"
+  export npm_config_cache="${srcdir}/npm-cache"
+  export CARGO_HOME="${srcdir}/cargo-home"
+
+  pnpm install --frozen-lockfile
+}
+
+build() {
+  cd "${srcdir}/${pkgname}-release-${pkgver}"
+
+  export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+  export PNPM_HOME="${srcdir}/pnpm-home"
+  export npm_config_cache="${srcdir}/npm-cache"
+  export CARGO_HOME="${srcdir}/cargo-home"
+  export CARGO_TARGET_DIR="${srcdir}/${pkgname}-release-${pkgver}/target"
+  export CARGO_INCREMENTAL=0
+
+  local _encoded_rustflags=''
+  local _rustflag
+  for _rustflag in ${RUSTFLAGS:-}; do
+    _encoded_rustflags+="${_rustflag}"$'\x1f'
+  done
+  _encoded_rustflags+="--remap-path-prefix=${srcdir}/${pkgname}-release-${pkgver}=."$'\x1f'
+  _encoded_rustflags+="--remap-path-prefix=${srcdir}=."$'\x1f'
+  _encoded_rustflags+="--remap-path-prefix=${pkgdir}=."$'\x1f'
+  export CARGO_ENCODED_RUSTFLAGS="${_encoded_rustflags%$'\x1f'}"
+  unset RUSTFLAGS
+
+  export VERSION="${pkgver}"
+  export CHANNEL=release
+
+  local _tauri_config="${srcdir}/tauri.conf.release.${pkgname}.json"
+  jq --arg version "${pkgver}" '
+    .version = $version
+    | .bundle.externalBin = ["gitbutler-git-askpass"]
+    | .bundle.createUpdaterArtifacts = false
+    | del(.plugins.updater)
+  ' crates/gitbutler-tauri/tauri.conf.release.json > "${_tauri_config}"
+
+  pnpm tauri build \
+    --features "builtin-but packaged-but-distribution disable-auto-updates" \
+    --config "${_tauri_config}" \
+    --bundles rpm
+}
+
+package() {
+  cd "${srcdir}/${pkgname}-release-${pkgver}"
+
+  local _rpm
+  _rpm="$(find target/tauri/release/bundle/rpm target/release/bundle/rpm \
+    -type f -name 'GitButler-*.x86_64.rpm' -print -quit 2>/dev/null)"
+
+  bsdtar -xf "${_rpm}" -C "${pkgdir}"
+
+  local _bin="${pkgdir}/usr/bin/gitbutler-tauri"
+  if grep -aFq "${srcdir}" "${_bin}"; then
+    local _srcdir_replacement
+    printf -v _srcdir_replacement '%*s' "${#srcdir}" ''
+    _srcdir_replacement="${_srcdir_replacement// /.}"
+    SRC_DIR_REF="${srcdir}" SRC_DIR_REPL="${_srcdir_replacement}" \
+      perl -0pi -e 's/\Q$ENV{SRC_DIR_REF}\E/$ENV{SRC_DIR_REPL}/g' "${_bin}"
+  fi
+
+  if grep -aFq "${srcdir}" "${_bin}"; then
+    echo "ERROR: ${_bin} still contains a reference to \$srcdir" >&2
+    return 1
+  fi
+
+  install -Dm644 LICENSE.md "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE.md"
+}
