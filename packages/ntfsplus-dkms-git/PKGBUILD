@@ -1,0 +1,48 @@
+pkgname=ntfsplus-dkms-git
+_pkgname=ntfsplus
+pkgver=2026.05.03+9e031cf
+pkgrel=1
+pkgdesc="Backport DKMS module for the new Linux ntfs read-write filesystem driver"
+arch=('any')
+url="https://github.com/namjaejeon/linux-ntfs"
+license=('GPL-2.0-only')
+depends=('dkms')
+makedepends=('git')
+optdepends=(
+  'ntfsplus-udev: optional udev rule for ntfsplus'
+  'ntfsprogs-plus: optional NTFS userspace utilities'
+)
+provides=('ntfsplus-dkms' 'ntfsplus' 'NTFSPLUS-MODULE' 'NTFS-MODULE')
+conflicts=('ntfsplus-dkms' 'ntfsplus')
+options=('!strip' '!emptydirs')
+
+source=(
+  "$pkgname::git+$url"
+  'Makefile'
+  'dkms.conf'
+  '00-ntfsplus.conf'
+)
+sha256sums=('SKIP'
+            '2d6f1b348a1f1f4f5603d4354a80c821f0c65a428dc4d6e6eb7d7ed2b286b07e'
+            '870fe93d4dd09daa673b408c03c73a070ec6df8f43defc7dc909f2c674124832'
+            'f8e9258a06bdb1551492de7d4f8450ed210371522e3d1511392860d8c79bd377')
+
+pkgver() {
+  cd "$srcdir/$pkgname"
+  git log --format='%cd+%h' -n1 --date=format:'%Y.%m.%d'
+}
+
+package() {
+  cd "$srcdir"
+
+  local dest="$pkgdir/usr/src/ntfsplus-${pkgver}"
+  install -dm755 "$dest"
+
+  cp -rpt "$dest" "$srcdir/$pkgname/"*.{h,c} "$srcdir/$pkgname/Kconfig"
+
+  sed "s/@PKGVER@/${pkgver}/g" dkms.conf >"$dest/dkms.conf"
+  install -Dm644 Makefile "$dest/Makefile"
+
+  # Package-owned modprobe defaults belong under /usr/lib, not /etc.
+  install -Dm644 00-ntfsplus.conf "$pkgdir/usr/lib/modprobe.d/00-ntfsplus.conf"
+}
