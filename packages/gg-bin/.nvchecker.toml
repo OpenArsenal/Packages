@@ -1,0 +1,5 @@
+[gg-bin]
+source = "github"
+github = "gulbanana/gg"
+use_max_tag = true
+prefix = "v"
