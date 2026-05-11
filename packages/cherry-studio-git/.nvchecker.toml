@@ -1,0 +1,4 @@
+[cherry-studio-git]
+source = "git"
+git = "https://github.com/CherryHQ/cherry-studio.git"
+use_commit = true
