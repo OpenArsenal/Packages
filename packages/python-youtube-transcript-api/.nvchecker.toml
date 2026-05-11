@@ -1,0 +1,5 @@
+[python-youtube-transcript-api]
+source = "github"
+github = "jdepoix/youtube-transcript-api"
+use_max_tag = true
+prefix = "v"
