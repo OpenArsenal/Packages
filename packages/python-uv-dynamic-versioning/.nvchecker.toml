@@ -1,0 +1,5 @@
+[python-uv-dynamic-versioning]
+source = "github"
+github = "ninoseki/uv-dynamic-versioning"
+use_max_tag = true
+prefix = "v"
