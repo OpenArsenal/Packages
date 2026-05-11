@@ -1,0 +1,7 @@
+[python312]
+source = "github"
+github = "python/cpython"
+use_max_tag = true
+prefix = "v"
+include_regex = '3\.12\.[0-9]+'
+sort_version_key = "vercmp"
