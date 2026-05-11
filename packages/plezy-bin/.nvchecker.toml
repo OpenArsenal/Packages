@@ -1,0 +1,4 @@
+[plezy-bin]
+source = "github"
+github = "edde746/plezy"
+use_max_tag = true
