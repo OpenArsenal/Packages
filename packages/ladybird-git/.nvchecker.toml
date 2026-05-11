@@ -1,0 +1,4 @@
+[ladybird-git]
+source = "git"
+git = "https://github.com/LadybirdBrowser/ladybird.git"
+use_commit = true
