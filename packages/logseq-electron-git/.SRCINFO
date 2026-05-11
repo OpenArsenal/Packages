@@ -1,7 +1,7 @@
 pkgbase = logseq-electron-git
 	pkgdesc = Privacy-first, open-source platform for knowledge sharing and management (git version; system Electron)
-	pkgver = 0.10.15.r24214.g6f5b000217
-	pkgrel = 1
+	pkgver = 0.10.15.r24215.g7c3986bcbe
+	pkgrel = 2
 	url = https://github.com/logseq/logseq
 	install = logseq.install
 	arch = x86_64
@@ -17,8 +17,8 @@ pkgbase = logseq-electron-git
 	depends = bash
 	provides = logseq
 	conflicts = logseq
-	options = !debug
-	options = !strip
+	options = debug
+	options = strip
 	source = logseq-electron-git::git+https://github.com/logseq/logseq.git#branch=master
 	source = logseq.desktop
 	source = logseq-flags-wrapper.sh
