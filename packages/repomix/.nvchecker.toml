@@ -1,0 +1,3 @@
+[repomix]
+source = "npm"
+npm = "repomix"
