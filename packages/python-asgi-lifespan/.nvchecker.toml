@@ -1,0 +1,3 @@
+[python-asgi-lifespan]
+source = "pypi"
+pypi = "asgi-lifespan"
