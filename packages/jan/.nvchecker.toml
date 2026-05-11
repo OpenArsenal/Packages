@@ -1,0 +1,5 @@
+[jan]
+source = "github"
+github = "menloresearch/jan"
+use_max_tag = true
+prefix = "v"
