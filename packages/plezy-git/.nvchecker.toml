@@ -1,0 +1,4 @@
+[plezy-git]
+source = "git"
+git = "https://github.com/edde746/plezy.git"
+use_commit = true
