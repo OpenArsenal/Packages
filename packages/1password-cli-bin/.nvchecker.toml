@@ -1,0 +1,4 @@
+[1password-cli-bin]
+source = "regex"
+url = "https://app-updates.agilebits.com/check/1/0/CLI2/en/0/N"
+regex = '"version":"([0-9.]+)"'
