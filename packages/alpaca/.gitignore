@@ -4,5 +4,6 @@
 !ollama-ld.conf
 !ollama.service
 !PKGBUILD
+!.SRCINFO
 !sysusers.conf
 !tmpfiles.d
