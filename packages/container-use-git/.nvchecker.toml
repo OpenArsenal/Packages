@@ -1,0 +1,4 @@
+[container-use-git]
+source = "git"
+git = "https://github.com/dagger/container-use.git"
+use_commit = true
