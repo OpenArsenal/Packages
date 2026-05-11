@@ -7,7 +7,7 @@ export CARGO_HOME CARGO_TARGET_DIR RUSTUP_TOOLCHAIN
 
 _pkgname="ion"
 pkgname="$_pkgname-git"
-pkgver=1.0.5.r1511.gb1b9475
+pkgver=1.0.5.r1534.g1440704
 pkgrel=1
 pkgdesc="The Ion Shell. Compatible with Redox and Linux."
 url="https://gitlab.redox-os.org/redox-os/ion"
@@ -47,6 +47,9 @@ pkgver() {
 
 build() {
   cd "$_pkgsrc"
+  export CARGO_PROFILE_RELEASE_DEBUG=2
+  export CARGO_PROFILE_RELEASE_STRIP=none
+  export CARGO_PROFILE_RELEASE_SPLIT_DEBUGINFO=unpacked
   cargo build --frozen --release
 }
 
