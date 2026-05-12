@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-_APPDIR="/usr/lib/figma-linux"
-_RUN_ASAR="${_APPDIR}/app.asar"
+_APPDIR="/opt/figma-linux"
+_RUNNAME="${_APPDIR}/figma-linux"
 
 _XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-"${HOME}/.config"}"
 _FLAGS_FILE="${_XDG_CONFIG_HOME}/figma-linux/figma-linux-flags.conf"
@@ -64,8 +64,8 @@ if [[ "${#REMOVE_FLAGS[@]}" -gt 0 ]]; then
 	DEFAULT_FLAGS=("${FILTERED_DEFAULTS[@]}")
 fi
 
-if [[ ! -r "${_RUN_ASAR}" ]]; then
-	echo "figma-linux: missing ${_RUN_ASAR}" >&2
+if [[ ! -x "${_RUNNAME}" ]]; then
+	echo "figma-linux: missing ${_RUNNAME}" >&2
 	exit 1
 fi
 
@@ -73,9 +73,9 @@ cd "${_APPDIR}"
 
 # Root fallback only (don’t pre-enable for everyone).
 if [[ "${EUID}" -eq 0 ]]; then
-	exec electron "${_RUN_ASAR}" --no-sandbox "${DEFAULT_FLAGS[@]}" "${USER_FLAGS[@]}" "$@"
+	exec "${_RUNNAME}" --no-sandbox "${DEFAULT_FLAGS[@]}" "${USER_FLAGS[@]}" "$@"
 fi
 
 # Order matters: defaults first, then user, then CLI args
 # (later flags tend to win when duplicates exist).
-exec electron "${_RUN_ASAR}" "${DEFAULT_FLAGS[@]}" "${USER_FLAGS[@]}" "$@"
+exec "${_RUNNAME}" "${DEFAULT_FLAGS[@]}" "${USER_FLAGS[@]}" "$@"
