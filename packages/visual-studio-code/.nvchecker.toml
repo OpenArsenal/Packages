@@ -1,4 +1,4 @@
-[visual-studio-code-bin]
+[visual-studio-code]
 source = "github"
 github = "microsoft/vscode"
 use_latest_release = true

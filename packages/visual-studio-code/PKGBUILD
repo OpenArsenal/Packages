@@ -1,5 +1,5 @@
 # Maintainer: Okiki <okiki@thunderstrike.co>
-pkgname=visual-studio-code-bin
+pkgname=visual-studio-code
 _pkgname=visual-studio-code
 pkgver='1.118.0'
 pkgrel=1
