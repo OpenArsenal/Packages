@@ -1,14 +1,15 @@
 pkgname=vesktop-bin
 pkgver=1.6.5
 pkgrel=1
-pkgdesc="A standalone Electron-based Discord app with Vencord & improved Linux support (prebuilt release; bundled Electron)"
+pkgdesc="Standalone Discord desktop app with Vencord (bundled Electron)"
 arch=('x86_64' 'aarch64')
 url="https://github.com/Vencord/Vesktop"
-license=('GPL-3.0-only')
+license=('GPL-3.0-or-later')
 options=('!debug' '!strip')
 
 _pkgname=Vesktop
 _pkgsrc='opt/Vesktop'
+_app_id='dev.vencord.Vesktop'
 
 provides=("vesktop=${pkgver}")
 conflicts=(
@@ -28,6 +29,7 @@ depends=(
   'expat'
   'glib2'
   'gtk3'
+  'hicolor-icon-theme'
   'libcups'
   'libx11'
   'libxcb'
@@ -42,12 +44,18 @@ depends=(
   'nss'
   'pango'
   'systemd-libs'
-  'zlib'
+)
+
+optdepends=(
+  'pipewire-pulse: improved Linux system audio sharing support'
+  'xdg-utils: set desktop and protocol handler associations on Linux'
+  'speech-dispatcher: text-to-speech support on Linux'
 )
 
 source=(
   'vesktop.desktop'
   'vesktop-flags-wrapper.sh'
+  "${_app_id}.metainfo.xml::${url}/releases/download/v${pkgver}/${_app_id}.metainfo.xml"
 )
 source_x86_64=(
   "vesktop-${pkgver}-x86_64.rpm::${url}/releases/download/v${pkgver}/vesktop-${pkgver}.x86_64.rpm"
@@ -57,7 +65,8 @@ source_aarch64=(
 )
 
 sha256sums=('c7734c79b1329161d57aabe851f8f346b24d02824a6081d8cfb8355945e61b1d'
-            'a97a9dbef2fd14a6a931f78a1ddce5f6f50944971492104515fdce58c7fc55a5')
+            'a97a9dbef2fd14a6a931f78a1ddce5f6f50944971492104515fdce58c7fc55a5'
+            '9e308484fedab6c0c7c887d44d7a278cd9305f5ec4a39742fbc1cd5346df3bdd')
 sha256sums_x86_64=('6fd5669fe2d5b1ad9bec10a8af1cf859bd911226528eae923ba70e6ef032c134')
 sha256sums_aarch64=('a6314a88debfe370c690cc7549d921c8e08fd79af1bdc40b2b8ef463d057387d')
 b2sums=('18f00fecda0f4293d6c4429f3590fadef1f212fe161327dffb5c3fbc436845f6b8a96d1557a5b120bca2e0c06e459849b0a2966f69c22000b90e7d087ceb1606'
@@ -73,22 +82,29 @@ package() {
 
   install -d "${_install_root}"
   cp -a "${srcdir}/${_pkgsrc}/." "${_install_root}/"
+  rm -f "${_install_root}/resources/app-update.yml"
 
-  install -Dm644 "${srcdir}/vesktop.desktop"     "${pkgdir}/usr/share/applications/vesktop.desktop"
+  install -Dm644 "${srcdir}/vesktop.desktop" \
+    "${pkgdir}/usr/share/applications/${_app_id}.desktop"
+  install -Dm644 "${srcdir}/${_app_id}.metainfo.xml" \
+    "${pkgdir}/usr/share/metainfo/${_app_id}.metainfo.xml"
 
   if [[ -f "${srcdir}/usr/share/icons/hicolor/scalable/apps/vesktop.svg" ]]; then
-    install -Dm644 "${srcdir}/usr/share/icons/hicolor/scalable/apps/vesktop.svg"       "${pkgdir}/usr/share/icons/hicolor/scalable/apps/vesktop.svg"
+    install -Dm644 "${srcdir}/usr/share/icons/hicolor/scalable/apps/vesktop.svg" \
+      "${pkgdir}/usr/share/icons/hicolor/scalable/apps/vesktop.svg"
   fi
 
-  if [[ -f "${srcdir}/usr/share/licenses/vesktop/LICENSE" ]]; then
-    install -Dm644 "${srcdir}/usr/share/licenses/vesktop/LICENSE"       "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
-  fi
+  install -Dm644 "${srcdir}/${_pkgsrc}/LICENSE.electron.txt" \
+    "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE.electron.txt"
+  install -Dm644 "${srcdir}/${_pkgsrc}/LICENSES.chromium.html" \
+    "${pkgdir}/usr/share/licenses/${pkgname}/LICENSES.chromium.html"
 
   if [[ -x "${_install_root}/Vesktop" ]]; then
     _app_exec="/opt/vesktop/Vesktop"
   fi
 
-  sed -e "s#@VESKTOP_EXEC@#${_app_exec}#g"     "${srcdir}/vesktop-flags-wrapper.sh" >"${srcdir}/vesktop"
+  sed -e "s#@VESKTOP_EXEC@#${_app_exec}#g" \
+    "${srcdir}/vesktop-flags-wrapper.sh" >"${srcdir}/vesktop"
 
   if grep -q '@[A-Z_][A-Z_]*@' "${srcdir}/vesktop"; then
     printf '%s\n' "ERROR: unresolved wrapper placeholder(s):"
@@ -100,7 +116,7 @@ package() {
 
   for _file in "${_install_root}/vesktop" "${_install_root}/Vesktop"; do
     if [[ -x "${_file}" ]]; then
-      _electron_version="$(strings "${_file}" | grep -Pom1 'Electron/[0-9.]+' || true)"
+      _electron_version="$(strings "${_file}" | grep -Eom1 'Electron/[0-9.]+' || true)"
       [[ -n "${_electron_version}" ]] && break
     fi
   done
