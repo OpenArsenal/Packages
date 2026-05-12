@@ -1,49 +1,173 @@
-# Maintainer: Okiki <okiki@thunderstrike.co>
-_pkgname=Vesktop
-name=vesktop
-pkgname=vesktop
-pkgdesc="A standalone Electron-based Discord app with Vencord & improved Linux support"
-pkgver='1.6.5'
-pkgrel=1
+_nodeversion=22
 
-arch=("x86_64" "aarch64")
+pkgname=vesktop
+pkgver=1.6.5
+pkgrel=1
+pkgdesc="A standalone Electron-based Discord app with Vencord & improved Linux support (bundled Electron)"
+arch=('x86_64' 'aarch64')
 url="https://github.com/Vencord/Vesktop"
 license=('GPL-3.0-only')
+options=('!debug' '!strip')
 
-depends=('alsa-lib' 'gtk3' 'nss')
-makedepends=('pnpm' 'nodejs')
-optdepends=(
-  'libnotify: Notifications'
-  'xdg-utils: Open links, files, etc'
+_pkgsrc="Vesktop-${pkgver}"
+
+conflicts=(
+  'vesktop-git'
+  'vesktop-bin'
+  'vesktop-electron'
+  'vesktop-electron-git'
+)
+install='vesktop.install'
+
+depends=(
+  'alsa-lib'
+  'at-spi2-core'
+  'bash'
+  'cairo'
+  'dbus'
+  'expat'
+  'glib2'
+  'gtk3'
+  'libcups'
+  'libx11'
+  'libxcb'
+  'libxcomposite'
+  'libxdamage'
+  'libxext'
+  'libxfixes'
+  'libxkbcommon'
+  'libxrandr'
+  'mesa'
+  'nspr'
+  'nss'
+  'pango'
+  'systemd-libs'
+  'zlib'
 )
 
-conflicts=('vesktop-electron' 'vesktop-bin')
-source=("$_pkgname-$pkgver.tar.gz::https://github.com/Vencord/Vesktop/archive/v${pkgver}.tar.gz" "vesktop.desktop" "vesktop.sh")
+makedepends=(
+  'nvm'
+  'pnpm'
+)
+
+source=(
+  "${_pkgsrc}.tar.gz::${url}/archive/v${pkgver}.tar.gz"
+  'vesktop.desktop'
+  'vesktop-flags-wrapper.sh'
+)
 
 sha256sums=('4bb9b5e1acaf17a5f145931008fe4015f9b8c1116b769e1a55a68d5483f238fc'
-            '98fa8f661b065c2d825e24f0055a40ae01d58d23628ad7ebf6914296209dd43c'
-            'ca47fc4e1f4dd5ec44c03dbb6dc0bde1c40f1ec7f9cb568626f3ed157220efe2')
+            'c7734c79b1329161d57aabe851f8f346b24d02824a6081d8cfb8355945e61b1d'
+            'a97a9dbef2fd14a6a931f78a1ddce5f6f50944971492104515fdce58c7fc55a5')
+b2sums=('a39b88b1c1e009008883e949d99ef56568006a73f6e94431a32e59668f1e32153d4852f4e7391ed8a1a0f23b90467825fcb2e8fc1b4dd2c937f4234d62c1e071'
+        '18f00fecda0f4293d6c4429f3590fadef1f212fe161327dffb5c3fbc436845f6b8a96d1557a5b120bca2e0c06e459849b0a2966f69c22000b90e7d087ceb1606'
+        '10030f288016cd98672bd23628c54efeaac6a04d82fe5b72200441ae9e0708c26827a86729e4404f46ef7775766503b8067b48aef84b6631b08b17abf56e7a45')
+
+_approve_pnpm_builds() {
+  python - <<'PYTHON_EOF'
+from pathlib import Path
+
+path = Path("pnpm-workspace.yaml")
+if path.exists():
+    lines = path.read_text().splitlines()
+else:
+    lines = []
+
+if any(line.strip() == "- arrpc" for line in lines):
+    raise SystemExit
+
+for index, line in enumerate(lines):
+    if line.strip() == "onlyBuiltDependencies:":
+        indent = line[:len(line) - len(line.lstrip())]
+        lines.insert(index + 1, f"{indent}  - arrpc")
+        break
+else:
+    if lines and lines[-1].strip():
+        lines.append("")
+    lines.extend([
+        "onlyBuiltDependencies:",
+        "  - arrpc",
+    ])
+
+path.write_text("\n".join(lines) + "\n")
+PYTHON_EOF
+}
+
+_nvm_env() {
+  local _cache_root="${SRCDEST:-${srcdir}}"
+
+  export HOME="${_cache_root}/${pkgname}-node-home"
+  export XDG_CACHE_HOME="${HOME}/.cache"
+  export XDG_CONFIG_HOME="${HOME}/.config"
+  export XDG_DATA_HOME="${HOME}/.local/share"
+
+  export NVM_DIR="${_cache_root}/${pkgname}-node-nvm"
+
+  source /usr/share/nvm/init-nvm.sh || [[ $? != 1 ]]
+  nvm install "${_nodeversion}"
+  nvm use "${_nodeversion}"
+}
 
 build() {
-  cd "$srcdir/$_pkgname-$pkgver"
+  _nvm_env
 
-  pnpm install --frozen-lockfile --ignore-scripts
+  cd "${srcdir}/${_pkgsrc}"
+
+  _approve_pnpm_builds
+  pnpm install --frozen-lockfile
   pnpm updateArrpcDB
-  pnpm package:dir
+  pnpm build
+  pnpm exec electron-builder --dir
 }
 
 package() {
-  cd "$srcdir/$_pkgname-$pkgver"
+  local _bundle="${srcdir}/${_pkgsrc}/dist/linux-unpacked"
+  local _install_root="${pkgdir}/opt/vesktop"
+  local _app_exec="/opt/vesktop/vesktop"
+  local _electron_version=""
+  local _file
 
-  # Create necessary directories
-  install -d "$pkgdir/usr/lib/$name"
-  install -d "$pkgdir/usr/bin"
+  if [[ ! -d "${_bundle}" ]]; then
+    _bundle="$(find "${srcdir}/${_pkgsrc}/dist" -maxdepth 1 -type d -name 'linux-*unpacked' -print -quit)"
+  fi
 
-  cp -R "dist/linux-unpacked/." "$pkgdir/usr/lib/$name"
+  [[ -n "${_bundle}" && -d "${_bundle}" ]] || {
+    printf '%s\n' "ERROR: could not locate Vesktop Electron bundle."
+    return 1
+  }
 
-  install -Dm644 "../vesktop.desktop" "$pkgdir/usr/share/applications/$name.desktop" # Install desktop entry
-  install -Dm644 "LICENSE" "$pkgdir/usr/share/licenses/$name/LICENSE" # Install license
-  install -Dm644 "build/icon.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/$name.svg" # Install icons
+  install -d "${_install_root}"
+  cp -a "${_bundle}/." "${_install_root}/"
 
-  install -Dm755 "../vesktop.sh" "$pkgdir/usr/bin/$name" # Start script
+  install -Dm644 "${srcdir}/${_pkgsrc}/build/icon.svg" "${pkgdir}/usr/share/icons/hicolor/scalable/apps/vesktop.svg"
+  install -Dm644 "${srcdir}/vesktop.desktop" "${pkgdir}/usr/share/applications/vesktop.desktop"
+  install -Dm644 "${srcdir}/${_pkgsrc}/LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+
+  if [[ -x "${_install_root}/Vesktop" ]]; then
+    _app_exec="/opt/vesktop/Vesktop"
+  fi
+
+  sed -e "s#@VESKTOP_EXEC@#${_app_exec}#g" "${srcdir}/vesktop-flags-wrapper.sh" >"${srcdir}/vesktop"
+
+  if grep -q '@[A-Z_][A-Z_]*@' "${srcdir}/vesktop"; then
+    printf '%s\n' "ERROR: unresolved wrapper placeholder(s):"
+    grep -n '@[A-Z_][A-Z_]*@' "${srcdir}/vesktop"
+    return 1
+  fi
+
+  install -Dm755 "${srcdir}/vesktop" "${pkgdir}/usr/bin/vesktop"
+
+  for _file in "${_install_root}/vesktop" "${_install_root}/Vesktop"; do
+    if [[ -x "${_file}" ]]; then
+      _electron_version="$(strings "${_file}" | grep -Pom1 'Electron/[0-9.]+' || true)"
+      [[ -n "${_electron_version}" ]] && break
+    fi
+  done
+
+  _electron_version="${_electron_version#Electron/}"
+  if [[ -n "${_electron_version}" ]]; then
+    install -Dm644 /dev/stdin "${_install_root}/electron_version" <<<"${_electron_version}"
+  fi
+
+  chmod -R u=rwX,go=rX "${pkgdir}"
 }
