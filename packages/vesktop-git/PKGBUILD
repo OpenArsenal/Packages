@@ -1,57 +1,210 @@
-# Maintainer: Okiki <okiki@thunderstrike.co>
-_pkgname=Vesktop
-name=vesktop
-pkgname=vesktop-git
-pkgdesc="A standalone Electron-based Discord app with Vencord & improved Linux support"
-pkgver=1.6.5.r5.g61ecf66
-pkgrel=1
+_nodeversion=22
 
-arch=("x86_64" "aarch64")
+pkgname=vesktop-git
+pkgver=1.6.5.r542.g61ecf66
+pkgrel=1
+pkgdesc="A standalone Electron-based Discord app with Vencord & improved Linux support (git version; bundled Electron)"
+arch=('x86_64' 'aarch64')
 url="https://github.com/Vencord/Vesktop"
 license=('GPL-3.0-only')
 options=('!debug' '!strip')
 
-depends=('alsa-lib' 'gtk3' 'nss')
-makedepends=('git' 'pnpm' 'npm')
-optdepends=(
-  'libnotify: Notifications'
-  'xdg-utils: Open links, files, etc'
+_repo="https://github.com/Vencord/Vesktop.git"
+_branch="main"
+
+_pkgsrc="${pkgname}"
+
+provides=('vesktop')
+conflicts=(
+  'vesktop'
+  'vesktop-bin'
+  'vesktop-electron'
+  'vesktop-electron-git'
+)
+install='vesktop.install'
+
+depends=(
+  'alsa-lib'
+  'at-spi2-core'
+  'bash'
+  'cairo'
+  'dbus'
+  'expat'
+  'glib2'
+  'gtk3'
+  'libcups'
+  'libx11'
+  'libxcb'
+  'libxcomposite'
+  'libxdamage'
+  'libxext'
+  'libxfixes'
+  'libxkbcommon'
+  'libxrandr'
+  'mesa'
+  'nspr'
+  'nss'
+  'pango'
+  'systemd-libs'
+  'zlib'
 )
 
-provides=("vesktop")
-conflicts=('vesktop' 'vesktop-git')
-replaces=("${pkgname%-git}")
-source=("$_pkgname::git+$url.git" "vesktop.desktop" "vesktop.sh")
+makedepends=(
+  'git'
+  'nvm'
+  'pkgconf'
+  'pnpm'
+  'python'
+)
+
+source=(
+  "${_pkgsrc}::git+${_repo}#branch=${_branch}"
+  'vesktop.desktop'
+  'vesktop-flags-wrapper.sh'
+  '1242.patch'
+  '1251.patch'
+)
 
 sha256sums=('SKIP'
-            '98fa8f661b065c2d825e24f0055a40ae01d58d23628ad7ebf6914296209dd43c'
-            'ca47fc4e1f4dd5ec44c03dbb6dc0bde1c40f1ec7f9cb568626f3ed157220efe2')
+            'c7734c79b1329161d57aabe851f8f346b24d02824a6081d8cfb8355945e61b1d'
+            'a97a9dbef2fd14a6a931f78a1ddce5f6f50944971492104515fdce58c7fc55a5'
+            'd9eea2a454b173d16350ecf0bbf5a5f7da1364c882f6da33cf2015e2879783c1'
+            '8f8e347aed6531762a049f40268e91bb9f6bc3ff6eef871a8cfe20ad4a233c2f')
+b2sums=('SKIP'
+        '18f00fecda0f4293d6c4429f3590fadef1f212fe161327dffb5c3fbc436845f6b8a96d1557a5b120bca2e0c06e459849b0a2966f69c22000b90e7d087ceb1606'
+        '10030f288016cd98672bd23628c54efeaac6a04d82fe5b72200441ae9e0708c26827a86729e4404f46ef7775766503b8067b48aef84b6631b08b17abf56e7a45'
+        'cffb560fa76d9260c139a274eb668c30baf71724bd9778d272f3c9e5d8b6c14cd843debe19f9aa38ab3ff1edd782839e129a8ef116050bde1e2797e290e2f73c'
+        '7f92af8ebf3a5e649da451078957a3125f4cc6e7c0756546d876dbfaa05958f35f60f0578a00a8553582422d7488276cf3c53ef4e0c641be6dbe6d1eb538b86d')
 
 pkgver() {
-  cd "$_pkgname"
-  git describe --long --tags --abbrev=7 --exclude='*[a-zA-Z][a-zA-Z]*' \
-    | sed -E 's/^[^0-9]*//;s/([^-]*-g)/r\1/;s/-/./g'
+  cd "${srcdir}/${_pkgsrc}"
+
+  local _latest_tag _rev_count _commit
+  _latest_tag="$(git tag --sort=-v:refname | grep -E '^v?[0-9]+\.[0-9]+\.[0-9]+$' | head -n1)"
+  _latest_tag="${_latest_tag#v}"
+  _rev_count="$(git rev-list --count HEAD)"
+  _commit="$(git rev-parse --short HEAD)"
+
+  printf '%s.r%s.g%s\n' "${_latest_tag:-0.0.0}" "${_rev_count}" "${_commit}"
+}
+
+prepare() {
+  cd "${srcdir}/${_pkgsrc}"
+
+  patch -Np1 -i "${srcdir}/1242.patch"
+  patch -Np1 -i "${srcdir}/1251.patch"
+}
+
+_approve_pnpm_builds() {
+  node <<'EOF'
+const fs = require("node:fs");
+const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+pkg.pnpm ??= {};
+pkg.pnpm.onlyBuiltDependencies ??= [];
+for (const dep of ["@vencord/venmic", "electron", "esbuild", "arrpc"]) {
+  if (!pkg.pnpm.onlyBuiltDependencies.includes(dep)) {
+    pkg.pnpm.onlyBuiltDependencies.push(dep);
+  }
+}
+fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
+EOF
+}
+
+_nvm_env() {
+  local _cache_root="${SRCDEST:-${srcdir}}"
+
+  export HOME="${_cache_root}/${pkgname}-node-home"
+  export XDG_CACHE_HOME="${HOME}/.cache"
+  export XDG_CONFIG_HOME="${HOME}/.config"
+  export XDG_DATA_HOME="${HOME}/.local/share"
+
+  export NVM_DIR="${_cache_root}/${pkgname}-node-nvm"
+  export COREPACK_HOME="${_cache_root}/${pkgname}-corepack"
+
+  source /usr/share/nvm/init-nvm.sh || [[ $? != 1 ]]
+  nvm install "${_nodeversion}"
+  nvm use "${_nodeversion}"
+  corepack enable
+}
+
+_pnpm_env() {
+  corepack prepare "$(node -p "require('./package.json').packageManager")" --activate
+}
+
+_build_libvesktop() {
+  (
+    cd packages/libvesktop
+
+    npm_config_cache="${XDG_CACHE_HOME}/npm" \
+      npm install --include=dev --no-audit --no-fund --no-package-lock --ignore-scripts
+
+    npm_config_cache="${XDG_CACHE_HOME}/npm" \
+      npm run build
+  )
 }
 
 build() {
-  cd "$srcdir/$_pkgname"
+  _nvm_env
 
-  pnpm i --frozen-lockfile
-  pnpm package:dir
+  cd "${srcdir}/${_pkgsrc}"
+  _pnpm_env
+
+  _approve_pnpm_builds
+  corepack pnpm install --frozen-lockfile
+  _build_libvesktop
+  corepack pnpm updateArrpcDB
+  corepack pnpm build
+  corepack pnpm exec electron-builder --dir
 }
 
 package() {
-  cd "$srcdir/$_pkgname"
+  local _bundle="${srcdir}/${_pkgsrc}/dist/linux-unpacked"
+  local _install_root="${pkgdir}/opt/vesktop"
+  local _app_exec="/opt/vesktop/vesktop"
+  local _electron_version=""
+  local _file
 
-  # Create necessary directories
-  install -d "$pkgdir/usr/lib/$name"
-  install -d "$pkgdir/usr/bin"
+  if [[ ! -d "${_bundle}" ]]; then
+    _bundle="$(find "${srcdir}/${_pkgsrc}/dist" -maxdepth 1 -type d -name 'linux-*unpacked' -print -quit)"
+  fi
 
-  cp -R dist/linux-*unpacked/. "$pkgdir/usr/lib/$name"
+  [[ -n "${_bundle}" && -d "${_bundle}" ]] || {
+    printf '%s\n' "ERROR: could not locate Vesktop Electron bundle."
+    return 1
+  }
 
-  install -Dm644 "../vesktop.desktop" "$pkgdir/usr/share/applications/$name.desktop" # Install desktop entry
-  install -Dm644 "LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE" # Install license
-  install -Dm644 "build/icon.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/$name.svg" # Install icons
+  install -d "${_install_root}"
+  cp -a "${_bundle}/." "${_install_root}/"
 
-  install -Dm755 "../vesktop.sh" "$pkgdir/usr/bin/$name" # Start script
+  install -Dm644 "${srcdir}/${_pkgsrc}/build/icon.svg" "${pkgdir}/usr/share/icons/hicolor/scalable/apps/vesktop.svg"
+  install -Dm644 "${srcdir}/vesktop.desktop" "${pkgdir}/usr/share/applications/vesktop.desktop"
+  install -Dm644 "${srcdir}/${_pkgsrc}/LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+
+  if [[ -x "${_install_root}/Vesktop" ]]; then
+    _app_exec="/opt/vesktop/Vesktop"
+  fi
+
+  sed -e "s#@VESKTOP_EXEC@#${_app_exec}#g" "${srcdir}/vesktop-flags-wrapper.sh" >"${srcdir}/vesktop"
+
+  if grep -q '@[A-Z_][A-Z_]*@' "${srcdir}/vesktop"; then
+    printf '%s\n' "ERROR: unresolved wrapper placeholder(s):"
+    grep -n '@[A-Z_][A-Z_]*@' "${srcdir}/vesktop"
+    return 1
+  fi
+
+  install -Dm755 "${srcdir}/vesktop" "${pkgdir}/usr/bin/vesktop"
+
+  for _file in "${_install_root}/vesktop" "${_install_root}/Vesktop"; do
+    if [[ -x "${_file}" ]]; then
+      _electron_version="$(strings "${_file}" | grep -Pom1 'Electron/[0-9.]+' || true)"
+      [[ -n "${_electron_version}" ]] && break
+    fi
+  done
+
+  _electron_version="${_electron_version#Electron/}"
+  if [[ -n "${_electron_version}" ]]; then
+    install -Dm644 /dev/stdin "${_install_root}/electron_version" <<<"${_electron_version}"
+  fi
+
+  chmod -R u=rwX,go=rX "${pkgdir}"
 }
