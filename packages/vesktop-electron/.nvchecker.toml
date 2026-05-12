@@ -1,0 +1,5 @@
+[vesktop-electron]
+source = "github"
+github = "Vencord/Vesktop"
+use_max_tag = true
+prefix = "v"
