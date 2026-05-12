@@ -2,7 +2,7 @@
 _pkgname=figma-linux
 pkgname="${_pkgname}-electron"
 pkgver=0.11.5
-pkgrel=1
+pkgrel=2
 pkgdesc="Unofficial Electron-based Figma desktop client for Linux (system Electron)"
 arch=('x86_64' 'aarch64')
 url="https://github.com/Figma-Linux/figma-linux"
@@ -11,7 +11,8 @@ license=('GPL-2.0-only')
 provides=('figma-linux')
 conflicts=('figma-linux' 'figma-linux-git' 'figma-linux-electron-git')
 
-depends=('electron' 'libdbusmenu-gtk3' 'libdbusmenu-glib' 'libindicator-gtk3' 'hicolor-icon-theme')
+options=('!debug' '!strip')
+depends=('bash' 'electron30' 'libdbusmenu-gtk3' 'libdbusmenu-glib' 'libindicator-gtk3' 'hicolor-icon-theme')
 makedepends=('nodejs' 'npm')
 optdepends=(
 	'xdg-utils: open links/files via xdg-open'
@@ -79,11 +80,12 @@ build() {
 
 	# Build a linux dir so we get app.asar/app.asar.unpacked produced consistently.
 	# electronDist points at system electron distribution. Even if it copies, we don’t install those runtime files.
-	npm exec -c "electron-builder --linux dir --config=config/builder.json -c.electronDist=/usr/lib/electron"
+	npm exec -c "electron-builder --linux dir --config=config/builder.json -c.electronDist=/usr/lib/electron30"
 }
 
 package() {
 	cd "${srcdir}/${_pkgname}-${pkgver}"
+	local _electron_version_full
 
 	local _out=""
 	_out="$(find . -maxdepth 3 -type d -name 'linux-*unpacked' 2>/dev/null | head -n 1 || true)"
@@ -98,6 +100,8 @@ package() {
 		exit 1
 	fi
 
+	_electron_version_full="$(<"/usr/lib/electron30/version")"
+
 	install -d "${pkgdir}/usr/lib/${_pkgname}"
 	install -Dm644 "${_res}/app.asar" "${pkgdir}/usr/lib/${_pkgname}/app.asar"
 
@@ -109,6 +113,7 @@ package() {
 	install -Dm755 "${srcdir}/figma-linux.sh" "${pkgdir}/usr/bin/${_pkgname}"
 	install -Dm644 "${srcdir}/figma-linux.desktop" "${pkgdir}/usr/share/applications/${_pkgname}.desktop"
 	install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${_pkgname}/LICENSE"
+	install -Dm644 /dev/stdin "${pkgdir}/usr/lib/${_pkgname}/electron_version" <<<"${_electron_version_full}"
 
 	# Icons from upstream repo (not from the runtime bundle).
 	local -a _icon_sizes=(24x24 32x32 36x36 48x48 64x64 72x72 96x96 128x128 192x192 256x256 384x384 512x512 scalable)
@@ -120,4 +125,5 @@ package() {
 			install -Dm644 "${_src}" "${pkgdir}/usr/share/icons/hicolor/${_size}/apps/${_pkgname}.${_ext}"
 		done
 	done
+	chmod -R u=rwX,go=rX "${pkgdir}"
 }
