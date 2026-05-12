@@ -50,5 +50,5 @@ if [[ -n "${CHROOT_ARCH_MIRRORLIST}" ]]; then
   mkarchroot_args+=(-f "${CHROOT_ARCH_MIRRORLIST}:/etc/pacman.d/mirrorlist")
 fi
 
-run0 mkdir -p -- "$CHROOT_ROOT"
+run0 mkdir -p -- "$(dirname -- "$CHROOT_ROOT")"
 run0 mkarchroot "${mkarchroot_args[@]}" "$CHROOT_ROOT" base-devel
