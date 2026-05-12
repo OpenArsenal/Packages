@@ -27,9 +27,7 @@ export NODE_ENV=production
 set -f
 
 if [ "$(id -u)" -eq 0 ] && [ -z "${ELECTRON_RUN_AS_NODE:-}" ]; then
-  # shellcheck disable=SC2086
   exec /usr/bin/electron /usr/lib/vesktop/app.asar --no-sandbox $VESKTOP_USER_FLAGS "$@"
 else
-  # shellcheck disable=SC2086
   exec /usr/bin/electron /usr/lib/vesktop/app.asar $VESKTOP_USER_FLAGS "$@"
 fi
