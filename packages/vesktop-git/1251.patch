@@ -1,0 +1,23 @@
+diff --git a/src/main/index.ts b/src/main/index.ts
+index 00dec10..12d41ed 100644
+--- a/src/main/index.ts
++++ b/src/main/index.ts
+@@ -23,6 +23,18 @@ import { isDeckGameMode } from "./utils/steamOS";
+ 
+ console.log("Vesktop v" + app.getVersion());
+ 
++const WEBRTC_IP_HANDLING_POLICY = "default_public_and_private_interfaces";
++
++// Force Chromium/WebRTC to apply the policy before any renderer is spawned.
++app.commandLine.appendSwitch("force-webrtc-ip-handling-policy", WEBRTC_IP_HANDLING_POLICY);
++
++app.on("web-contents-created", (_event, webContents) => {
++    // Prefer the OS/default route for WebRTC instead of letting it bind
++    // arbitrary non-default interfaces. This avoids Discord calls and streams
++    // getting stuck at DTLS Connecting when VPN adapters are present.
++    webContents.setWebRTCIPHandlingPolicy(WEBRTC_IP_HANDLING_POLICY);
++});
++
+ // Make the Vencord files use our DATA_DIR
+ process.env.VENCORD_USER_DATA_DIR = DATA_DIR;
+ 

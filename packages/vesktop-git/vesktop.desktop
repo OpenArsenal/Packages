@@ -1,12 +1,20 @@
 [Desktop Entry]
-Name=Vesktop
-Exec=/usr/bin/vesktop %U
-Terminal=false
 Type=Application
+Name=Vesktop
+Comment=Standalone Electron-based Discord app with Vencord and improved Linux support
+Exec=/usr/bin/vesktop %U
 Icon=vesktop
+Terminal=false
+StartupNotify=true
+Categories=Network;InstantMessaging;
+MimeType=x-scheme-handler/discord;
 StartupWMClass=vesktop
-GenericName=Internet Messenger
-Categories=Network;
-Keywords=discord;vencord;electron;chat;
-Comment=Vesktop is a custom Discord App aiming to give you better performance and improve linux support. Vencord comes pre-installed
-MimeType=x-scheme-handler/discord
+Actions=Wayland;X11;
+
+[Desktop Action Wayland]
+Name=Wayland Backend
+Exec=/usr/bin/vesktop --wayland %U
+
+[Desktop Action X11]
+Name=X11 / XWayland Backend
+Exec=/usr/bin/vesktop --x11 %U
