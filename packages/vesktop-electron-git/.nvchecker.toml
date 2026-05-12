@@ -1,0 +1,4 @@
+[vesktop-electron-git]
+source = "git"
+git = "https://github.com/Vencord/Vesktop.git"
+use_commit = true
