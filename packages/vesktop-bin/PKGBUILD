@@ -1,54 +1,114 @@
-# Maintainer: Okiki <okiki@thunderstrike.co>
 pkgname=vesktop-bin
-_pkgname=Vesktop
-_appname=vencord-desktop
 pkgver=1.6.5
 pkgrel=1
-pkgdesc="A cross platform electron-based desktop app aiming to give you a snappier Discord experience with Vencord pre-installed.(Prebuilt version.Use system-wide electron)"
-arch=(
-    'aarch64'
-    'x86_64'
-)
+pkgdesc="A standalone Electron-based Discord app with Vencord & improved Linux support (prebuilt release; bundled Electron)"
+arch=('x86_64' 'aarch64')
 url="https://github.com/Vencord/Vesktop"
 license=('GPL-3.0-only')
-provides=(
-    "${pkgname%-bin}"
-)
+options=('!debug' '!strip')
+
+_pkgname=Vesktop
+_pkgsrc='opt/Vesktop'
+
+provides=("vesktop=${pkgver}")
 conflicts=(
-    "${pkgname%-bin}"
+  'vesktop'
+  'vesktop-git'
+  'vesktop-electron'
+  'vesktop-electron-git'
 )
+install='vesktop.install'
+
 depends=(
-    "electron"
-    # 'debugedit'
+  'alsa-lib'
+  'at-spi2-core'
+  'bash'
+  'cairo'
+  'dbus'
+  'expat'
+  'glib2'
+  'gtk3'
+  'libcups'
+  'libx11'
+  'libxcb'
+  'libxcomposite'
+  'libxdamage'
+  'libxext'
+  'libxfixes'
+  'libxkbcommon'
+  'libxrandr'
+  'mesa'
+  'nspr'
+  'nss'
+  'pango'
+  'systemd-libs'
+  'zlib'
 )
-optdepends=(
-    'speech-dispatcher: High-level device independent layer for speech synthesis interface'
+
+source=(
+  'vesktop.desktop'
+  'vesktop-flags-wrapper.sh'
 )
-source_aarch64=("${pkgname%-bin}-${pkgver}-aarch64.rpm::${url}/releases/download/v${pkgver}/${pkgname%-bin}-${pkgver}.aarch64.rpm")
-source_x86_64=("${pkgname%-bin}-${pkgver}-x86_64.rpm::${url}/releases/download/v${pkgver}/${pkgname%-bin}-${pkgver}.x86_64.rpm")
-source=("${pkgname%-bin}.sh")
-sha256sums=('31ad33b633744f5361abd964be306cea53ae1050e760c787115f7eca60045ae6')
-sha256sums_aarch64=('a6314a88debfe370c690cc7549d921c8e08fd79af1bdc40b2b8ef463d057387d')
+source_x86_64=(
+  "vesktop-${pkgver}-x86_64.rpm::${url}/releases/download/v${pkgver}/vesktop-${pkgver}.x86_64.rpm"
+)
+source_aarch64=(
+  "vesktop-${pkgver}-aarch64.rpm::${url}/releases/download/v${pkgver}/vesktop-${pkgver}.aarch64.rpm"
+)
+
+sha256sums=('c7734c79b1329161d57aabe851f8f346b24d02824a6081d8cfb8355945e61b1d'
+            'a97a9dbef2fd14a6a931f78a1ddce5f6f50944971492104515fdce58c7fc55a5')
 sha256sums_x86_64=('6fd5669fe2d5b1ad9bec10a8af1cf859bd911226528eae923ba70e6ef032c134')
-_get_electron_version() {
-    _elec_ver="$(strings "${srcdir}/opt/${_pkgname}/${pkgname%-bin}" | grep '^Chrome/[0-9.]* Electron/[0-9]' | cut -d'/' -f3 | cut -d'.' -f1)"
-    echo -e "The electron version is: \033[1;31m${_elec_ver}\033[0m"
-}
-prepare() {
-    sed -i -e "
-        s/@electronversion@/${_electronversion}/g
-        s/@appname@/${pkgname%-bin}/g
-        s/@runname@/app.asar/g
-        s/@cfgdirname@/${pkgname%-bin}/g
-        s/@options@/env ELECTRON_OZONE_PLATFORM_HINT=auto/g
-    " "${srcdir}/${pkgname%-bin}.sh"
-    _get_electron_version
-    sed -i "s/\/opt\/${_pkgname}\///g" "${srcdir}/usr/share/applications/${pkgname%-bin}.desktop"
-}
+sha256sums_aarch64=('a6314a88debfe370c690cc7549d921c8e08fd79af1bdc40b2b8ef463d057387d')
+b2sums=('18f00fecda0f4293d6c4429f3590fadef1f212fe161327dffb5c3fbc436845f6b8a96d1557a5b120bca2e0c06e459849b0a2966f69c22000b90e7d087ceb1606'
+        '10030f288016cd98672bd23628c54efeaac6a04d82fe5b72200441ae9e0708c26827a86729e4404f46ef7775766503b8067b48aef84b6631b08b17abf56e7a45')
+b2sums_x86_64=('c87c67d43bda6a78706ab71a9b5a9716561b08883dd7f2bec15cf256cd6256eff7c0c3645e5b0896861b6c7bf6fb8d4d01b9e4a0a1e667f68a4c2d0c6f14e6ab')
+b2sums_aarch64=('8e576c58f2e93d2ed6827df09bd4a88505bb44f7812ff1011e8ea453b4d0cbb396481bd697b79f54eff7f6d5f49e10f0fe2179845d08d68674d1d888f54f9284')
+
 package() {
-    install -Dm755 "${srcdir}/${pkgname%-bin}.sh" "${pkgdir}/usr/bin/${pkgname%-bin}"
-    install -Dm644 "${srcdir}/opt/${_pkgname}/resources/app.asar" -t "${pkgdir}/usr/lib/${pkgname%-bin}"
-    install -Dm644 "${srcdir}/usr/share/applications/${pkgname%-bin}.desktop" -t "${pkgdir}/usr/share/applications"
-    install -Dm644 "${srcdir}/usr/share/icons/hicolor/scalable/apps/${pkgname%-bin}.svg" \
-        -t "${pkgdir}/usr/share/icons/hicolor/scalable/apps"
+  local _install_root="${pkgdir}/opt/vesktop"
+  local _app_exec="/opt/vesktop/vesktop"
+  local _electron_version=""
+  local _file
+
+  install -d "${_install_root}"
+  cp -a "${srcdir}/${_pkgsrc}/." "${_install_root}/"
+
+  install -Dm644 "${srcdir}/vesktop.desktop"     "${pkgdir}/usr/share/applications/vesktop.desktop"
+
+  if [[ -f "${srcdir}/usr/share/icons/hicolor/scalable/apps/vesktop.svg" ]]; then
+    install -Dm644 "${srcdir}/usr/share/icons/hicolor/scalable/apps/vesktop.svg"       "${pkgdir}/usr/share/icons/hicolor/scalable/apps/vesktop.svg"
+  fi
+
+  if [[ -f "${srcdir}/usr/share/licenses/vesktop/LICENSE" ]]; then
+    install -Dm644 "${srcdir}/usr/share/licenses/vesktop/LICENSE"       "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+  fi
+
+  if [[ -x "${_install_root}/Vesktop" ]]; then
+    _app_exec="/opt/vesktop/Vesktop"
+  fi
+
+  sed -e "s#@VESKTOP_EXEC@#${_app_exec}#g"     "${srcdir}/vesktop-flags-wrapper.sh" >"${srcdir}/vesktop"
+
+  if grep -q '@[A-Z_][A-Z_]*@' "${srcdir}/vesktop"; then
+    printf '%s\n' "ERROR: unresolved wrapper placeholder(s):"
+    grep -n '@[A-Z_][A-Z_]*@' "${srcdir}/vesktop"
+    return 1
+  fi
+
+  install -Dm755 "${srcdir}/vesktop" "${pkgdir}/usr/bin/vesktop"
+
+  for _file in "${_install_root}/vesktop" "${_install_root}/Vesktop"; do
+    if [[ -x "${_file}" ]]; then
+      _electron_version="$(strings "${_file}" | grep -Pom1 'Electron/[0-9.]+' || true)"
+      [[ -n "${_electron_version}" ]] && break
+    fi
+  done
+
+  _electron_version="${_electron_version#Electron/}"
+  if [[ -n "${_electron_version}" ]]; then
+    install -Dm644 /dev/stdin "${_install_root}/electron_version" <<<"${_electron_version}"
+  fi
+
+  chmod -R u=rwX,go=rX "${pkgdir}"
 }
