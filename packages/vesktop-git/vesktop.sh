@@ -21,5 +21,4 @@ read_flags() {
 VESKTOP_USER_FLAGS=$(read_flags "$config_home/vesktop-flags.conf")
 
 set -f
-# shellcheck disable=SC2086
 exec /usr/lib/vesktop/vesktop $VESKTOP_USER_FLAGS "$@"
