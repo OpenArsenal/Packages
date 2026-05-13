@@ -1,7 +1,7 @@
 # Maintainer: Okiki Ojo <okiki@thunderstrike.co>
 
 pkgname=calibre-bin
-pkgver='9.6.0'
+pkgver=9.8.0
 pkgrel=1
 pkgdesc="Official binary version Calibre"
 arch=(x86_64 aarch64)
@@ -36,32 +36,59 @@ source_aarch64=(
 
 # Checksums (using SHA-512 as provided by calibre)
 sha512sums=('f998af4d431d95149528691daf7d43c75052e6586c54b4d5595a6a8886d7d0b97ff355a1e25b64e6a606b679b096c49d6048a82ff1061611ad87ed0bb587e147')
-sha512sums_x86_64=('3cd2a5e8351d9e508398267c3e6ea902882e29a7e8379a7fc66c29fb348f210bb0d13dd941d1215b946aaec69dc605b96b2b887050ebf2b4c1a0fb6974ad2689'
+sha512sums_x86_64=('9ed09657d256104cddaac8def92498dd174e7916d73572fe206ac91e68295b257c5be17300e4084c271470ba5360926e7df1795a8b63981a71dcbd22ed0319bb'
                    'SKIP')
-sha512sums_aarch64=('b83a034b75acf3c5acdab531e774df8935870907ab53318550ee5f98b6f54da82d701e57b78121040ccbee25742b0b04e4ff4fab9854d20db77f2e0327ac7416'
+sha512sums_aarch64=('99ca6e133782a7a7be6282d5506442b0411f4f35c8d54a719f700c6c5f4ccd9e61c27bdf5df6d9c18df15c77cdd8c9592560a69e697884014dac0249992f256e'
                     'SKIP')
 
 package() {
   install -dm755 "$pkgdir/usr/bin" "$pkgdir/opt/calibre"
 
+  # Upstream extracts directly into $srcdir rather than a calibre-* directory.
+  local payload_entries=(
+    bin
+    calibre
+    calibre-complete
+    calibre-customize
+    calibredb
+    calibre-debug
+    calibre-parallel
+    calibre_postinstall
+    calibre-server
+    calibre-smtp
+    ebook-convert
+    ebook-device
+    ebook-edit
+    ebook-meta
+    ebook-polish
+    ebook-viewer
+    fetch-ebook-metadata
+    lib
+    libexec
+    lrf2lrs
+    lrfviewer
+    lrs2lrf
+    markdown-calibre
+    plugins
+    resources
+    share
+    translations
+    web2disk
+  )
+  local entry
 
-  # Find the first top-level directory that looks like the calibre payload.
-  # (Adjust this heuristic once you confirm the extracted layout.)
-  local payload_dir
-  payload_dir="$(find "$srcdir" -maxdepth 1 -type d -name 'calibre*' -print -quit)"
+  for entry in "${payload_entries[@]}"; do
+    if [[ ! -e "$srcdir/$entry" ]]; then
+      echo "ERROR: Missing expected calibre payload entry: $entry" >&2
+      return 1
+    fi
 
-  if [[ -z "$payload_dir" ]]; then
-    echo "ERROR: Could not find extracted calibre payload directory in \$srcdir" >&2
-    return 1
-  fi
+    cp -a "$srcdir/$entry" "$pkgdir/opt/calibre/"
+  done
 
-  # Copy only what you actually intend (adjust if the extracted directory name differs)
-  # Example assumes the txz extracts directly into $srcdir with calibre binaries at the top-level.
-  cp -aT "$payload_dir" "$pkgdir/opt/calibre"
-
-  # If your share.tar.xz provides /share, move it under /usr
-  if [[ -d "$pkgdir/opt/calibre/share" ]]; then
-    mv -f "$pkgdir/opt/calibre/share" "$pkgdir/usr/"
+  # Desktop integration assets come from our packaged share tree.
+  if [[ -d "$srcdir/share" ]]; then
+    cp -a "$srcdir/share" "$pkgdir/usr/"
   fi
 
   # Symlink top-level executables from /opt/calibre into /usr/bin
