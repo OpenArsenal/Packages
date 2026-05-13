@@ -1,11 +1,16 @@
-#!/bin/bash
-XDG_CONFIG_HOME=${XDG_CONFIG_HOME:-~/.config}
+#!/usr/bin/env bash
+XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 appname='cherry-studio'
+declare -a user_flags=()
 
 # Allow users to override command-line options
-if [[ -f $XDG_CONFIG_HOME/${appname}-flags.conf ]]; then
-    mapfile -t _USER_FLAGS < <(sed 's/#.*//' "$XDG_CONFIG_HOME/${appname}-flags.conf" | tr '\n' ' ')
+if [[ -f "${XDG_CONFIG_HOME}/${appname}-flags.conf" ]]; then
+    while IFS= read -r line; do
+        [[ "${line}" =~ ^[[:space:]]*# ]] && continue
+        [[ -z "${line//[[:space:]]/}" ]] && continue
+        user_flags+=("${line}")
+    done < "${XDG_CONFIG_HOME}/${appname}-flags.conf"
 fi
 
 # DO NOT change __ELECTRON__, it's updated by PKGBUILD
-exec __ELECTRON__ /usr/lib/${appname}/app.asar "$@" "${USER_FLAGS[@]}"
+exec __ELECTRON__ /usr/lib/${appname}/app.asar "${user_flags[@]}" "$@"

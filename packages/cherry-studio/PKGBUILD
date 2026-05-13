@@ -2,16 +2,19 @@
 # Contributor: zxp19821005 <zxp19821005 at 163 dot com>
 pkgname=cherry-studio
 _pkgname="Cherry Studio"
-pkgver='1.8.4'
-_electron=electron39
+pkgver=1.9.5
+_electron=electron41
 pkgrel=1
-pkgdesc="A desktop client that supports for multiple LLM providers.(Use system-wide electron)"
+pkgdesc="Desktop client for multiple LLM providers (system Electron)"
 arch=('x86_64')
 url="https://cherry-ai.com/"
 _ghurl="https://github.com/CherryHQ/cherry-studio"
-license=('MIT')
+license=('AGPL-3.0-only')
+options=('!debug' '!strip')
 depends=(
+    'bash'
     "${_electron}"
+    'libevdev'
     imagemagick
     ripgrep
 )
@@ -32,8 +35,8 @@ source=(
     "${pkgname}-${pkgver}.tar.gz::${_ghurl}/archive/refs/tags/v${pkgver}.tar.gz"
     "${pkgname}.sh"
 )
-sha256sums=('bd3844ee4a8928a1a7398975cd91a7768eb3d8898fd3eab2ac09280d8aaef0a5'
-            '44a824951155af10ff8d683a0856249c2033a195b9ba04cb5bb8dcfdff4ca463')
+sha256sums=('22a9fe8d51dfe12a715d33359e19e0bf213e96a43d8df1c4ba256bdf49e68e64'
+            'e0b84fe9dfd5de88d8c5393d02b3e14bd42cef54ac714dfa76314a3b31edc4e2')
 
 prepare() {
     sed -e "s|__ELECTRON__|${_electron}|g" -i "${srcdir}/${pkgname}.sh"
@@ -60,11 +63,12 @@ prepare() {
 }
 build() {
     cd "${srcdir}/${pkgname}-${pkgver}"
-    export HOME=${srcdir}
+    export HOME="${srcdir}"
     export ELECTRON_SKIP_BINARY_DOWNLOAD=1
-    export TMPDIR=${srcdir}
+    export TMPDIR="${srcdir}"
     export npm_config_nodedir=/usr
     export SHARP_IGNORE_GLOBAL_LIBVIPS=1
+    # Upstream pins Node in .node-version/.nvmrc; a version manager is optional.
     ELECTRON_SKIP_BINARY_DOWNLOAD=1 pnpm install
     export NODE_ENV=production
     pnpm run build:unpack
@@ -76,15 +80,19 @@ _clean() {
     ln -sf /usr/bin/rg "@anthropic-ai/claude-agent-sdk/vendor/ripgrep/x64-linux/rg"
 }
 package() {
+    local _electron_version_full
+
+    _electron_version_full="$(<"/usr/lib/${_electron}/version")"
 
     install -Dm755 "${pkgname}.sh" "${pkgdir}/usr/bin/${pkgname}"
-    install -Dm644 "${pkgname}.desktop" -t "${pkgdir}/usr/share/applications"
+    install -Dm644 "${srcdir}/${pkgname}.desktop" -t "${pkgdir}/usr/share/applications"
 
     cd "${srcdir}/${pkgname}-${pkgver}"
     install -Dm644 "dist/linux-unpacked"/resources/app.asar -t "${pkgdir}/usr/lib/${pkgname}"
     cp -Pr --no-preserve=ownership "dist/linux-unpacked"/resources/app.asar.unpacked "${pkgdir}/usr/lib/${pkgname}"
     install -Dm644 "build/icon.png" "${pkgdir}/usr/share/pixmaps/${pkgname}.png"
     install -Dm644 "LICENSE" -t "${pkgdir}/usr/share/licenses/${pkgname}"
+    install -Dm644 /dev/stdin "${pkgdir}/usr/lib/${pkgname}/electron_version" <<<"${_electron_version_full}"
 
     for f in build/icons/*; do
         res="${f##*/}"
@@ -92,4 +100,5 @@ package() {
         install -Dm644 "$f" "${pkgdir}/usr/share/icons/hicolor/${res}/apps/${pkgname}.png"
     done
     _clean
+    chmod -R u=rwX,go=rX "${pkgdir}"
 }
