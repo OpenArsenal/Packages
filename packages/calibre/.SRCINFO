@@ -1,6 +1,6 @@
 pkgbase = calibre
 	pkgdesc = Ebook management application
-	pkgver = 9.6.0
+	pkgver = 9.8.0
 	pkgrel = 1
 	url = https://calibre-ebook.com
 	arch = x86_64
@@ -84,10 +84,10 @@ pkgbase = calibre
 	replaces = calibre-common
 	replaces = calibre-python3
 	options = !strip
-	source = calibre-9.6.0.tar.xz::https://download.calibre-ebook.com/9.6.0/calibre-9.6.0.tar.xz
+	source = calibre-9.8.0.tar.xz::https://download.calibre-ebook.com/9.8.0/calibre-9.8.0.tar.xz
 	source = qt-6.10.patch
 	validpgpkeys = 3CE1780F78DD88DF45194FD706BC317B515ACE7C
-	sha256sums = c4d740d50a0c2e38ac33af10e815366cbd2d0846a06dafca3008eaafe2f09bea
+	sha256sums = ddd916a246fc821e093dbac1b09f5d1b2fc84b53df36b014efbe6ac68f0268ef
 	sha256sums = 7b878663100c38ac849570afc8ee41cfcd55609367a5cb38305ef73bb3094f4e
 
 pkgname = calibre
