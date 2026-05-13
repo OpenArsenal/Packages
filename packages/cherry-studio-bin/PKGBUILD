@@ -2,9 +2,9 @@
 
 pkgname=cherry-studio-bin
 _pkgname=cherry-studio
-pkgver='1.9.3'
-pkgrel=3
-pkgdesc="Prebuilt desktop client for multiple LLM providers with bundled Electron runtime"
+pkgver=1.9.5
+pkgrel=1
+pkgdesc="Desktop client for multiple LLM providers (prebuilt release; bundled Electron)"
 arch=('x86_64')
 url="https://github.com/cherryHQ/cherry-studio"
 license=('AGPL-3.0-only')
@@ -13,6 +13,7 @@ depends=(
   'alsa-lib'
   'at-spi2-core'
   'atk'
+  'bash'
   'cairo'
   'cups'
   'dbus'
@@ -21,6 +22,7 @@ depends=(
   'glib2'
   'glibc'
   'gtk3'
+  'libevdev'
   'libdrm'
   'libx11'
   'libxcb'
@@ -42,17 +44,41 @@ optdepends=(
   'xdg-utils: open links in the default desktop applications'
 )
 provides=("${pkgname%-bin}=${pkgver}")
+conflicts=("${pkgname%-bin}")
 source=(
   "${_pkgname}-${pkgver}.AppImage::${url}/releases/download/v${pkgver}/Cherry-Studio-${pkgver}-${arch}.AppImage"
   "LICENSE-${pkgver}::${url}/raw/v${pkgver}/LICENSE"
   "${pkgname}.sh"
 )
 noextract=("${_pkgname}-${pkgver}.AppImage")
-conflicts=("$_pkgname")
-replaces=("${pkgname%-bin}")
-sha256sums=('e8df43c6568c8cbc263244d11d01b3ffb2a4948a4b61a2f31c1b9bffa8029c63'
+sha256sums=('8438541c88569296c12b17d7c590a68da0cd338bb82f134ea2e02fe7559e679b'
             '0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0'
-            '6aed5e7ca95679b2545540241dc9e6b055da1dfde696006a1712f90cfbfaec92')
+            '207d0e0ea9a3d1a10deed29668b9206fae1e21cfabed87388c85b74f196f2ea0')
+
+_remove_updater_metadata() {
+  local _root="$1"
+
+  [[ -d "${_root}" ]] || return 0
+
+  find "${_root}" -type f \( \
+    -name 'app-update.yml' -o \
+    -name 'dev-app-update.yml' -o \
+    -name 'latest*.yml' \
+  \) -delete 2>/dev/null || true
+}
+
+_record_electron_version() {
+  local _binary="$1"
+  local _output="$2"
+  local _electron_version
+
+  [[ -x "${_binary}" ]] || return 0
+
+  _electron_version="$(strings "${_binary}" 2>/dev/null | sed -n 's|.*Electron/\([0-9][0-9.]*\).*|\1|p' | head -n1 || true)"
+  [[ -n "${_electron_version}" ]] || return 0
+
+  install -Dm644 /dev/stdin "${_output}" <<<"${_electron_version}"
+}
 
 prepare() {
   cd "$srcdir"
@@ -67,11 +93,13 @@ prepare() {
 
 package() {
   cd "$srcdir"
+  local _install_root="${pkgdir}/opt/${_pkgname}"
 
-  install -dm755 "${pkgdir}/opt/${_pkgname}" "${pkgdir}/usr/share/licenses/${pkgname}"
+  install -dm755 "${_install_root}" "${pkgdir}/usr/share/licenses/${pkgname}"
   install -Dm755 "${pkgname}.sh" "${pkgdir}/usr/bin/${_pkgname}"
-  cp -a squashfs-root/. "${pkgdir}/opt/${_pkgname}/"
-  chmod 4755 "${pkgdir}/opt/${_pkgname}/chrome-sandbox"
+  cp -a squashfs-root/. "${_install_root}/"
+  chmod 4755 "${_install_root}/chrome-sandbox"
+  _remove_updater_metadata "${_install_root}"
 
   while IFS= read -r -d '' icon; do
     local size
@@ -84,4 +112,6 @@ package() {
   install -Dm644 "LICENSE-${pkgver}" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
   install -Dm644 squashfs-root/LICENSE.electron.txt "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE.electron.txt"
   install -Dm644 squashfs-root/LICENSES.chromium.html "${pkgdir}/usr/share/licenses/${pkgname}/LICENSES.chromium.html"
+  _record_electron_version "${_install_root}/CherryStudio" "${_install_root}/electron_version"
+  chmod -R u=rwX,go=rX "${pkgdir}"
 }
