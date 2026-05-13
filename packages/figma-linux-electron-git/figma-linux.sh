@@ -3,6 +3,7 @@ set -euo pipefail
 
 _APPDIR="/usr/lib/figma-linux"
 _RUN_ASAR="${_APPDIR}/app.asar"
+_ELECTRON_BIN="electron30"
 
 _XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-"${HOME}/.config"}"
 _FLAGS_FILE="${_XDG_CONFIG_HOME}/figma-linux/figma-linux-flags.conf"
@@ -69,13 +70,18 @@ if [[ ! -r "${_RUN_ASAR}" ]]; then
 	exit 1
 fi
 
+if ! command -v "${_ELECTRON_BIN}" >/dev/null 2>&1; then
+	echo "figma-linux: missing ${_ELECTRON_BIN}" >&2
+	exit 1
+fi
+
 cd "${_APPDIR}"
 
 # Root fallback only (don’t pre-enable for everyone).
 if [[ "${EUID}" -eq 0 ]]; then
-	exec electron "${_RUN_ASAR}" --no-sandbox "${DEFAULT_FLAGS[@]}" "${USER_FLAGS[@]}" "$@"
+	exec "${_ELECTRON_BIN}" "${_RUN_ASAR}" --no-sandbox "${DEFAULT_FLAGS[@]}" "${USER_FLAGS[@]}" "$@"
 fi
 
 # Order matters: defaults first, then user, then CLI args
 # (later flags tend to win when duplicates exist).
-exec electron "${_RUN_ASAR}" "${DEFAULT_FLAGS[@]}" "${USER_FLAGS[@]}" "$@"
+exec "${_ELECTRON_BIN}" "${_RUN_ASAR}" "${DEFAULT_FLAGS[@]}" "${USER_FLAGS[@]}" "$@"
