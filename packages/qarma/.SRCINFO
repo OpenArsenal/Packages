@@ -1,0 +1,15 @@
+pkgbase = qarma
+	pkgdesc = Qt6-based Zenity clone and drop-in replacement
+	pkgver = 1.1.1
+	pkgrel = 1
+	url = https://github.com/luebking/qarma
+	arch = x86_64
+	license = GPL-2.0-only
+	depends = gcc-libs
+	depends = glibc
+	depends = libx11
+	depends = qt6-base
+	source = qarma-1.1.1.tar.gz::https://github.com/luebking/qarma/archive/refs/tags/1.1.1.tar.gz
+	sha256sums = b65fc018c826ae8736a040e438de26be9c8d489a017b307b2e5371fa0c567190
+
+pkgname = qarma
