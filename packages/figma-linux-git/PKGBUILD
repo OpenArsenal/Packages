@@ -2,7 +2,7 @@
 _pkgname=figma-linux
 pkgname=${_pkgname}-git
 pkgver=0.11.4.r10.gd9a7a03
-pkgrel=3
+pkgrel=4
 pkgdesc="Unofficial Electron-based Figma desktop client for Linux (bundled Electron, git HEAD)"
 arch=('x86_64' 'aarch64')
 url="https://github.com/Figma-Linux/figma-linux"
@@ -10,10 +10,9 @@ license=('GPL-2.0-only')
 
 provides=('figma-linux')
 conflicts=('figma-linux' 'figma-linux-electron' 'figma-linux-electron-git')
-replaces=("${pkgname%-git}")
 
 options=('!debug' '!strip')
-depends=('gtk3' 'nss' 'alsa-lib' 'hicolor-icon-theme')
+depends=('bash' 'gtk3' 'nss' 'alsa-lib' 'hicolor-icon-theme')
 makedepends=('git' 'nodejs' 'npm')
 optdepends=(
   'xdg-utils: Open links and files'
@@ -29,6 +28,19 @@ source=(
 sha256sums=('SKIP'
             '5029d26b935d5527c9a71f1a3fe81264f92a3d4a9f1c3b71296623d8d9d1edb2'
             '8107c539597b6cb1c38656353956cdad5e8cbdbfd31ace1bb5804c05db8ae4c5')
+
+_record_electron_version() {
+  local _binary="$1"
+  local _output="$2"
+  local _electron_version
+
+  [[ -x "${_binary}" ]] || return 0
+
+  _electron_version="$(strings "${_binary}" 2>/dev/null | sed -n 's|.*Electron/\([0-9][0-9.]*\).*|\1|p' | head -n1 || true)"
+  [[ -n "${_electron_version}" ]] || return 0
+
+  install -Dm644 /dev/stdin "${_output}" <<<"${_electron_version}"
+}
 
 pkgver() {
   cd "${srcdir}/${_pkgname}.git"
@@ -96,6 +108,7 @@ package() {
   cd "${srcdir}/${_pkgname}.git"
 
   local _out=""
+  local _install_root="${pkgdir}/opt/${_pkgname}"
   _out="$(find . -maxdepth 3 -type d -name 'linux-*unpacked' 2>/dev/null | head -n 1 || true)"
 
   if [[ -z "${_out}" || ! -d "${_out}" ]]; then
@@ -103,18 +116,19 @@ package() {
     return 1
   fi
 	# Install entire bundled application (includes electron runtime)
-  install -d "${pkgdir}/usr/lib/${_pkgname}"
-  cp -a "${_out}/." "${pkgdir}/usr/lib/${_pkgname}/"
+  install -d "${_install_root}"
+  cp -a "${_out}/." "${_install_root}/"
 
 	# Create predictable executable name if needed
-  if [[ -x "${pkgdir}/usr/lib/${_pkgname}/${_pkgname}" && ! -e "${pkgdir}/usr/lib/${_pkgname}/${_pkgname}" ]]; then
-    ln -s "${_pkgname}" "${pkgdir}/usr/lib/${_pkgname}/${_pkgname}"
+  if [[ -x "${_install_root}/${_pkgname}" && ! -e "${_install_root}/${_pkgname}" ]]; then
+    ln -s "${_pkgname}" "${_install_root}/${_pkgname}"
   fi
 
 	# Install wrapper, desktop entry, license
   install -Dm755 "${srcdir}/figma-linux.sh" "${pkgdir}/usr/bin/${_pkgname}"
   install -Dm644 "${srcdir}/figma-linux.desktop" "${pkgdir}/usr/share/applications/${_pkgname}.desktop"
   install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${_pkgname}/LICENSE"
+  _record_electron_version "${_install_root}/${_pkgname}" "${_install_root}/electron_version"
 
 	# Install icons from upstream repo (not from our sources)
   local -a _icon_sizes=(24x24 32x32 36x36 48x48 64x64 72x72 96x96 128x128 192x192 256x256 384x384 512x512 scalable)
@@ -127,4 +141,5 @@ package() {
         "${pkgdir}/usr/share/icons/hicolor/${_size}/apps/${_pkgname}.${_ext}"
     done
   done
+  chmod -R u=rwX,go=rX "${pkgdir}"
 }
