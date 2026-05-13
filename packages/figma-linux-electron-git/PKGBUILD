@@ -27,7 +27,7 @@ source=(
 
 sha256sums=('SKIP'
             '5029d26b935d5527c9a71f1a3fe81264f92a3d4a9f1c3b71296623d8d9d1edb2'
-            '8107c539597b6cb1c38656353956cdad5e8cbdbfd31ace1bb5804c05db8ae4c5')
+            '498cdfe8eeeaf6c0514f516fb6f0ac396f1492c717a2b5086a61f5e1ba91f795')
 
 pkgver() {
   cd "${srcdir}/${_pkgname}.git"
