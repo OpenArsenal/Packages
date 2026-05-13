@@ -1,0 +1,20 @@
+pkgbase = qarma-git
+	pkgdesc = Qt6-based Zenity clone and drop-in replacement
+	pkgver = 1.1.1.r6.gd3730ad
+	pkgrel = 1
+	url = https://github.com/luebking/qarma
+	arch = x86_64
+	license = GPL-2.0-only
+	makedepends = git
+	depends = gcc-libs
+	depends = glibc
+	depends = libx11
+	depends = qt6-base
+	provides = qarma=1.1.1.r6.gd3730ad
+	provides = zenity
+	conflicts = qarma
+	conflicts = zenity
+	source = git+https://github.com/luebking/qarma.git
+	sha256sums = SKIP
+
+pkgname = qarma-git

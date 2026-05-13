@@ -1,0 +1,35 @@
+_pkgname=qarma
+pkgname=qarma-git
+pkgver=1.1.1.r6.gd3730ad
+pkgrel=1
+pkgdesc='Qt6-based Zenity clone and drop-in replacement'
+arch=('x86_64')
+url='https://github.com/luebking/qarma'
+license=('GPL-2.0-only')
+depends=('gcc-libs' 'glibc' 'libx11' 'qt6-base')
+makedepends=('git')
+provides=("qarma=${pkgver}" 'zenity')
+conflicts=('qarma' 'zenity')
+source=("git+${url}.git")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd "$_pkgname"
+  git describe --long --tags --abbrev=7 |
+    sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+build() {
+  cd "$_pkgname"
+  qmake6 PREFIX=/usr
+  make
+}
+
+package() {
+  cd "$_pkgname"
+  make INSTALL_ROOT="$pkgdir" install
+
+  install -d "$pkgdir/usr/bin"
+  ln -sf qarma "$pkgdir/usr/bin/qarma-askpass"
+  ln -sf qarma "$pkgdir/usr/bin/zenity"
+}
