@@ -1,31 +1,34 @@
 # Maintainer: zxp19821005 <zxp19821005 at 163 dot com>
 pkgname=cherry-studio-git
 _pkgname="Cherry Studio"
-pkgver=1.7.9.r2.gb4aeced
-_electronversion=38
-_nodeversion=22
-pkgrel=3
-pkgdesc="🍒 Cherry Studio is a desktop client that supports for multiple LLM providers.(Use system-wide electron)"
-arch=('any')
+pkgver=1.9.5.r1.g72bb96e
+_electron=electron41
+pkgrel=1
+pkgdesc="Desktop client for multiple LLM providers (git version; system Electron)"
+arch=('x86_64' 'aarch64')
 url="https://cherry-ai.com/"
 _ghurl="https://github.com/CherryHQ/cherry-studio"
 license=('AGPL-3.0-only')
-options=('debug' 'strip')
+options=('!debug' '!strip')
 conflicts=("${pkgname%-git}")
-replaces=("${pkgname%-git}")
-provides=("${pkgname%-git}=${pkgver%.r*}")
+provides=("${pkgname%-git}=${pkgver}")
 depends=(
-    "electron${_electronversion}"
+    'bash'
+    "${_electron}"
+    'libevdev'
+    'imagemagick'
+    'ripgrep'
 )
 makedepends=(
     'gendesk'
     'npm'
-    'nvm'
-    'git'
-    'curl'
-    'yarn'
-    'gcc'
     'jq'
+    'moreutils'
+    'python'
+    'python-setuptools'
+    'pnpm'
+    'node-gyp'
+    'git'
 )
 source=(
     "${pkgname%-git}.git::git+${_ghurl}"
@@ -33,73 +36,65 @@ source=(
 )
 
 sha256sums=('SKIP'
-            '31ad33b633744f5361abd964be306cea53ae1050e760c787115f7eca60045ae6')
+            '44cf4d6838e0cbc1a69bec3f4089081d7db2cb538b552b17e3f6028575f9bf00')
+
 pkgver() {
     cd "${srcdir}/${pkgname%-git}.git"
     set -o pipefail
     git describe --long --tags --abbrev=7 | sed 's/\([^-]*-g\)/r\1/;s/-/./g;s/v//g' ||
     printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
 }
-_ensure_local_nvm() {
-    local NVM_DIR="${srcdir}/.nvm"
-    source /usr/share/nvm/init-nvm.sh || [[ $? != 1 ]]
-    nvm install "${_nodeversion}"
-    nvm use "${_nodeversion}"
-}
-_get_electron_version() {
-    _elec_ver=$(jq -r '.devDependencies["electron"] // .dependencies["electron"]' "${srcdir}/${pkgname%-git}.git/package.json" | tr -d '^')
-    _main_ver=$(echo "${_elec_ver}" | cut -d. -f1)
-    echo -e "The electron version is: \033[1;31m${_main_ver}\033[0m"
-}
 prepare() {
+    sed -e "s|__ELECTRON__|${_electron}|g" -i "${srcdir}/${pkgname%-git}.sh"
+
+    gendesk -q -f -n --pkgname="${pkgname%-git}" --pkgdesc="${pkgdesc}" \
+        --categories="Utility" --name="${_pkgname}" --exec="${pkgname%-git} %U" \
+        --custom="StartupWMClass=${_pkgname/ /}"
     cd "${srcdir}/${pkgname%-git}.git"
-    _get_electron_version
-    sed -e "
-        s/@electronversion@/${_electronversion}/g
-        s/@appname@/${pkgname%-git}/g
-        s/@runname@/app.asar/g
-        s/@cfgdirname@/${_pkgname// /}/g
-        s/@options@/env ELECTRON_OZONE_PLATFORM_HINT=auto/g
-    " -i "${srcdir}/${pkgname%-git}.sh"
-    gendesk -q -f -n \
-        --pkgname="${pkgname%-git}" \
-        --pkgdesc="${pkgdesc}" \
-        --categories="Utility" \
-        --name="${_pkgname}" \
-        --exec="${pkgname%-git} %U"
-    export ELECTRON_SKIP_BINARY_DOWNLOAD=1
-    export SYSTEM_ELECTRON_VERSION="$(electron${_electronversion} -v | sed 's/v//g')"
-    HOME="${srcdir}/.electron-gyp"
-    mkdir -p "${srcdir}/.electron-gyp"
-    touch "${srcdir}/.electron-gyp/.yarnrc"
-    if [[ "$(curl -s ipinfo.io/country)" == *"CN"* ]]; then
-        {
-            echo 'npmRegistryServer: "https://registry.npmmirror.com"'
-            echo "cacheFolder: "${srcdir}"/.yarn/cache"
-            echo "globalFolder: "${srcdir}"/.yarn/global"
-        } >> .yarnrc.yml
-        export npm_config_electron_mirror=https://registry.npmmirror.com/-/binary/electron/
-        export npm_config_electron_builder_binaries_mirror=https://registry.npmmirror.com/-/binary/electron-builder-binaries/
-    fi
-    _ensure_local_nvm
-    sed -i "s/\"electron\": \"[^\"]*\"/\"electron\": \"${SYSTEM_ELECTRON_VERSION}\"/g" package.json
-    _yarnver=`grep "yarn@" package.json | awk '{print $2}' | sed "s/\"//g;s/yarn@//g;s/,//g"`
-    corepack enable yarn
-    echo y | yarn version "${_yarnver}"
-    NODE_ENV=development    yarn install
+
+    local electronDist="/usr/lib/${_electron}"
+    local electronVersion
+    electronVersion="$(<"${electronDist}/version")"
+
+    jq ".devDependencies.electron = \"${electronVersion}\"" package.json |
+        jq ".build.electronDist = \"${electronDist}\"" |
+        jq ".build.electronVersion = \"${electronVersion}\"" |
+        sponge package.json
+
+    jq 'del(.scripts.prepare)' package.json | sponge package.json
+    sed -i package.json -e "s|electron-builder --dir|& --p never|g"
 }
 build() {
     cd "${srcdir}/${pkgname%-git}.git"
-    _ensure_local_nvm
-    local electronDist="/usr/lib/electron${_electronversion}"
-    NODE_ENV=production     yarn dotenv electron-vite build
-    NODE_ENV=production     yarn electron-builder --linux dir -c.electronDist="${electronDist}" --config electron-builder.yml
+    export HOME="${srcdir}"
+    export ELECTRON_SKIP_BINARY_DOWNLOAD=1
+    export TMPDIR="${srcdir}"
+    export npm_config_nodedir=/usr
+    export SHARP_IGNORE_GLOBAL_LIBVIPS=1
+
+    # Upstream pins Node in .node-version/.nvmrc; a version manager is optional.
+    pnpm install
+    export NODE_ENV=production
+    pnpm run build:unpack
+}
+_clean() {
+    cd "${pkgdir}/usr/lib/${pkgname%-git}/app.asar.unpacked/node_modules"
+    rm -rf "@libsql/linux-x64-musl"
+    rm -rf "@anthropic-ai/claude-agent-sdk/vendor/ripgrep"/{*-darwin,*-win32,arm64-linux}
+    ln -sf /usr/bin/rg "@anthropic-ai/claude-agent-sdk/vendor/ripgrep/x64-linux/rg"
 }
 package() {
+    local _electron_version_full
+
+    _electron_version_full="$(<"/usr/lib/${_electron}/version")"
+
     install -Dm755 "${srcdir}/${pkgname%-git}.sh" "${pkgdir}/usr/bin/${pkgname%-git}"
     install -Dm644 "${srcdir}/${pkgname%-git}.git/dist/linux-"*/resources/app.asar -t "${pkgdir}/usr/lib/${pkgname%-git}"
     cp -Pr --no-preserve=ownership "${srcdir}/${pkgname%-git}.git/dist/linux-"*/resources/app.asar.unpacked "${pkgdir}/usr/lib/${pkgname%-git}"
-    install -Dm644 "${srcdir}/${pkgname%-git}.git/${pkgname%-git}.desktop" -t "${pkgdir}/usr/share/applications"
+    install -Dm644 "${srcdir}/${pkgname%-git}.desktop" -t "${pkgdir}/usr/share/applications"
     install -Dm644 "${srcdir}/${pkgname%-git}.git/build/icon.png" "${pkgdir}/usr/share/pixmaps/${pkgname%-git}.png"
     install -Dm644 "${srcdir}/${pkgname%-git}.git/LICENSE" -t "${pkgdir}/usr/share/licenses/${pkgname}"
+    install -Dm644 /dev/stdin "${pkgdir}/usr/lib/${pkgname%-git}/electron_version" <<<"${_electron_version_full}"
+    _clean
+    chmod -R u=rwX,go=rX "${pkgdir}"
 }
