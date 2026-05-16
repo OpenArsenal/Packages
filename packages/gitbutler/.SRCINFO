@@ -1,6 +1,6 @@
 pkgbase = gitbutler
 	pkgdesc = Version control client, backed by Git, powered by Tauri/Rust/Svelte
-	pkgver = 0.19.10
+	pkgver = 0.19.12
 	pkgrel = 1
 	url = https://github.com/gitbutlerapp/gitbutler
 	arch = x86_64
@@ -24,11 +24,11 @@ pkgbase = gitbutler
 	conflicts = gitbutler-bin
 	conflicts = gitbutler-git
 	options = !lto
-	source = gitbutler-0.19.10.tar.gz::https://github.com/gitbutlerapp/gitbutler/archive/refs/tags/release/0.19.10.tar.gz
+	source = gitbutler-0.19.12.tar.gz::https://github.com/gitbutlerapp/gitbutler/archive/refs/tags/release/0.19.12.tar.gz
 	source = gitbutler-flags-wrapper.sh
-	sha256sums = 9124713d1dad27650172e519aa5a3b7fce6ed991429be768fa7ebb307826e624
+	sha256sums = d8691df2b96fb9a5f20341f149f52beba074450cab20aa5bdc42e0a9099974d2
 	sha256sums = 9a34df546f30e5aa0e0c3309d0f4ce0b95af456936b2ef79223f6602d235e3bc
-	b2sums = ddc0a671c6efbae556f063ddf24bcc55d88f73c84f2746508fe6502822c6e9dc3e887a93b4b2d9aab57b3aebab511e470c64f7523e478612d61a2f51a361ad57
+	b2sums = a9419b3bbd0bcdcaea823927e93cf46a6825ace883c9fe77d13e169c5122c6a4f16a7ef3bb6bc416fc58318230334832b48217d0f2a6e6a4e7775a7c9a009b09
 	b2sums = af6a176a6430a292c158f55573ac17fb543bed5af71a814d0ff0e34cf2c1fbc1892e477261b2150c51e1c89021b5e01b103700e4cc845ff143f6e9b80b3bed44
 
 pkgname = gitbutler
