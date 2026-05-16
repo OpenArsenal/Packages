@@ -12,5 +12,7 @@ if [[ -f "${XDG_CONFIG_HOME}/${appname}-flags.conf" ]]; then
     done < "${XDG_CONFIG_HOME}/${appname}-flags.conf"
 fi
 
+export RTK_TELEMETRY_DISABLED=1
+
 # DO NOT change __ELECTRON__, it's updated by PKGBUILD
 exec __ELECTRON__ /usr/lib/${appname}/app.asar "${user_flags[@]}" "$@"

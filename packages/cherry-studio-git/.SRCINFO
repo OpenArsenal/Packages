@@ -1,11 +1,13 @@
 pkgbase = cherry-studio-git
 	pkgdesc = Desktop client for multiple LLM providers (git version; system Electron)
-	pkgver = 1.9.5.r1.g72bb96e
-	pkgrel = 1
+	pkgver = 1.9.6.r0.ga574aa5
+	pkgrel = 4
 	url = https://cherry-ai.com/
 	arch = x86_64
 	arch = aarch64
 	license = AGPL-3.0-only
+	makedepends = asar
+	makedepends = cargo
 	makedepends = gendesk
 	makedepends = npm
 	makedepends = jq
@@ -14,19 +16,22 @@ pkgbase = cherry-studio-git
 	makedepends = python-setuptools
 	makedepends = pnpm
 	makedepends = node-gyp
+	makedepends = rust
 	makedepends = git
 	depends = bash
 	depends = electron41
 	depends = libevdev
 	depends = imagemagick
 	depends = ripgrep
-	provides = cherry-studio=1.9.5.r1.g72bb96e
+	provides = cherry-studio=1.9.6.r0.ga574aa5
 	conflicts = cherry-studio
 	options = !debug
 	options = !strip
 	source = cherry-studio.git::git+https://github.com/CherryHQ/cherry-studio
+	source = rtk-0.30.1.tar.gz::https://github.com/rtk-ai/rtk/archive/refs/tags/v0.30.1.tar.gz
 	source = cherry-studio.sh
 	sha256sums = SKIP
-	sha256sums = 44cf4d6838e0cbc1a69bec3f4089081d7db2cb538b552b17e3f6028575f9bf00
+	sha256sums = f063ed2503d5c0e32569897dc3773755b8ddf144da442529cd7e9ae50c3854a9
+	sha256sums = 8168cda7adc1007f7c8af809e4ce7450a4b3feb865c8eba5d2c7e59182584a85
 
 pkgname = cherry-studio-git
