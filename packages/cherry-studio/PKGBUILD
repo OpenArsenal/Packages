@@ -1,9 +1,8 @@
-# Maintainer: sukanka <su975853527 at gmail dot com>
-# Contributor: zxp19821005 <zxp19821005 at 163 dot com>
 pkgname=cherry-studio
 _pkgname="Cherry Studio"
-pkgver=1.9.5
+pkgver=1.9.6
 _electron=electron41
+_rtkver=0.30.1
 pkgrel=1
 pkgdesc="Desktop client for multiple LLM providers (system Electron)"
 arch=('x86_64')
@@ -19,6 +18,7 @@ depends=(
     ripgrep
 )
 makedepends=(
+    'asar'
     'gendesk'
     'npm'
     'jq'
@@ -33,10 +33,135 @@ optdepends=(
 )
 source=(
     "${pkgname}-${pkgver}.tar.gz::${_ghurl}/archive/refs/tags/v${pkgver}.tar.gz"
+    "rtk-${_rtkver}-linux-x64.tar.gz::https://github.com/rtk-ai/rtk/releases/download/v${_rtkver}/rtk-x86_64-unknown-linux-musl.tar.gz"
     "${pkgname}.sh"
 )
-sha256sums=('22a9fe8d51dfe12a715d33359e19e0bf213e96a43d8df1c4ba256bdf49e68e64'
-            'e0b84fe9dfd5de88d8c5393d02b3e14bd42cef54ac714dfa76314a3b31edc4e2')
+noextract=(
+    "rtk-${_rtkver}-linux-x64.tar.gz"
+)
+sha256sums=('b1152dd52cff18cbb5b0aded4529305f026ac02c321cb2da934805aeb3df709e'
+            '76aba547faf3c7210f2cdf145078e69e46fb5e5d9e29c2e04067c15c372bf4d7'
+            'fd4fd2252cfc45c4e7b7dad54b4ac8abbf3f8ade2258a531decd393360a5e4eb')
+
+_disable_app_updater() {
+        node <<'EOF'
+const fs = require('fs')
+
+const file = 'src/main/ipc.ts'
+let text = fs.readFileSync(file, 'utf8')
+
+const importLine = "import AppUpdater from './services/AppUpdater'\n"
+const initLine = '  const appUpdater = new AppUpdater()\n'
+const replacement = `  const appUpdater = {
+        setAutoUpdate: (_isActive: boolean) => {},
+        cancelDownload: () => {},
+        async checkForUpdates() {
+            return {
+                currentVersion: app.getVersion(),
+                updateInfo: null
+            }
+        },
+        quitAndInstall: () => {}
+    }\n`
+
+if (!text.includes(importLine)) {
+    throw new Error('ipc.ts AppUpdater import not found')
+}
+
+if (!text.includes(initLine)) {
+    throw new Error('ipc.ts AppUpdater initialization not found')
+}
+
+text = text.replace(importLine, '')
+text = text.replace(initLine, replacement)
+fs.writeFileSync(file, text)
+EOF
+}
+
+_disable_analytics() {
+        node <<'EOF'
+const fs = require('fs')
+
+const file = 'src/main/index.ts'
+let text = fs.readFileSync(file, 'utf8')
+
+const initLine = '    analyticsService.init()\n'
+
+if (!text.includes(initLine)) {
+    throw new Error('main/index.ts analytics initialization not found')
+}
+
+text = text.replace(initLine, '')
+
+fs.writeFileSync(file, text)
+EOF
+}
+
+_scrub_packed_srcdir_refs() {
+    local _asar="$1"
+    local _extract_dir="$2"
+    local _package_root="$3"
+    local _src_root="$4"
+
+    [[ -f "${_asar}" ]] || return 0
+
+    rm -rf "${_extract_dir}"
+    asar extract "${_asar}" "${_extract_dir}"
+
+    node - "${_extract_dir}" "${_package_root}" "${_src_root}" <<'EOF'
+const fs = require('fs')
+const path = require('path')
+
+const root = process.argv[2]
+const packageRoot = process.argv[3]
+const srcRoot = process.argv[4]
+const textExtensions = new Set(['.js', '.json', '.html', '.txt', '.css', '.map'])
+const replacements = [
+    [packageRoot, '.'],
+    [srcRoot, '.']
+]
+
+function* walk(dir) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const fullPath = path.join(dir, entry.name)
+        if (entry.isDirectory()) {
+            yield* walk(fullPath)
+            continue
+        }
+        yield fullPath
+    }
+}
+
+let patched = false
+
+for (const file of walk(root)) {
+    if (!textExtensions.has(path.extname(file))) {
+        continue
+    }
+
+    const text = fs.readFileSync(file, 'utf8')
+    let nextText = text
+
+    for (const [needle, replacement] of replacements) {
+        if (needle && nextText.includes(needle)) {
+            nextText = nextText.split(needle).join(replacement)
+        }
+    }
+
+    if (nextText !== text) {
+        fs.writeFileSync(file, nextText)
+        patched = true
+    }
+}
+
+if (!patched) {
+    throw new Error('packed srcdir references not found in app.asar payload')
+}
+EOF
+
+    rm -f "${_asar}"
+    asar pack "${_extract_dir}" "${_asar}"
+}
 
 prepare() {
     sed -e "s|__ELECTRON__|${_electron}|g" -i "${srcdir}/${pkgname}.sh"
@@ -47,18 +172,66 @@ prepare() {
     cd "${srcdir}/${pkgname}-${pkgver}"
     local electronDist="/usr/lib/${_electron}"
     local electronVersion="$(<$electronDist/version)"
-    # electron@36.7.1 not found on npm,
-    # electronVersion="${electronVersion%.*}.0"
-    jq ".devDependencies.electron = \"$electronVersion\"" package.json |
-        jq ".build.electronDist = \"$electronDist\"" |
+    # Keep the locked dependency graph untouched. electron-builder can use
+    # the system runtime via build.electronDist/electronVersion without
+    # rewriting devDependencies.electron and invalidating pnpm-lock.yaml.
+    jq ".build.electronDist = \"$electronDist\"" package.json |
         jq ".build.electronVersion = \"$electronVersion\"" |
         sponge package.json
 
-    # jq '.resolutions."node-abi"="^4.12.0"' package.json | sponge package.json
+    # Distro builds do not need the developer-only prepare hook.
     jq 'del(.scripts.prepare)' package.json | sponge package.json
 
-    #  no auto update
+    # Pacman owns updates, so do not let electron-builder autoupdate.
     sed -i package.json -e "s|electron-builder --dir|& --p never|g"
+
+    # Stage the RTK helper from a declared source tarball instead of letting
+    # upstream fetch it during before-pack.
+    local rtk_extract_dir="${srcdir}/rtk-${pkgname}"
+    rm -rf "${rtk_extract_dir}"
+    install -d "${rtk_extract_dir}" "resources/binaries/linux-x64"
+    bsdtar -xzf "${srcdir}/rtk-${_rtkver}-linux-x64.tar.gz" -C "${rtk_extract_dir}"
+    install -Dm755 "${rtk_extract_dir}/rtk" "resources/binaries/linux-x64/rtk"
+    printf '%s\n' "${_rtkver}" > "resources/binaries/linux-x64/.rtk-version"
+
+    # Replace upstream's download/install side effects with explicit distro
+    # behavior that keeps the build offline and lockfile-enforced.
+    node <<'EOF'
+const fs = require('fs')
+
+const file = 'scripts/before-pack.js'
+let text = fs.readFileSync(file, 'utf8')
+
+const downloadBlock = `    console.log(\`Downloading rtk binary for \${platform}-\${arch}...\`)
+    execSync(\`node "\${path.join(__dirname, 'download-rtk-binaries.js')}" \${platform} \${arch}\`, { stdio: 'inherit' })`
+const replacementBlock = `    console.log(\`Using pre-fetched rtk binary for \${platform}-\${arch}\`)
+    console.log('Skipping RTK download; using packaged source artifact')`
+
+if (!text.includes(downloadBlock)) {
+  throw new Error('before-pack.js RTK download block not found')
+}
+
+if (!text.includes("execSync(`pnpm install`, { stdio: 'inherit' })")) {
+    throw new Error('before-pack.js pnpm install hook not found')
+}
+
+text = text.replace(downloadBlock, replacementBlock)
+text = text.replace(
+    "execSync(`pnpm install`, { stdio: 'inherit' })",
+    "console.log('Skipping nested pnpm install; dependencies are prepared by the package build')"
+)
+fs.writeFileSync(file, text)
+EOF
+
+    _disable_app_updater
+    _disable_analytics
+
+    # Materialize the locked dependency tree during prepare() so later build
+    # steps do not trigger hidden lifecycle downloads. Keeping scripts disabled
+    # also leaves unused dev dependencies like @j178/prek inert. The native
+    # modules Cherry Studio actually needs are rebuilt later by
+    # electron-builder/@electron/rebuild during packaging.
+    ELECTRON_SKIP_BINARY_DOWNLOAD=1 pnpm install --frozen-lockfile --ignore-scripts
 
 }
 build() {
@@ -68,9 +241,10 @@ build() {
     export TMPDIR="${srcdir}"
     export npm_config_nodedir=/usr
     export SHARP_IGNORE_GLOBAL_LIBVIPS=1
-    # Upstream pins Node in .node-version/.nvmrc; a version manager is optional.
-    ELECTRON_SKIP_BINARY_DOWNLOAD=1 pnpm install
     export NODE_ENV=production
+    # Upstream's build step already runs @electron/rebuild for the required
+    # native addons, so an additional manual pnpm rebuild here would be
+    # redundant and widen the script surface again.
     pnpm run build:unpack
 }
 _clean() {
@@ -81,6 +255,7 @@ _clean() {
 }
 package() {
     local _electron_version_full
+    local _asar_extract_dir="${srcdir}/${pkgname}-asar"
 
     _electron_version_full="$(<"/usr/lib/${_electron}/version")"
 
@@ -88,6 +263,11 @@ package() {
     install -Dm644 "${srcdir}/${pkgname}.desktop" -t "${pkgdir}/usr/share/applications"
 
     cd "${srcdir}/${pkgname}-${pkgver}"
+    _scrub_packed_srcdir_refs \
+        "dist/linux-unpacked/resources/app.asar" \
+        "${_asar_extract_dir}" \
+        "${srcdir}/${pkgname}-${pkgver}" \
+        "${srcdir}"
     install -Dm644 "dist/linux-unpacked"/resources/app.asar -t "${pkgdir}/usr/lib/${pkgname}"
     cp -Pr --no-preserve=ownership "dist/linux-unpacked"/resources/app.asar.unpacked "${pkgdir}/usr/lib/${pkgname}"
     install -Dm644 "build/icon.png" "${pkgdir}/usr/share/pixmaps/${pkgname}.png"
