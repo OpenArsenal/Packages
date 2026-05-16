@@ -1,0 +1,4 @@
+[aube]
+source = "git"
+git = "https://github.com/endevco/aube.git"
+prefix = "v"
