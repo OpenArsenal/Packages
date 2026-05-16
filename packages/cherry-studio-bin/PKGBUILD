@@ -2,13 +2,14 @@
 
 pkgname=cherry-studio-bin
 _pkgname=cherry-studio
-pkgver=1.9.5
+pkgver=1.9.6
 pkgrel=1
 pkgdesc="Desktop client for multiple LLM providers (prebuilt release; bundled Electron)"
 arch=('x86_64')
 url="https://github.com/cherryHQ/cherry-studio"
 license=('AGPL-3.0-only')
 options=('!strip' '!debug')
+makedepends=('asar')
 depends=(
   'alsa-lib'
   'at-spi2-core'
@@ -51,9 +52,9 @@ source=(
   "${pkgname}.sh"
 )
 noextract=("${_pkgname}-${pkgver}.AppImage")
-sha256sums=('8438541c88569296c12b17d7c590a68da0cd338bb82f134ea2e02fe7559e679b'
+sha256sums=('26dfbcec03195ffbc5a5dc9d15f65a20250fa1e6f472f5cb26d97171e71d8e27'
             '0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0'
-            '207d0e0ea9a3d1a10deed29668b9206fae1e21cfabed87388c85b74f196f2ea0')
+            '891a32d446d3c5ca7f213a38987531314edc94fe878f93abad4838d8738913fd')
 
 _remove_updater_metadata() {
   local _root="$1"
@@ -65,6 +66,85 @@ _remove_updater_metadata() {
     -name 'dev-app-update.yml' -o \
     -name 'latest*.yml' \
   \) -delete 2>/dev/null || true
+}
+
+_patch_packed_app() {
+  local _asar="$1"
+  local _extract_dir="$2"
+
+  [[ -f "${_asar}" ]] || return 0
+
+  rm -rf "${_extract_dir}"
+  asar extract "${_asar}" "${_extract_dir}"
+
+  node - "${_extract_dir}" <<'EOF'
+const fs = require('fs')
+const path = require('path')
+
+const root = process.argv[2]
+const updaterInitPattern = /(const|let|var)\s+appUpdater\s*=\s*new\s+[^;\n]*AppUpdater[^;\n]*\(\)/
+const updaterReplacement = `const appUpdater = {
+  setAutoUpdate() {},
+  cancelDownload() {},
+  async checkForUpdates() {
+    return {
+      currentVersion: app.getVersion(),
+      updateInfo: null
+    }
+  },
+  quitAndInstall() {}
+}`
+const analyticsInitPattern = /analyticsService\.init\(\);?/
+
+function* walk(dir) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const fullPath = path.join(dir, entry.name)
+    if (entry.isDirectory()) {
+      yield* walk(fullPath)
+      continue
+    }
+    yield fullPath
+  }
+}
+
+let patchedUpdater = false
+let patchedAnalytics = false
+
+for (const file of walk(root)) {
+  if (!file.endsWith('.js')) {
+    continue
+  }
+
+  const text = fs.readFileSync(file, 'utf8')
+
+  let nextText = text
+
+  if (nextText.includes('appUpdater.checkForUpdates') && updaterInitPattern.test(nextText)) {
+    nextText = nextText.replace(updaterInitPattern, updaterReplacement)
+    patchedUpdater = true
+  }
+
+  if (nextText.includes('Analytics service initialized') && analyticsInitPattern.test(nextText)) {
+    nextText = nextText.replace(analyticsInitPattern, '')
+    patchedAnalytics = true
+  }
+
+  if (nextText !== text) {
+    fs.writeFileSync(file, nextText)
+  }
+}
+
+if (!patchedUpdater) {
+  throw new Error('packed updater initialization not found in app.asar payload')
+}
+
+if (!patchedAnalytics) {
+  throw new Error('packed analytics initialization not found in app.asar payload')
+}
+EOF
+
+  rm -f "${_asar}"
+  asar pack "${_extract_dir}" "${_asar}"
 }
 
 _record_electron_version() {
@@ -94,12 +174,14 @@ prepare() {
 package() {
   cd "$srcdir"
   local _install_root="${pkgdir}/opt/${_pkgname}"
+  local _asar_extract_dir="${srcdir}/${pkgname}-asar"
 
   install -dm755 "${_install_root}" "${pkgdir}/usr/share/licenses/${pkgname}"
   install -Dm755 "${pkgname}.sh" "${pkgdir}/usr/bin/${_pkgname}"
   cp -a squashfs-root/. "${_install_root}/"
   chmod 4755 "${_install_root}/chrome-sandbox"
   _remove_updater_metadata "${_install_root}"
+  _patch_packed_app "${_install_root}/resources/app.asar" "${_asar_extract_dir}"
 
   while IFS= read -r -d '' icon; do
     local size

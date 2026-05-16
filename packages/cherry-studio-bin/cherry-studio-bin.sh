@@ -13,6 +13,7 @@ export ELECTRON_IS_DEV=0
 export ELECTRON_FORCE_IS_PACKAGED=true
 export ELECTRON_DISABLE_SECURITY_WARNINGS=true
 export NODE_ENV=production
+export RTK_TELEMETRY_DISABLED="${RTK_TELEMETRY_DISABLED:-1}"
 
 XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
 flags_file="${XDG_CONFIG_HOME}/cherry-studio-flags.conf"
