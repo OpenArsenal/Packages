@@ -1,10 +1,11 @@
 pkgbase = cherry-studio-bin
 	pkgdesc = Desktop client for multiple LLM providers (prebuilt release; bundled Electron)
-	pkgver = 1.9.5
+	pkgver = 1.9.6
 	pkgrel = 1
 	url = https://github.com/cherryHQ/cherry-studio
 	arch = x86_64
 	license = AGPL-3.0-only
+	makedepends = asar
 	depends = alsa-lib
 	depends = at-spi2-core
 	depends = atk
@@ -35,16 +36,16 @@ pkgbase = cherry-studio-bin
 	optdepends = libnotify: desktop notifications
 	optdepends = ollama: use your local LLM
 	optdepends = xdg-utils: open links in the default desktop applications
-	provides = cherry-studio=1.9.5
+	provides = cherry-studio=1.9.6
 	conflicts = cherry-studio
-	noextract = cherry-studio-1.9.5.AppImage
+	noextract = cherry-studio-1.9.6.AppImage
 	options = !strip
 	options = !debug
-	source = cherry-studio-1.9.5.AppImage::https://github.com/cherryHQ/cherry-studio/releases/download/v1.9.5/Cherry-Studio-1.9.5-x86_64.AppImage
-	source = LICENSE-1.9.5::https://github.com/cherryHQ/cherry-studio/raw/v1.9.5/LICENSE
+	source = cherry-studio-1.9.6.AppImage::https://github.com/cherryHQ/cherry-studio/releases/download/v1.9.6/Cherry-Studio-1.9.6-x86_64.AppImage
+	source = LICENSE-1.9.6::https://github.com/cherryHQ/cherry-studio/raw/v1.9.6/LICENSE
 	source = cherry-studio-bin.sh
-	sha256sums = 8438541c88569296c12b17d7c590a68da0cd338bb82f134ea2e02fe7559e679b
+	sha256sums = 26dfbcec03195ffbc5a5dc9d15f65a20250fa1e6f472f5cb26d97171e71d8e27
 	sha256sums = 0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0
-	sha256sums = 207d0e0ea9a3d1a10deed29668b9206fae1e21cfabed87388c85b74f196f2ea0
+	sha256sums = 891a32d446d3c5ca7f213a38987531314edc94fe878f93abad4838d8738913fd
 
 pkgname = cherry-studio-bin
