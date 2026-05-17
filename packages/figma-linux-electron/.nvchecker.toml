@@ -1,5 +1,0 @@
-[figma-linux-electron]
-source = "github"
-github = "Figma-Linux/figma-linux"
-use_max_tag = true
-prefix = "v"
