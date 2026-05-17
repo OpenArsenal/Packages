@@ -1,8 +1,9 @@
 # Maintainer: Okiki Ojo <okiki@thunderstrike.co>
 _pkgname=figma-linux
+_electronversion=30
 pkgname=${_pkgname}-git
 pkgver=0.11.4.r10.gd9a7a03
-pkgrel=4
+pkgrel=6
 pkgdesc="Unofficial Electron-based Figma desktop client for Linux (bundled Electron, git HEAD)"
 arch=('x86_64' 'aarch64')
 url="https://github.com/Figma-Linux/figma-linux"
@@ -27,7 +28,7 @@ source=(
 
 sha256sums=('SKIP'
             '5029d26b935d5527c9a71f1a3fe81264f92a3d4a9f1c3b71296623d8d9d1edb2'
-            '8107c539597b6cb1c38656353956cdad5e8cbdbfd31ace1bb5804c05db8ae4c5')
+            '7d939f619daa3c1f1d45d7bd9274a2161417e951695ed2514d573bbf09552586')
 
 _record_electron_version() {
   local _binary="$1"
@@ -75,6 +76,53 @@ _configure_npm_mirrors() {
 	fi
 }
 
+_assert_upstream_electron_major() {
+  local _electron_pkg_major
+
+  _electron_pkg_major="$(node -e 'const pkg = require("./package.json"); const value = pkg.devDependencies?.electron ?? pkg.dependencies?.electron ?? ""; process.stdout.write(String(value));' | tr -d '^~<>= ' | cut -d. -f1)"
+  if [[ -z "${_electron_pkg_major}" ]]; then
+    echo 'Could not determine Electron major from package.json.' >&2
+    exit 1
+  fi
+
+  if [[ "${_electron_pkg_major}" != "${_electronversion}" ]]; then
+    echo "Electron major ${_electron_pkg_major} does not match expected ${_electronversion}." >&2
+    exit 1
+  fi
+}
+
+_scrub_srcdir_references() {
+  local _root="$1"
+
+  [[ -d "${_root}" ]] || return 0
+
+  grep -IlRZ -F "${srcdir}" "${_root}" 2>/dev/null |
+    xargs -0 -r sed -i "s#${srcdir}#/usr/src/debug/${pkgname}#g"
+}
+
+_assert_no_srcdir_references() {
+  local _hits=()
+
+  mapfile -d '' _hits < <(LC_ALL=C grep -aRZlF "${srcdir}" "${pkgdir}" 2>/dev/null || true)
+  if ((${#_hits[@]})); then
+    printf '%s\n' 'ERROR: package still contains references to $srcdir:' >&2
+    printf '  %s\n' "${_hits[@]#${pkgdir}/}" >&2
+    return 1
+  fi
+}
+
+_remove_updater_metadata() {
+  local _root="$1"
+
+  [[ -d "${_root}" ]] || return 0
+
+  find "${_root}" -type f \( \
+    -name 'app-update.yml' -o \
+    -name 'dev-app-update.yml' -o \
+    -name 'latest*.yml' \
+  \) -delete 2>/dev/null || true
+}
+
 build() {
   cd "${srcdir}/${_pkgname}.git"
 
@@ -87,21 +135,22 @@ build() {
 
 	# 👇 Apply opt-in mirrors (only if env vars exist)
 	_configure_npm_mirrors
+  _assert_upstream_electron_major
 
   git submodule update --init --recursive || true
 
-	# Use lockfile if available for reproducible builds
-  if [[ -f package-lock.json ]]; then
-    npm ci --no-audit --no-fund
-  else
-    npm install --no-audit --no-fund
+  if [[ ! -f package-lock.json ]]; then
+    echo 'Missing package-lock.json; refusing non-deterministic npm install fallback.' >&2
+    exit 1
   fi
+
+  npm ci --no-audit --no-fund
 
 	# Build application
   npm run build
 
 	# Create Linux bundle with electron-builder
-  npm exec -c "electron-builder --linux dir --config=config/builder.json"
+  npm exec -c "electron-builder --linux dir --publish never --config=config/builder.json"
 }
 
 package() {
@@ -118,6 +167,8 @@ package() {
 	# Install entire bundled application (includes electron runtime)
   install -d "${_install_root}"
   cp -a "${_out}/." "${_install_root}/"
+	_remove_updater_metadata "${_install_root}"
+	_scrub_srcdir_references "${_install_root}"
 
 	# Create predictable executable name if needed
   if [[ -x "${_install_root}/${_pkgname}" && ! -e "${_install_root}/${_pkgname}" ]]; then
@@ -141,5 +192,6 @@ package() {
         "${pkgdir}/usr/share/icons/hicolor/${_size}/apps/${_pkgname}.${_ext}"
     done
   done
+	_assert_no_srcdir_references
   chmod -R u=rwX,go=rX "${pkgdir}"
 }
