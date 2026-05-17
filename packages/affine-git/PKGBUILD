@@ -20,7 +20,7 @@ _arch=x64
 _pkgsrc="${pkgname}"
 _app_version="${pkgver%%.r*}"
 
-provides=('affine')
+provides=("affine=${pkgver}")
 conflicts=('affine')
 
 depends=(
@@ -72,13 +72,11 @@ source=(
   "${_pkgsrc}::git+${_ghurl}.git#branch=${_branch}"
   'affine.desktop'
   'affine-flags-wrapper.sh'
-  'affine.install'
 )
 
 sha256sums=('SKIP'
             '8ee4d9ae3d73c67e88d0813203240c9b6b381603f9beb3f04641aeff965b801c'
-            '2ea15d0a1244ce596f0c0d835739d2d041ed991dd8d64734a7e82af3da39b942'
-            '38a290c90b371a23d0a905e15251a40385b9641637e7d69eab43107bd370d1aa')
+            '2ea15d0a1244ce596f0c0d835739d2d041ed991dd8d64734a7e82af3da39b942')
 
 pkgver() {
   cd "${srcdir}/${_pkgsrc}"
@@ -113,10 +111,74 @@ _setup_build_toolchain() {
   corepack prepare "${package_manager}" --activate >/dev/null
 }
 
+_disable_workspace_postinstalls() {
+  local _manifest
+  local _manifests=(
+    'package.json'
+    'packages/backend/server/package.json'
+    'packages/frontend/templates/package.json'
+  )
+
+  for _manifest in "${_manifests[@]}"; do
+    [[ -f "${_manifest}" ]] || continue
+    jq 'if (.scripts.postinstall? != null) then .scripts.postinstall = ":" else . end' \
+      "${_manifest}" > "${_manifest}.tmp"
+    mv "${_manifest}.tmp" "${_manifest}"
+  done
+}
+
+_assert_generated_workspace_state() {
+  local _required_files=(
+    'tools/utils/src/workspace.gen.ts'
+    '.oxlintrc.json'
+  )
+  local _required
+
+  for _required in "${_required_files[@]}"; do
+    if [[ ! -f "${_required}" ]]; then
+      printf 'Missing generated workspace file: %s\n' "${_required}" >&2
+      exit 1
+    fi
+  done
+}
+
+_patch_build_label_fallback() {
+  local _html_plugin='tools/cli/src/webpack/html-plugin.ts'
+
+  [[ -f "${_html_plugin}" ]] || return 0
+
+  # AFFiNE only forwards this value into emitted HTML and assets-manifest.json,
+  # so use an explicit Arch build label instead of implying it is a raw Git SHA.
+  perl -0pi -e 's@const \{ GITHUB_SHA \} = process\.env;@const { AFFINE_BUILD_LABEL, GITHUB_SHA } = process.env;\n  if (AFFINE_BUILD_LABEL) {\n    return AFFINE_BUILD_LABEL;\n  }@' "${_html_plugin}"
+
+  if ! grep -Fq 'AFFINE_BUILD_LABEL' "${_html_plugin}"; then
+    printf 'Failed to patch %s for build-label fallback.\n' "${_html_plugin}" >&2
+    exit 1
+  fi
+}
+
+_install_bundled_electron_runtime() {
+  local _electron_module='node_modules/electron'
+  local _electron_exec="${_electron_module}/dist/electron"
+
+  if [[ ! -d "${_electron_module}" ]]; then
+    printf 'Missing npm electron package under %s\n' "${_electron_module}" >&2
+    exit 1
+  fi
+
+  node "./${_electron_module}/install.js"
+
+  if [[ ! -x "${_electron_exec}" || ! -f "${_electron_module}/path.txt" ]]; then
+    printf 'Electron runtime install did not materialize expected files under %s\n' "${_electron_module}" >&2
+    exit 1
+  fi
+}
+
 _common_build_env() {
   export HUSKY=0
   export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
   export SENTRYCLI_SKIP_DOWNLOAD=1
+  export AFFINE_BUILD_LABEL="${pkgver}"
   export COREPACK_HOME="${SRCDEST:-${srcdir}}/${pkgname}-corepack"
 }
 
@@ -172,6 +234,9 @@ _remove_updater_metadata() {
 _affine_prepare() {
   cd "${srcdir}/${_pkgsrc}"
   _common_build_env
+  _patch_build_label_fallback
+  _assert_generated_workspace_state
+  _disable_workspace_postinstalls
   _setup_build_toolchain
 
   local electron_pkg_major
@@ -204,7 +269,7 @@ _affine_build() {
   find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +
   yarn workspaces focus @affine/electron @affine/monorepo @affine/nbstore @toeverything/infra
 
-  node ./node_modules/electron/install.js
+  _install_bundled_electron_runtime
   SKIP_WEB_BUILD=1 SKIP_BUNDLE=1 HOIST_NODE_MODULES=1 NODE_OPTIONS='--max-old-space-size=14384' DEBUG='affine:*,napi:*' yarn affine @affine/electron make --platform=linux --arch="${_arch}"
   unzip -o packages/frontend/apps/electron/out/stable/make/zip/linux/${_arch}/${_upstream_name}-linux-${_arch}-${_app_version}.zip
 }
