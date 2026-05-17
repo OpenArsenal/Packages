@@ -1,12 +1,13 @@
 # Maintainer: Okiki <okiki@thunderstrike.co>
 pkgname=ktailctl
 pkgver='0.21.5'
-pkgrel=1
+pkgrel=4
 arch=(x86_64 aarch64)
 url='https://github.com/f-koehler/KTailctl'
 pkgdesc='GUI to monitor and manage Tailscale'
 license=(GPL-3.0-only)
 depends=(
+  breeze-icons
   gcc-libs
   glibc
   hicolor-icon-theme
@@ -25,9 +26,13 @@ depends=(
   qt6-svg
   tailscale
 )
+optdepends=(
+  'qt6-wayland: native Wayland platform plugin support'
+)
 makedepends=(
   cmake
   extra-cmake-modules
+  gettext
   git
   go
   nlohmann-json
@@ -57,6 +62,14 @@ _prepare_go_env() {
 prepare() {
   cd KTailctl
   _prepare_go_env
+
+  # Upstream's CMake wrapper has a fallback `go get` step for developer builds.
+  # Keep Arch's build graph explicit by vendoring here and disabling that fetch.
+  sed -i '/^if(NOT KTAILCTL_FLATPAK_BUILD)$/,/^endif()$/d' src/wrapper/CMakeLists.txt
+
+  # QT_MESSAGELOGCONTEXT bakes build paths into the package via context.file.
+  sed -i '/target_compile_definitions(ktailctl PRIVATE QT_MESSAGELOGCONTEXT)/d' src/CMakeLists.txt
+  sed -i '/target_compile_definitions(ktailctl_wrapper_logging PRIVATE QT_MESSAGELOGCONTEXT)/d' src/wrapper/CMakeLists.txt
   
   # Vendor Go dependencies for reproducible builds
   cd src/wrapper
@@ -74,13 +87,18 @@ build() {
   export CGO_CXXFLAGS="${CXXFLAGS}"
   export CGO_LDFLAGS="${LDFLAGS}"
   
-  # Configure CMake
-  cmake -B build -S . \
-    -DCMAKE_BUILD_TYPE=None \
-    -DCMAKE_INSTALL_PREFIX=/usr \
-    -DCMAKE_INSTALL_LIBDIR=lib \
-    -DKTAILCTL_FLATPAK_BUILD=OFF \
+  local cmake_options=(
+    -B build
+    -S .
+    -DCMAKE_BUILD_TYPE=None
+    -DCMAKE_INSTALL_PREFIX=/usr
+    -DCMAKE_INSTALL_LIBDIR=lib
     -Wno-dev
+  )
+
+  # Upstream's wrapper build already uses `-mod vendor`; keep the package build
+  # on that offline path instead of letting CMake fall back to `go get`.
+  cmake "${cmake_options[@]}"
 
   # Build with parallelization
   cmake --build build --parallel
