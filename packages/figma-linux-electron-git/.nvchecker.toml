@@ -1,4 +1,0 @@
-[figma-linux-electron-git]
-source = "git"
-git = "https://github.com/Figma-Linux/figma-linux.git"
-use_commit = true
