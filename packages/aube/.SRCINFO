@@ -1,6 +1,6 @@
 pkgbase = aube
 	pkgdesc = Fast Node.js package manager with lifecycle-script jailing
-	pkgver = 1.14.1
+	pkgver = 1.15.0
 	pkgrel = 1
 	url = https://aube.en.dev
 	install = aube.install
@@ -10,13 +10,13 @@ pkgbase = aube
 	checkdepends = cargo
 	makedepends = cargo
 	makedepends = cmake
-	makedepends = nodejs
+	makedepends = usage
 	depends = gcc-libs
-	optdepends = nodejs: run package scripts using a system Node.js runtime
+	depends = nodejs
 	optdepends = mise: manage Node.js runtimes alongside aube
-	optdepends = usage: generate shell completions with aube completion
+	optdepends = usage: regenerate shell completions and manpages from aube usage
 	options = !lto
-	source = aube-1.14.1.tar.gz::https://github.com/endevco/aube/archive/refs/tags/v1.14.1.tar.gz
-	sha256sums = ce4907b971da672cf1de6d71673a6b6c4a84ec8cfdeec2f6e31f463b367e56f1
+	source = aube-1.15.0.tar.gz::https://github.com/endevco/aube/archive/refs/tags/v1.15.0.tar.gz
+	sha256sums = 1dd9a4028ec5fc67f131d8c4f7174bb8a12df7e861fcd16e7690fc7c18fffe78
 
 pkgname = aube
