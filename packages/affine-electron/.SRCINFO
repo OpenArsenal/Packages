@@ -1,6 +1,6 @@
 pkgbase = affine-electron
 	pkgdesc = Collaborative knowledge base and whiteboard desktop application (system Electron)
-	pkgver = 0.26.3
+	pkgver = 0.26.6
 	pkgrel = 1
 	url = https://affine.pro/
 	install = affine.install
@@ -24,13 +24,11 @@ pkgbase = affine-electron
 	conflicts = affine
 	options = !debug
 	options = !strip
-	source = AFFiNE-0.26.3.tar.gz::https://github.com/toeverything/AFFiNE/archive/refs/tags/v0.26.3.tar.gz
+	source = AFFiNE-0.26.6.tar.gz::https://github.com/toeverything/AFFiNE/archive/refs/tags/v0.26.6.tar.gz
 	source = affine.desktop
 	source = affine-flags-wrapper.sh
-	source = affine.install
-	sha256sums = 4fbcd0d26eb894d652ea66fcf708e366a566ac0ef1d703ce41fe0000846e56fa
+	sha256sums = 5912ed063c3d150d640ea40919400eef6d471a467fd3a55600908a149f99c918
 	sha256sums = 8ee4d9ae3d73c67e88d0813203240c9b6b381603f9beb3f04641aeff965b801c
 	sha256sums = 655f857035aeed0883ae28622256af2a3b06764b684d22f7607c41e83325fb5d
-	sha256sums = 421f4d8b761a2289f87a3c0b695ab5bc24875b86ba69a47e91f6618098daf1c8
 
 pkgname = affine-electron
