@@ -1,5 +1,5 @@
 pkgname=aube
-pkgver=1.14.1
+pkgver=1.15.0
 pkgrel=1
 pkgdesc='Fast Node.js package manager with lifecycle-script jailing'
 arch=('x86_64' 'aarch64')
@@ -9,17 +9,17 @@ license=('MIT')
 # with unresolved `ZSTD_*` symbols under the packaging toolchain.
 options=('!lto')
 install='aube.install'
-depends=('gcc-libs')
-# `aube-resolver` generates an embedded primer at build time via `node`.
-makedepends=('cargo' 'cmake' 'nodejs')
+depends=('gcc-libs' 'nodejs')
+# `aube-resolver` generates an embedded primer at build time via `node`, and
+# the packaged CLI is expected to work as a system-wide Node package manager.
+makedepends=('cargo' 'cmake' 'usage')
 checkdepends=('cargo')
 optdepends=(
-  'nodejs: run package scripts using a system Node.js runtime'
   'mise: manage Node.js runtimes alongside aube'
-  'usage: generate shell completions with aube completion'
+  'usage: regenerate shell completions and manpages from aube usage'
 )
 source=("${pkgname}-${pkgver}.tar.gz::https://github.com/endevco/aube/archive/refs/tags/v${pkgver}.tar.gz")
-sha256sums=('ce4907b971da672cf1de6d71673a6b6c4a84ec8cfdeec2f6e31f463b367e56f1')
+sha256sums=('1dd9a4028ec5fc67f131d8c4f7174bb8a12df7e861fcd16e7690fc7c18fffe78')
 
 prepare() {
   cd "${pkgname}-${pkgver}"
@@ -67,6 +67,33 @@ package() {
   # Upstream dispatches `aubr`/`aubx` by argv[0], so symlinks are sufficient.
   ln -s aube "${pkgdir}/usr/bin/aubr"
   ln -s aube "${pkgdir}/usr/bin/aubx"
+
+  target/release/aube usage > aube.usage.kdl
+
+  usage generate completion bash aube --file aube.usage.kdl > aube.bash
+  usage generate completion bash aubr --file aube.usage.kdl > aubr.bash
+  usage generate completion bash aubx --file aube.usage.kdl > aubx.bash
+
+  usage generate completion fish aube --file aube.usage.kdl > aube.fish
+  usage generate completion fish aubr --file aube.usage.kdl > aubr.fish
+  usage generate completion fish aubx --file aube.usage.kdl > aubx.fish
+
+  usage generate completion zsh aube --file aube.usage.kdl > _aube
+  usage generate completion zsh aubr --file aube.usage.kdl > _aubr
+  usage generate completion zsh aubx --file aube.usage.kdl > _aubx
+
+  usage generate manpage --file aube.usage.kdl > aube.1
+
+  install -Dm644 aube.bash "${pkgdir}/usr/share/bash-completion/completions/aube"
+  install -Dm644 aubr.bash "${pkgdir}/usr/share/bash-completion/completions/aubr"
+  install -Dm644 aubx.bash "${pkgdir}/usr/share/bash-completion/completions/aubx"
+  install -Dm644 aube.fish "${pkgdir}/usr/share/fish/vendor_completions.d/aube.fish"
+  install -Dm644 aubr.fish "${pkgdir}/usr/share/fish/vendor_completions.d/aubr.fish"
+  install -Dm644 aubx.fish "${pkgdir}/usr/share/fish/vendor_completions.d/aubx.fish"
+  install -Dm644 _aube "${pkgdir}/usr/share/zsh/site-functions/_aube"
+  install -Dm644 _aubr "${pkgdir}/usr/share/zsh/site-functions/_aubr"
+  install -Dm644 _aubx "${pkgdir}/usr/share/zsh/site-functions/_aubx"
+  install -Dm644 aube.1 "${pkgdir}/usr/share/man/man1/aube.1"
 
   install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
   install -Dm644 README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
