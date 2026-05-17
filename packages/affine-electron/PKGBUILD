@@ -5,7 +5,7 @@ _electronversion=39
 pkgname=affine-electron
 _pkgname=AFFiNE
 _upstream_name=AFFiNE
-pkgver=0.26.3
+pkgver=0.26.6
 pkgrel=1
 pkgdesc="Collaborative knowledge base and whiteboard desktop application (system Electron)"
 arch=('x86_64')
@@ -45,16 +45,15 @@ source=(
   "${_pkgname}-${pkgver}.tar.gz::${_ghurl}/archive/refs/tags/v${pkgver}.tar.gz"
   'affine.desktop'
   'affine-flags-wrapper.sh'
-  'affine.install'
 )
 
-sha256sums=('4fbcd0d26eb894d652ea66fcf708e366a566ac0ef1d703ce41fe0000846e56fa'
+sha256sums=('5912ed063c3d150d640ea40919400eef6d471a467fd3a55600908a149f99c918'
             '8ee4d9ae3d73c67e88d0813203240c9b6b381603f9beb3f04641aeff965b801c'
-            '655f857035aeed0883ae28622256af2a3b06764b684d22f7607c41e83325fb5d'
-            '421f4d8b761a2289f87a3c0b695ab5bc24875b86ba69a47e91f6618098daf1c8')
+            '655f857035aeed0883ae28622256af2a3b06764b684d22f7607c41e83325fb5d')
 
 _setup_build_toolchain() {
   local package_manager
+  local expected_package_manager='yarn@4.12.0'
 
   local node_major="$(node --version)"
   node_major="${node_major#v}"
@@ -66,7 +65,7 @@ _setup_build_toolchain() {
   fi
 
   package_manager="$(jq -r '.packageManager' package.json)"
-  if [[ ! "${package_manager}" =~ ^yarn@ ]]; then
+  if [[ "${package_manager}" != "${expected_package_manager}" ]]; then
     echo "Unsupported package manager ${package_manager}"
     exit 1
   fi
@@ -74,26 +73,81 @@ _setup_build_toolchain() {
   corepack prepare "${package_manager}" --activate >/dev/null
 }
 
-_ensure_git_metadata_for_tarball() {
-  # AFFiNE's build tooling opens the source tree as a Git repository while
-  # producing renderer assets. GitHub release tarballs do not include .git, so
-  # synthesize minimal local metadata before node_modules are installed.
-  if [[ -d .git ]]; then
-    return 0
+_disable_root_postinstall() {
+  jq '.scripts.postinstall = ":"' package.json > package.json.tmp
+  mv package.json.tmp package.json
+}
+
+_disable_workspace_postinstalls() {
+  local _manifest
+  local _manifests=(
+    'packages/backend/server/package.json'
+    'packages/frontend/templates/package.json'
+  )
+
+  for _manifest in "${_manifests[@]}"; do
+    [[ -f "${_manifest}" ]] || continue
+    jq 'if (.scripts.postinstall? != null) then .scripts.postinstall = ":" else . end' \
+      "${_manifest}" > "${_manifest}.tmp"
+    mv "${_manifest}.tmp" "${_manifest}"
+  done
+}
+
+_assert_generated_workspace_state() {
+  local _required_files=(
+    'tools/utils/src/workspace.gen.ts'
+    '.oxlintrc.json'
+  )
+  local _required
+
+  for _required in "${_required_files[@]}"; do
+    if [[ ! -f "${_required}" ]]; then
+      printf 'Missing generated workspace file: %s\n' "${_required}" >&2
+      exit 1
+    fi
+  done
+}
+
+_patch_build_label_fallback() {
+  local _html_plugin='tools/cli/src/webpack/html-plugin.ts'
+
+  [[ -f "${_html_plugin}" ]] || return 0
+
+  # Release tarballs do not carry Git metadata. Upstream only uses this value
+  # as opaque build metadata in emitted HTML and assets-manifest.json, so feed
+  # a stable version label instead of synthesizing a fake repository or SHA.
+  perl -0pi -e 's@const \{ GITHUB_SHA \} = process\.env;@const { AFFINE_BUILD_LABEL, GITHUB_SHA } = process.env;\n  if (AFFINE_BUILD_LABEL) {\n    return AFFINE_BUILD_LABEL;\n  }@' "${_html_plugin}"
+
+  if ! grep -Fq 'AFFINE_BUILD_LABEL' "${_html_plugin}"; then
+    printf 'Failed to patch %s for tarball build-label fallback.\n' "${_html_plugin}" >&2
+    exit 1
+  fi
+}
+
+_prepare_system_electron_runtime() {
+  local _electron_module='node_modules/electron'
+  local _electron_root="/usr/lib/electron${_electronversion}"
+
+  if [[ ! -d "${_electron_module}" ]]; then
+    printf 'Missing npm electron package under %s\n' "${_electron_module}" >&2
+    exit 1
   fi
 
-  git init -q
-  git config user.name 'Arch Linux build'
-  git config user.email 'build@archlinux.local'
-  git add -A
-  git commit -q -m "Archive import v${pkgver}"
-  git tag -f "v${pkgver}" >/dev/null
+  if [[ ! -x "${_electron_root}/electron" ]]; then
+    printf 'Missing system Electron runtime under %s\n' "${_electron_root}" >&2
+    exit 1
+  fi
+
+  rm -rf "${_electron_module}/dist"
+  ln -s "${_electron_root}" "${_electron_module}/dist"
+  printf '%s\n' 'electron' > "${_electron_module}/path.txt"
 }
 
 _common_build_env() {
   export HUSKY=0
   export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
   export SENTRYCLI_SKIP_DOWNLOAD=1
+  export AFFINE_BUILD_LABEL="${pkgver}"
   export COREPACK_HOME="${SRCDEST:-${srcdir}}/${pkgname}-corepack"
 }
 
@@ -149,7 +203,10 @@ _remove_updater_metadata() {
 _affine_prepare() {
   cd "${srcdir}/${_pkgsrc}"
   _common_build_env
-  _ensure_git_metadata_for_tarball
+  _patch_build_label_fallback
+  _assert_generated_workspace_state
+  _disable_root_postinstall
+  _disable_workspace_postinstalls
   _setup_build_toolchain
 
   local electron_pkg_major
@@ -182,7 +239,7 @@ _affine_build() {
   find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +
   yarn workspaces focus @affine/electron @affine/monorepo @affine/nbstore @toeverything/infra
 
-  node ./node_modules/electron/install.js
+  _prepare_system_electron_runtime
   SKIP_WEB_BUILD=1 SKIP_BUNDLE=1 HOIST_NODE_MODULES=1 NODE_OPTIONS='--max-old-space-size=14384' DEBUG='affine:*,napi:*' yarn affine @affine/electron make --platform=linux --arch="${_arch}"
   unzip -o packages/frontend/apps/electron/out/stable/make/zip/linux/${_arch}/${_upstream_name}-linux-${_arch}-${_app_version}.zip
 }
