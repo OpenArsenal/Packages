@@ -1,7 +1,7 @@
 pkgbase = figma-linux-git
 	pkgdesc = Unofficial Electron-based Figma desktop client for Linux (bundled Electron, git HEAD)
 	pkgver = 0.11.4.r10.gd9a7a03
-	pkgrel = 4
+	pkgrel = 6
 	url = https://github.com/Figma-Linux/figma-linux
 	arch = x86_64
 	arch = aarch64
@@ -27,6 +27,6 @@ pkgbase = figma-linux-git
 	source = figma-linux.sh
 	sha256sums = SKIP
 	sha256sums = 5029d26b935d5527c9a71f1a3fe81264f92a3d4a9f1c3b71296623d8d9d1edb2
-	sha256sums = 8107c539597b6cb1c38656353956cdad5e8cbdbfd31ace1bb5804c05db8ae4c5
+	sha256sums = 7d939f619daa3c1f1d45d7bd9274a2161417e951695ed2514d573bbf09552586
 
 pkgname = figma-linux-git
