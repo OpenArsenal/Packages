@@ -14,7 +14,6 @@ _ghurl="https://github.com/toeverything/AFFiNE"
 _branch='canary'
 license=('LicenseRef-custom' 'MIT')
 options=('debug' 'strip')
-install='affine.install'
 
 _arch=x64
 _pkgsrc="${pkgname}"
