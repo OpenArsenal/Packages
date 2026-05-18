@@ -9,7 +9,6 @@ url="https://affine.pro/"
 _ghurl="https://github.com/toeverything/AFFiNE"
 license=('LicenseRef-custom' 'MIT')
 options=('!debug' '!strip')
-install='affine.install'
 
 provides=("affine=${pkgver}")
 conflicts=('affine')
