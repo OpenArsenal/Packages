@@ -11,7 +11,6 @@ arch=('any')
 license=('ISC')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/$pkgver.tar.gz")
 changelog=aurutils.changelog
-install=aurutils.install
 sha256sums=('9a425508e59db73b1ae4644d15fc3c09e3cbd85788295455bd2d13fb6ceccee5')
 depends=('git' 'pacutils' 'curl' 'perl' 'perl-json-xs' 'bash')
 optdepends=('bash-completion: bash completion'
