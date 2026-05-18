@@ -8,7 +8,6 @@ license=('MIT')
 # Release+LTO currently breaks the `aube-resolver` build script at link time
 # with unresolved `ZSTD_*` symbols under the packaging toolchain.
 options=('!lto')
-install='aube.install'
 depends=('gcc-libs' 'nodejs')
 # `aube-resolver` generates an embedded primer at build time via `node`, and
 # the packaged CLI is expected to work as a system-wide Node package manager.
