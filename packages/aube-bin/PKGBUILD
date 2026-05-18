@@ -1,0 +1,46 @@
+pkgname=aube-bin
+_pkgname=aube
+pkgver=1.15.0
+pkgrel=1
+pkgdesc='Fast Node.js package manager with lifecycle-script jailing'
+arch=('x86_64' 'aarch64')
+url='https://github.com/endevco/aube'
+license=('MIT')
+depends=('glibc' 'gcc-libs')
+optdepends=(
+  'nodejs: run package scripts using a system Node.js runtime'
+  'mise: manage Node.js runtimes alongside aube'
+  'usage: generate shell completions with aube completion'
+)
+provides=("${_pkgname}=${pkgver}")
+conflicts=("${_pkgname}" "${_pkgname}-git")
+
+source_x86_64=(
+  "${_pkgname}-v${pkgver}-x86_64-unknown-linux-gnu.tar.gz::https://github.com/endevco/aube/releases/download/v${pkgver}/aube-v${pkgver}-x86_64-unknown-linux-gnu.tar.gz"
+)
+source_aarch64=(
+  "${_pkgname}-v${pkgver}-aarch64-unknown-linux-gnu.tar.gz::https://github.com/endevco/aube/releases/download/v${pkgver}/aube-v${pkgver}-aarch64-unknown-linux-gnu.tar.gz"
+)
+
+sha256sums_x86_64=('0eacdf1abf58fbbeb63d0ee48db8fe30b3bce59b8c0cd0440aa2ee80be3d1fe1')
+sha256sums_aarch64=('0166373a171232f53feeb7826b6846249baf2f3cc9fcf3b1630f78db431b716d')
+
+package() {
+  local _moddir="/usr/lib/node_modules/${_pkgname}"
+  local _bindir="${_moddir}/bin"
+
+  install -Dm755 "${srcdir}/aube" "${pkgdir}${_bindir}/aube"
+  install -Dm755 "${srcdir}/aubr" "${pkgdir}${_bindir}/aubr"
+  install -Dm755 "${srcdir}/aubx" "${pkgdir}${_bindir}/aubx"
+
+  install -d "${pkgdir}/usr/bin"
+  ln -s "../lib/node_modules/${_pkgname}/bin/aube" "${pkgdir}/usr/bin/aube"
+  ln -s "../lib/node_modules/${_pkgname}/bin/aubr" "${pkgdir}/usr/bin/aubr"
+  ln -s "../lib/node_modules/${_pkgname}/bin/aubx" "${pkgdir}/usr/bin/aubx"
+
+  if [[ -f "${srcdir}/LICENSE" ]]; then
+    install -Dm644 "${srcdir}/LICENSE" "${pkgdir}/usr/share/licenses/${_pkgname}/LICENSE"
+  elif [[ -f "${srcdir}/LICENSE-MIT" ]]; then
+    install -Dm644 "${srcdir}/LICENSE-MIT" "${pkgdir}/usr/share/licenses/${_pkgname}/LICENSE"
+  fi
+}

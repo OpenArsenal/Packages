@@ -1,0 +1,22 @@
+pkgbase = aube-bin
+	pkgdesc = Fast Node.js package manager with lifecycle-script jailing
+	pkgver = 1.15.0
+	pkgrel = 1
+	url = https://github.com/endevco/aube
+	arch = x86_64
+	arch = aarch64
+	license = MIT
+	depends = glibc
+	depends = gcc-libs
+	optdepends = nodejs: run package scripts using a system Node.js runtime
+	optdepends = mise: manage Node.js runtimes alongside aube
+	optdepends = usage: generate shell completions with aube completion
+	provides = aube=1.15.0
+	conflicts = aube
+	conflicts = aube-git
+	source_x86_64 = aube-v1.15.0-x86_64-unknown-linux-gnu.tar.gz::https://github.com/endevco/aube/releases/download/v1.15.0/aube-v1.15.0-x86_64-unknown-linux-gnu.tar.gz
+	sha256sums_x86_64 = 0eacdf1abf58fbbeb63d0ee48db8fe30b3bce59b8c0cd0440aa2ee80be3d1fe1
+	source_aarch64 = aube-v1.15.0-aarch64-unknown-linux-gnu.tar.gz::https://github.com/endevco/aube/releases/download/v1.15.0/aube-v1.15.0-aarch64-unknown-linux-gnu.tar.gz
+	sha256sums_aarch64 = 0166373a171232f53feeb7826b6846249baf2f3cc9fcf3b1630f78db431b716d
+
+pkgname = aube-bin
