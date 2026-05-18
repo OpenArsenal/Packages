@@ -1,0 +1,27 @@
+pkgbase = aube-git
+	pkgdesc = Fast Node.js package manager with lifecycle-script jailing
+	pkgver = 1.15.0.r12.g97c2851
+	pkgrel = 1
+	url = https://github.com/endevco/aube
+	arch = x86_64
+	arch = aarch64
+	license = MIT
+	makedepends = cargo
+	makedepends = cmake
+	makedepends = git
+	makedepends = nodejs
+	makedepends = pkgconf
+	makedepends = usage
+	depends = gcc-libs
+	depends = zstd
+	optdepends = nodejs: run package scripts and package binaries with a system Node.js runtime
+	optdepends = mise: manage/pin Node.js runtimes for projects
+	optdepends = usage: regenerate shell completions manually
+	provides = aube
+	conflicts = aube
+	conflicts = aube-bin
+	options = !lto
+	source = aube::git+https://github.com/endevco/aube.git
+	sha256sums = SKIP
+
+pkgname = aube-git
