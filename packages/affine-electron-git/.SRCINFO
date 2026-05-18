@@ -3,7 +3,6 @@ pkgbase = affine-electron-git
 	pkgver = 0.26.6.r11237.gdb0ff0a9df
 	pkgrel = 1
 	url = https://affine.pro/
-	install = affine.install
 	arch = x86_64
 	license = LicenseRef-custom
 	license = MIT
