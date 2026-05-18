@@ -1,0 +1,91 @@
+pkgname=aube-git
+_pkgname=aube
+pkgver=1.15.0.r13.g21701d3
+pkgrel=1
+pkgdesc='Fast Node.js package manager with lifecycle-script jailing'
+arch=('x86_64' 'aarch64')
+url='https://github.com/endevco/aube'
+license=('MIT')
+depends=(
+  'gcc-libs'
+  'zstd'
+)
+makedepends=(
+  'cargo'
+  'cmake'
+  'git'
+  'nodejs'
+  'pkgconf'
+  'usage'
+)
+optdepends=(
+  'nodejs: run package scripts and package binaries with a system Node.js runtime'
+  'mise: manage/pin Node.js runtimes for projects'
+  'usage: regenerate shell completions manually'
+)
+provides=(
+  'aube'
+)
+conflicts=(
+  'aube'
+  'aube-bin'
+)
+options=(!lto)
+source=("${_pkgname}::git+${url}.git")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd "${_pkgname}"
+
+  git describe --long --tags --abbrev=7 2>/dev/null |
+    sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+prepare() {
+  cd "${_pkgname}"
+
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+
+  sed -i \
+    's/zstd = { version = "0.13", default-features = false }/zstd = { version = "0.13", default-features = false, features = ["pkg-config"] }/' \
+    Cargo.toml
+
+  cargo fetch --locked --target "${CARCH}-unknown-linux-gnu"
+}
+
+build() {
+  cd "${_pkgname}"
+
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+
+  cargo build --release --frozen --locked --bins
+}
+
+package() {
+  cd "${_pkgname}"
+
+  local _moddir="/usr/lib/node_modules/${_pkgname}"
+  local _bindir="${_moddir}/bin"
+
+  install -Dm755 target/release/aube "${pkgdir}${_bindir}/aube"
+  install -Dm755 target/release/aubr "${pkgdir}${_bindir}/aubr"
+  install -Dm755 target/release/aubx "${pkgdir}${_bindir}/aubx"
+
+  install -d "${pkgdir}/usr/bin"
+  ln -s "../lib/node_modules/${_pkgname}/bin/aube" "${pkgdir}/usr/bin/aube"
+  ln -s "../lib/node_modules/${_pkgname}/bin/aubr" "${pkgdir}/usr/bin/aubr"
+  ln -s "../lib/node_modules/${_pkgname}/bin/aubx" "${pkgdir}/usr/bin/aubx"
+
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+
+  install -d \
+    "${pkgdir}/usr/share/bash-completion/completions" \
+    "${pkgdir}/usr/share/zsh/site-functions" \
+    "${pkgdir}/usr/share/fish/vendor_completions.d"
+
+  target/release/aube completion bash >"${pkgdir}/usr/share/bash-completion/completions/aube"
+  target/release/aube completion zsh >"${pkgdir}/usr/share/zsh/site-functions/_aube"
+  target/release/aube completion fish >"${pkgdir}/usr/share/fish/vendor_completions.d/aube.fish"
+}
