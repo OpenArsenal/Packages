@@ -3,7 +3,6 @@ pkgbase = aurutils
 	pkgver = 20.5.8
 	pkgrel = 1
 	url = https://github.com/AladW/aurutils
-	install = aurutils.install
 	changelog = aurutils.changelog
 	arch = any
 	license = ISC
