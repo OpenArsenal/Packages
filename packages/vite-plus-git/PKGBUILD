@@ -1,0 +1,273 @@
+pkgname=vite-plus-git
+_pkgname=vite-plus
+pkgver=0.1.22.r15.g6b0ae34
+pkgrel=1
+pkgdesc='Unified toolchain and entry point for web development (development version)'
+arch=('x86_64' 'aarch64')
+url='https://github.com/voidzero-dev/vite-plus'
+license=('MIT')
+options=('!lto' '!debug')
+depends=('gcc-libs' 'glibc' 'nodejs>=22.18.0')
+makedepends=('clang' 'cmake' 'git' 'npm' 'pnpm' 'rustup')
+optdepends=('git: initialize repositories in vp create and use git-backed templates')
+provides=('vite-plus')
+conflicts=('vite-plus' 'vite-plus-bin')
+_srcname='vite-plus'
+source=(
+  "${_srcname}::git+${url}.git"
+  'rolldown::git+https://github.com/rolldown/rolldown.git'
+  'vite::git+https://github.com/vitejs/vite.git'
+  'vite-task::git+https://github.com/voidzero-dev/vite-task.git'
+)
+sha256sums=('SKIP'
+  'SKIP'
+  'SKIP'
+  'SKIP')
+
+pkgver() {
+  cd "${srcdir}/${_srcname}"
+
+  git describe --tags --long --abbrev=7 2>/dev/null |
+    sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+_napi_target() {
+  case "${CARCH}" in
+  x86_64) echo 'x86_64-unknown-linux-gnu' ;;
+  aarch64) echo 'aarch64-unknown-linux-gnu' ;;
+  *)
+    echo "Unsupported architecture: ${CARCH}" >&2
+    return 1
+    ;;
+  esac
+}
+
+_rolldown_binding_target() {
+  case "${CARCH}" in
+  x86_64) echo 'linux-x64-gnu' ;;
+  aarch64) echo 'linux-arm64-gnu' ;;
+  *)
+    echo "Unsupported architecture: ${CARCH}" >&2
+    return 1
+    ;;
+  esac
+}
+
+_rolldown_binding_node() {
+  case "${CARCH}" in
+  x86_64) echo 'rolldown-binding.linux-x64-gnu.node' ;;
+  aarch64) echo 'rolldown-binding.linux-arm64-gnu.node' ;;
+  *)
+    echo "Unsupported architecture: ${CARCH}" >&2
+    return 1
+    ;;
+  esac
+}
+
+_rust_toolchain() {
+  sed -n 's/^channel = "\(.*\)"/\1/p' "${srcdir}/${_srcname}/rust-toolchain.toml"
+}
+
+_set_build_env() {
+  local _toolchain
+  _toolchain="$(_rust_toolchain)"
+
+  export HOME="${srcdir}/.home"
+  export PNPM_HOME="${srcdir}/.pnpm-home"
+  export PATH="${PNPM_HOME}:${PATH}"
+  export npm_config_cache="${srcdir}/.npm-cache"
+  export npm_config_fund=false
+  export npm_config_audit=false
+  export npm_config_loglevel=error
+  export CARGO_HOME="${srcdir}/cargo-home"
+  export CARGO_TARGET_DIR="${srcdir}/target"
+  export NPM_CONFIG_MANAGE_PACKAGE_MANAGER_VERSIONS=false
+  export RUSTUP_TOOLCHAIN="${_toolchain}"
+  export RELEASE_BUILD=1
+  export TARGET_CC=clang
+
+  # Prevent Rust/NAPI native artifacts from embedding makepkg work directories.
+  # The NAPI build can otherwise leave absolute build paths in the shared object.
+  export CARGO_PROFILE_RELEASE_DEBUG=0
+  export CARGO_PROFILE_RELEASE_STRIP='symbols'
+  export RUSTFLAGS="${RUSTFLAGS} --remap-path-prefix=${srcdir}=. --remap-path-prefix=${pkgdir}=."
+  export CFLAGS="${CFLAGS} -ffile-prefix-map=${srcdir}=. -ffile-prefix-map=${pkgdir}=."
+  export CXXFLAGS="${CXXFLAGS} -ffile-prefix-map=${srcdir}=. -ffile-prefix-map=${pkgdir}=."
+
+  if [[ "${CARCH}" == 'aarch64' ]]; then
+    export TARGET_CFLAGS='-D_BSD_SOURCE'
+  fi
+}
+
+_checkout_clean() {
+  local _repo="$1"
+  local _rev="$2"
+
+  git -C "${_repo}" reset --hard
+  git -C "${_repo}" clean -fdx
+  git -C "${_repo}" checkout --detach "${_rev}"
+}
+
+prepare() {
+  cd "${srcdir}/${_srcname}"
+  _set_build_env
+
+  local _rolldown_commit _vite_commit _vite_task_commit
+  _rolldown_commit="$(node -p "require('./packages/tools/.upstream-versions.json').rolldown.hash")"
+  _vite_commit="$(node -p "require('./packages/tools/.upstream-versions.json').vite.hash")"
+  _vite_task_commit="$(
+    node <<'NODE'
+const fs = require('fs')
+const cargo = fs.readFileSync('Cargo.toml', 'utf8')
+const match = cargo.match(/https:\/\/github\.com\/voidzero-dev\/vite-task\.git[^\n]*rev\s*=\s*"([^"]+)"/)
+if (!match) {
+  console.error('Unable to find vite-task git revision in Cargo.toml')
+  process.exit(1)
+}
+console.log(match[1])
+NODE
+  )"
+
+  _checkout_clean "${srcdir}/rolldown" "${_rolldown_commit}"
+  _checkout_clean "${srcdir}/vite" "${_vite_commit}"
+  _checkout_clean "${srcdir}/vite-task" "${_vite_task_commit}"
+
+  rm -rf rolldown vite
+  cp -a "${srcdir}/rolldown" rolldown
+  cp -a "${srcdir}/vite" vite
+  rm -rf rolldown/.git vite/.git
+
+  if ! grep -q '^\[patch."https://github.com/voidzero-dev/vite-task.git"\]' Cargo.toml; then
+    cat >>Cargo.toml <<'PATCH'
+
+[patch."https://github.com/voidzero-dev/vite-task.git"]
+fspy = { path = "../vite-task/crates/fspy" }
+vite_glob = { path = "../vite-task/crates/vite_glob" }
+vite_path = { path = "../vite-task/crates/vite_path" }
+vite_powershell = { path = "../vite-task/crates/vite_powershell" }
+vite_str = { path = "../vite-task/crates/vite_str" }
+vite_task = { path = "../vite-task/crates/vite_task" }
+vite_workspace = { path = "../vite-task/crates/vite_workspace" }
+PATCH
+  fi
+
+  local _rolldown_version _binding_target _binding_node _binding_pkg
+  _rolldown_version="$(node -p "require('./rolldown/packages/rolldown/package.json').version")"
+  _binding_target="$(_rolldown_binding_target)"
+  _binding_node="$(_rolldown_binding_node)"
+  _binding_pkg="rolldown-binding-${_binding_target}-${_rolldown_version}.tgz"
+
+  rm -rf "${srcdir}/package" "${srcdir:?}/${_binding_pkg}"
+  npm pack "@rolldown/binding-${_binding_target}@${_rolldown_version}" \
+    --pack-destination "${srcdir}"
+
+  tar -xzf "${srcdir}/${_binding_pkg}" -C "${srcdir}"
+  install -Dm755 "${srcdir}/package/${_binding_node}" \
+    "rolldown/packages/rolldown/src/${_binding_node}"
+  rm -rf "${srcdir}/package"
+}
+
+build() {
+  cd "${srcdir}/${_srcname}"
+  _set_build_env
+
+  local _target _toolchain
+  _target="$(_napi_target)"
+  _toolchain="$(_rust_toolchain)"
+
+  pnpm install --frozen-lockfile
+
+  # Follow upstream release CI shape instead of the root development build script.
+  # Upstream bootstraps rolldown build-node with a prebuilt @rolldown/binding-* package,
+  # then compiles the final vite-plus native module from source with RELEASE_BUILD=1.
+  pnpm --filter @rolldown/pluginutils build
+  pnpm --filter rolldown build-node
+  pnpm --filter vite build-types
+  pnpm --filter '@voidzero-dev/*' build
+  pnpm --filter vite-plus build-ts
+  pnpm --filter vite-plus build-native --target "${_target}"
+  cargo +"${_toolchain}" build --release --locked --target "${_target}" -p vite_global_cli
+
+  # Stage the production Node package outside fakeroot. Running pnpm deploy inside
+  # package() makes fakeroot track pnpm's hardlink/clone-heavy virtual store and
+  # can trigger: libfakeroot internal error: payload not recognized!
+  rm -rf "${srcdir}/vite-plus-deploy" \
+    "${srcdir}/vite-plus-completion-prefix" \
+    "${srcdir}/vite-plus-completions"
+
+  pnpm --filter=vite-plus deploy --prod --legacy --no-optional \
+    "${srcdir}/vite-plus-deploy"
+
+  rm -rf "${srcdir}"/vite-plus-deploy/node_modules/.pnpm/*/node_modules/*/prebuilds/{darwin,ios}-* 2>/dev/null || true
+  rm -rf "${srcdir}"/vite-plus-deploy/node_modules/.pnpm/fsevents@*/node_modules/fsevents 2>/dev/null || true
+  find "${srcdir}/vite-plus-deploy/node_modules" -name '.modules.yaml' -delete
+
+  # Generate shell completions outside fakeroot as well. The binary expects the
+  # installed layout: bin/vp next to node_modules/vite-plus.
+  install -dm755 \
+    "${srcdir}/vite-plus-completion-prefix/bin" \
+    "${srcdir}/vite-plus-completion-prefix/node_modules" \
+    "${srcdir}/vite-plus-completions"
+  install -Dm755 "${CARGO_TARGET_DIR}/${_target}/release/vp" \
+    "${srcdir}/vite-plus-completion-prefix/bin/vp"
+  cp -a --no-preserve=ownership "${srcdir}/vite-plus-deploy" \
+    "${srcdir}/vite-plus-completion-prefix/node_modules/vite-plus"
+
+  env VP_COMPLETE=bash "${srcdir}/vite-plus-completion-prefix/bin/vp" \
+    >"${srcdir}/vite-plus-completions/vp" || rm -f "${srcdir}/vite-plus-completions/vp"
+  env VP_COMPLETE=fish "${srcdir}/vite-plus-completion-prefix/bin/vp" \
+    >"${srcdir}/vite-plus-completions/vp.fish" || rm -f "${srcdir}/vite-plus-completions/vp.fish"
+  env VP_COMPLETE=zsh "${srcdir}/vite-plus-completion-prefix/bin/vp" \
+    >"${srcdir}/vite-plus-completions/_vp" || rm -f "${srcdir}/vite-plus-completions/_vp"
+}
+
+package() {
+  cd "${srcdir}/${_srcname}"
+  _set_build_env
+
+  local _target _prefix
+  _target="$(_napi_target)"
+  _prefix="${pkgdir}/usr/lib/${_pkgname}"
+
+  install -dm755 \
+    "${_prefix}/bin" \
+    "${_prefix}/node_modules" \
+    "${pkgdir}/usr/bin" \
+    "${pkgdir}/usr/share/licenses/${pkgname}"
+
+  install -Dm755 "${CARGO_TARGET_DIR}/${_target}/release/vp" "${_prefix}/bin/vp"
+  cp -a --no-preserve=ownership "${srcdir}/vite-plus-deploy" \
+    "${_prefix}/node_modules/vite-plus"
+
+  # Final package cleanup. Keep this in package(), but do not invoke pnpm here.
+  rm -rf "${_prefix}"/node_modules/vite-plus/node_modules/.pnpm/*/node_modules/*/prebuilds/{darwin,ios}-* 2>/dev/null || true
+  rm -rf "${_prefix}"/node_modules/vite-plus/node_modules/.pnpm/fsevents@*/node_modules/fsevents 2>/dev/null || true
+  find "${_prefix}/node_modules/vite-plus/node_modules" -name '.modules.yaml' -delete
+
+  # Strip native add-ons explicitly; the vite-plus NAPI shared object can retain
+  # build-directory strings even when the Rust CLI binary is clean.
+  find "${_prefix}/node_modules/vite-plus" -type f -name '*.node' -exec strip --strip-unneeded {} + 2>/dev/null || true
+
+  # pnpm-generated bin shims can include makepkg paths.
+  find "${_prefix}/node_modules/vite-plus/node_modules" -path '*/node_modules/.bin/*' -type f -exec sed -i "s#${pkgdir}##g;s#${srcdir}#.#g" {} +
+
+  ln -s "../lib/${_pkgname}/bin/vp" "${pkgdir}/usr/bin/vp"
+  ln -s 'vp' "${pkgdir}/usr/bin/vpr"
+  ln -s 'vp' "${pkgdir}/usr/bin/vpx"
+
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+
+  [[ -s "${srcdir}/vite-plus-completions/vp" ]] &&
+    install -Dm644 "${srcdir}/vite-plus-completions/vp" \
+      "${pkgdir}/usr/share/bash-completion/completions/vp"
+  [[ -s "${srcdir}/vite-plus-completions/vp.fish" ]] &&
+    install -Dm644 "${srcdir}/vite-plus-completions/vp.fish" \
+      "${pkgdir}/usr/share/fish/vendor_completions.d/vp.fish"
+  [[ -s "${srcdir}/vite-plus-completions/_vp" ]] &&
+    install -Dm644 "${srcdir}/vite-plus-completions/_vp" \
+      "${pkgdir}/usr/share/zsh/site-functions/_vp"
+
+  sed -i "s#${pkgdir}##g;s#${srcdir}#.#g" \
+    "${pkgdir}/usr/share/fish/vendor_completions.d/vp.fish" \
+    "${pkgdir}/usr/share/zsh/site-functions/_vp" 2>/dev/null || true
+}
