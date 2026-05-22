@@ -9,6 +9,8 @@ pkgbase = qarma
 	depends = glibc
 	depends = libx11
 	depends = qt6-base
+	provides = zenity
+	conflicts = zenity
 	source = qarma-1.1.1.tar.gz::https://github.com/luebking/qarma/archive/refs/tags/1.1.1.tar.gz
 	sha256sums = b65fc018c826ae8736a040e438de26be9c8d489a017b307b2e5371fa0c567190
 
