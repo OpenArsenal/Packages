@@ -1,0 +1,69 @@
+pkgname='mise-bin'
+_pkgname='mise'
+pkgver=2026.5.13
+pkgrel=1
+pkgdesc='The front-end to your dev env (prebuilt release)'
+arch=('x86_64')
+url='https://github.com/jdx/mise'
+license=('MIT')
+depends=(
+  bzip2
+  libgcc
+  glibc
+  openssl
+)
+provides=("${_pkgname}=${pkgver}")
+optdepends=(
+  'bash-completion: bash completion support'
+  'usage: completion support'
+)
+conflicts=(
+  mise-bin
+  mise-git
+  rtx
+  rtx-bin
+  rtx-git
+)
+replaces=(
+  rtx
+  rtx-bin
+  rtx-git
+)
+options=(
+  '!emptydirs'
+  '!strip'
+)
+source=(
+  "${_pkgname}-v${pkgver}-linux-x64::${url}/releases/download/v${pkgver}/${_pkgname}-v${pkgver}-linux-x64"
+  "${_pkgname}-${pkgver}.tar.gz::${url}/archive/v${pkgver}/${_pkgname}-${pkgver}.tar.gz"
+)
+sha512sums=('f43e2e3217a2b614278e4a456e2084f79d23ddb30fac6ce7e80e22d13c6da93f58c478a303010e2d63a4e771a05e09364cb58c44a143222f507356d93271a448'
+  '3346783192172bdc974aea7945bcacc0524ab1a0f61325bea65cc78df3a1b1de1261b29dd7ac2df2e277716fb812103d5bc5d2551a29ad109456a94919e05bd2')
+b2sums=('2357c86476f9b8b1f7631db76975e1c82f8656789b6615d77f0ee521131a8bba13c7cb90d47f39ed8e37ce5c2113061e87e87c90df41e31c959b177b5bc9d163'
+  '5b737cb8f5c7ed8039c1f12280c37773ec79af4fbdb08741293a67bf0f1c6bca883b4c00f4ad564a6a0e94ca868f46db03a7258d72c240668d246cea4449c91b')
+
+package() {
+  cd "${srcdir}"
+
+  # package
+  install --verbose -D --mode=0755 "${_pkgname}-v${pkgver}-linux-x64" "${pkgdir}/usr/bin/${_pkgname}"
+
+  # disable self-update
+  install --verbose -D --mode=0644 /dev/null "${pkgdir}/usr/lib/mise/.disable-self-update"
+
+  cd "${_pkgname}-${pkgver}"
+
+  # license
+  install --verbose -D --mode=0644 LICENSE --target-directory "${pkgdir}/usr/share/licenses/${pkgname}"
+
+  # docs
+  install --verbose -D --mode=0644 *.md --target-directory "${pkgdir}/usr/share/doc/${pkgname}"
+  install --verbose -D --mode=0644 man/man1/mise.1 --target-directory "${pkgdir}/usr/share/man/man1"
+
+  # completion support
+  install --verbose -D --mode=0644 completions/mise.bash "${pkgdir}/usr/share/bash-completion/completions/mise"
+  install --verbose -D --mode=0644 completions/mise.fish "${pkgdir}/usr/share/fish/vendor_completions.d/mise.fish"
+  install --verbose -D --mode=0644 completions/_mise "${pkgdir}/usr/share/zsh/site-functions/_mise"
+}
+
+# vim: tabstop=2 shiftwidth=2 expandtab:
