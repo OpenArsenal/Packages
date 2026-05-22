@@ -1,0 +1,33 @@
+pkgbase = vite-plus-git
+	pkgdesc = Unified toolchain and entry point for web development (development version)
+	pkgver = 0.1.22.r15.g6b0ae34
+	pkgrel = 1
+	url = https://github.com/voidzero-dev/vite-plus
+	arch = x86_64
+	arch = aarch64
+	license = MIT
+	makedepends = clang
+	makedepends = cmake
+	makedepends = git
+	makedepends = npm
+	makedepends = pnpm
+	makedepends = rustup
+	depends = gcc-libs
+	depends = glibc
+	depends = nodejs>=22.18.0
+	optdepends = git: initialize repositories in vp create and use git-backed templates
+	provides = vite-plus
+	conflicts = vite-plus
+	conflicts = vite-plus-bin
+	options = !lto
+	options = !debug
+	source = vite-plus::git+https://github.com/voidzero-dev/vite-plus.git
+	source = rolldown::git+https://github.com/rolldown/rolldown.git
+	source = vite::git+https://github.com/vitejs/vite.git
+	source = vite-task::git+https://github.com/voidzero-dev/vite-task.git
+	sha256sums = SKIP
+	sha256sums = SKIP
+	sha256sums = SKIP
+	sha256sums = SKIP
+
+pkgname = vite-plus-git
