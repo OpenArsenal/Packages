@@ -1,0 +1,4 @@
+[mise-git]
+source = "git"
+git = "https://github.com/jdx/mise.git"
+use_commit = true

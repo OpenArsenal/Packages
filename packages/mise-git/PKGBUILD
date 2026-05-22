@@ -1,0 +1,113 @@
+pkgname='mise-git'
+_pkgname='mise'
+pkgver=2026.5.14.r4.g5cd9935
+pkgrel=1
+pkgdesc='The front-end to your dev env (git version)'
+arch=('x86_64')
+url='https://github.com/jdx/mise'
+license=('MIT')
+depends=(
+  bzip2
+  libgcc
+  glibc
+  openssl
+)
+makedepends=(
+  cargo
+  clang
+  cmake
+  git
+)
+checkdepends=(
+  git
+)
+provides=("${_pkgname}=${pkgver}")
+optdepends=(
+  'bash-completion: bash completion support'
+  'usage: completion support'
+)
+conflicts=(
+  mise-bin
+  mise-git
+  rtx
+  rtx-bin
+  rtx-git
+)
+replaces=(
+  rtx
+  rtx-bin
+  rtx-git
+)
+options=(
+  '!emptydirs'
+  '!lto'
+)
+source=("${_pkgname}::git+${url}.git")
+sha512sums=('SKIP')
+b2sums=('SKIP')
+
+_setup_build_env() {
+  export CARGO_HOME="${srcdir}/cargo-home"
+  export CARGO_TARGET_DIR=target
+  export OPENSSL_NO_VENDOR=true
+  export RUSTFLAGS="${RUSTFLAGS:+${RUSTFLAGS} }--remap-path-prefix=${srcdir}/${_pkgname}=. --remap-path-prefix=${srcdir}/cargo-home=./cargo-home --remap-path-prefix=${srcdir}=."
+  export CFLAGS="${CFLAGS:+${CFLAGS} }-ffile-prefix-map=${srcdir}=. -fmacro-prefix-map=${srcdir}=. -fdebug-prefix-map=${srcdir}=."
+  export CXXFLAGS="${CXXFLAGS:+${CXXFLAGS} }-ffile-prefix-map=${srcdir}=. -fmacro-prefix-map=${srcdir}=. -fdebug-prefix-map=${srcdir}=."
+}
+
+pkgver() {
+  cd "${srcdir}/${_pkgname}"
+
+  git describe --tags --long --abbrev=7 | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+prepare() {
+  cd "${srcdir}/${_pkgname}"
+
+  export CARGO_HOME="${srcdir}/cargo-home"
+
+  cargo fetch --locked --target "$(rustc --print host-tuple)"
+}
+
+build() {
+  cd "${srcdir}/${_pkgname}"
+
+  _setup_build_env
+
+  cargo build --frozen --release --all-features
+}
+
+check() {
+  cd "${srcdir}/${_pkgname}"
+
+  _setup_build_env
+  export MISE_EXPERIMENTAL=1
+
+  cargo test --frozen --all-features
+
+  unset MISE_EXPERIMENTAL
+}
+
+package() {
+  cd "${srcdir}/${_pkgname}"
+
+  # package
+  install --verbose -D --mode=0755 "target/release/${_pkgname}" --target-directory "${pkgdir}/usr/bin"
+
+  # disable self-update
+  install --verbose -D --mode=0644 /dev/null "${pkgdir}/usr/lib/mise/.disable-self-update"
+
+  # license
+  install --verbose -D --mode=0644 LICENSE --target-directory "${pkgdir}/usr/share/licenses/${pkgname}"
+
+  # docs
+  install --verbose -D --mode=0644 *.md --target-directory "${pkgdir}/usr/share/doc/${pkgname}"
+  install --verbose -D --mode=0644 man/man1/mise.1 --target-directory "${pkgdir}/usr/share/man/man1"
+
+  # completion support
+  install --verbose -D --mode=0644 completions/mise.bash "${pkgdir}/usr/share/bash-completion/completions/mise"
+  install --verbose -D --mode=0644 completions/mise.fish "${pkgdir}/usr/share/fish/vendor_completions.d/mise.fish"
+  install --verbose -D --mode=0644 completions/_mise "${pkgdir}/usr/share/zsh/site-functions/_mise"
+}
+
+# vim: tabstop=2 shiftwidth=2 expandtab:

@@ -1,0 +1,30 @@
+pkgbase = mise-git
+	pkgdesc = The front-end to your dev env (git version)
+	pkgver = 2026.5.14.r4.g5cd9935
+	pkgrel = 1
+	url = https://github.com/jdx/mise
+	arch = x86_64
+	license = MIT
+	checkdepends = git
+	makedepends = cargo
+	makedepends = clang
+	makedepends = cmake
+	makedepends = git
+	depends = bzip2
+	depends = libgcc
+	depends = glibc
+	depends = openssl
+	optdepends = bash-completion: bash completion support
+	optdepends = usage: completion support
+	provides = mise=2026.5.14.r4.g5cd9935
+	conflicts = mise
+	conflicts = mise-bin
+	conflicts = rtx
+	conflicts = rtx-bin
+	options = !emptydirs
+	options = !lto
+	source = mise::git+https://github.com/jdx/mise.git
+	sha512sums = SKIP
+	b2sums = SKIP
+
+pkgname = mise-git
