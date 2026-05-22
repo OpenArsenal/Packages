@@ -6,6 +6,8 @@ arch=('x86_64')
 url='https://github.com/luebking/qarma'
 license=('GPL-2.0-only')
 depends=('gcc-libs' 'glibc' 'libx11' 'qt6-base')
+provides=('zenity')
+provides=('zenity')
 source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/${pkgver}.tar.gz")
 sha256sums=('b65fc018c826ae8736a040e438de26be9c8d489a017b307b2e5371fa0c567190')
 
