@@ -1,7 +1,5 @@
-# Maintainer: Okiki <okiki@thunderstrike.co>
-
 pkgname='mise'
-pkgver='2026.4.27'
+pkgver=2026.5.13
 pkgrel=1
 pkgdesc='The front-end to your dev env'
 arch=('x86_64')
@@ -18,28 +16,40 @@ makedepends=(
   clang
   cmake
 )
-provides=('mise')
+checkdepends=(
+  git
+)
 optdepends=(
   'bash-completion: bash completion support'
   'usage: completion support'
 )
 conflicts=(
+  mise-bin
+  mise-git
   rtx
   rtx-bin
-)
-replaces=(
-  rtx
 )
 options=(
   '!emptydirs'
   '!lto'
 )
 source=("${url}/archive/v${pkgver}/${pkgname}-${pkgver}.tar.gz")
-sha512sums=('4d7eddf1db5a7d8909b2dedb0f3ebfd2da8f4d9df2f1312d7f7ddf442118a85998284c3170f0538840b7957b6288206b87fe691a53e20dd58284692aa1c44a65')
-b2sums=('253c57408e24f9fd6f14128a1f0e510c1a5d016fd70c94967c0df7d57551866aa61c6264c495723c72e27ca5056fc0e4c6254f93c8da55f26ee29fff1a9bc9a4')
+sha512sums=('3346783192172bdc974aea7945bcacc0524ab1a0f61325bea65cc78df3a1b1de1261b29dd7ac2df2e277716fb812103d5bc5d2551a29ad109456a94919e05bd2')
+b2sums=('5b737cb8f5c7ed8039c1f12280c37773ec79af4fbdb08741293a67bf0f1c6bca883b4c00f4ad564a6a0e94ca868f46db03a7258d72c240668d246cea4449c91b')
+
+_setup_build_env() {
+  export CARGO_HOME="${srcdir}/cargo-home"
+  export CARGO_TARGET_DIR=target
+  export OPENSSL_NO_VENDOR=true
+  export RUSTFLAGS="${RUSTFLAGS:+${RUSTFLAGS} }--remap-path-prefix=${srcdir}/${pkgname}-${pkgver}=. --remap-path-prefix=${srcdir}/cargo-home=./cargo-home --remap-path-prefix=${srcdir}=."
+  export CFLAGS="${CFLAGS:+${CFLAGS} }-ffile-prefix-map=${srcdir}=. -fmacro-prefix-map=${srcdir}=. -fdebug-prefix-map=${srcdir}=."
+  export CXXFLAGS="${CXXFLAGS:+${CXXFLAGS} }-ffile-prefix-map=${srcdir}=. -fmacro-prefix-map=${srcdir}=. -fdebug-prefix-map=${srcdir}=."
+}
 
 prepare() {
   cd "${pkgname}-${pkgver}"
+
+  export CARGO_HOME="${srcdir}/cargo-home"
 
   cargo fetch --locked --target "$(rustc --print host-tuple)"
 }
@@ -47,7 +57,7 @@ prepare() {
 build() {
   cd "${pkgname}-${pkgver}"
 
-  export OPENSSL_NO_VENDOR=true
+  _setup_build_env
 
   cargo build --frozen --release --all-features
 }
@@ -55,7 +65,7 @@ build() {
 check() {
   cd "${pkgname}-${pkgver}"
 
-  export OPENSSL_NO_VENDOR=true
+  _setup_build_env
   export MISE_EXPERIMENTAL=1
 
   cargo test --frozen --all-features
