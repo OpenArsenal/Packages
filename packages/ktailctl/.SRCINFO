@@ -1,7 +1,7 @@
 pkgbase = ktailctl
 	pkgdesc = GUI to monitor and manage Tailscale
 	pkgver = 0.21.5
-	pkgrel = 4
+	pkgrel = 2
 	url = https://github.com/f-koehler/KTailctl
 	install = ktailctl.install
 	changelog = ktailctl.changelog
@@ -11,7 +11,6 @@ pkgbase = ktailctl
 	makedepends = cmake
 	makedepends = extra-cmake-modules
 	makedepends = gettext
-	makedepends = git
 	makedepends = go
 	makedepends = nlohmann-json
 	depends = breeze-icons
@@ -33,7 +32,11 @@ pkgbase = ktailctl
 	depends = qt6-svg
 	depends = tailscale
 	optdepends = qt6-wayland: native Wayland platform plugin support
-	source = git+https://github.com/f-koehler/KTailctl.git#tag=v0.21.5
-	sha256sums = 8a4f88156e9a7a2dea4c02c72c39faef87907194f4ce2b1987cd32f0dc09e6dd
+	source = ktailctl-0.21.5-tag.tar.gz::https://github.com/f-koehler/KTailctl/archive/refs/tags/v0.21.5.tar.gz
+	source = ktailctl-wrapper-v0.21.5-vendor.tar.gz::https://github.com/f-koehler/KTailctl/releases/download/v0.21.5/ktailctl-wrapper-vendor-v0.21.5.tar.gz
+	source = ktailctl-mullvad-country-model.patch
+	sha256sums = 17748d1e9e84d6ea5003111cf083bbe0133c245dc71d8beec652640354f05997
+	sha256sums = 3199b86a912f09d7b3e98bd00a3078b1d599a43a98c4b4b6fd3e032411406f1f
+	sha256sums = 89dbad91d753d19ca74f7613200678369a1e7c48f53fe2ad4303dfd6357b95bd
 
 pkgname = ktailctl

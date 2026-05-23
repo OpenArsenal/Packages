@@ -1,0 +1,33 @@
+diff --git a/src/mullvad_country_model.cpp b/src/mullvad_country_model.cpp
+index 6d51208..1491844 100644
+--- a/src/mullvad_country_model.cpp
++++ b/src/mullvad_country_model.cpp
+@@ -30,14 +30,20 @@ QVariant MullvadCountryModel::data(const QModelIndex &index, int role) const
+ 
+ void MullvadCountryModel::update(const QMap<QString, QString> &countries)
+ {
+-    if (countries.size() == mCountries.size()) {
++    QVector<QPair<QString, QString>> newCountries;
++    newCountries.reserve(countries.size());
++
++    for (auto it = countries.cbegin(); it != countries.cend(); ++it) {
++        if (it->isEmpty()) {
++            continue;
++        }
++        newCountries.append({it.key(), it.value()});
++    }
++
++    if (mCountries == newCountries) {
+         return;
+     }
++
+     beginResetModel();
+-    for (auto it = countries.cbegin(); it != countries.cend(); ++it) {
+-        if (it->isEmpty()) {
+-            continue;
+-        }
+-        mCountries.append({it.key(), it.value()});
+-    }
++    mCountries = std::move(newCountries);
+     endResetModel();
+ }
