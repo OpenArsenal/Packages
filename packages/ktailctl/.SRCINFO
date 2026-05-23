@@ -1,13 +1,14 @@
 pkgbase = ktailctl
 	pkgdesc = GUI to monitor and manage Tailscale
 	pkgver = 0.21.5
-	pkgrel = 2
+	pkgrel = 1
 	url = https://github.com/f-koehler/KTailctl
 	install = ktailctl.install
 	changelog = ktailctl.changelog
 	arch = x86_64
 	arch = aarch64
 	license = GPL-3.0-only
+	makedepends = appstream
 	makedepends = cmake
 	makedepends = extra-cmake-modules
 	makedepends = gettext
@@ -37,6 +38,6 @@ pkgbase = ktailctl
 	source = ktailctl-mullvad-country-model.patch
 	sha256sums = 17748d1e9e84d6ea5003111cf083bbe0133c245dc71d8beec652640354f05997
 	sha256sums = 3199b86a912f09d7b3e98bd00a3078b1d599a43a98c4b4b6fd3e032411406f1f
-	sha256sums = 89dbad91d753d19ca74f7613200678369a1e7c48f53fe2ad4303dfd6357b95bd
+	sha256sums = 6a7ba1c22885dd0255839ad2e4ac07feed1b7064d5733d84faff095b3adde50f
 
 pkgname = ktailctl
