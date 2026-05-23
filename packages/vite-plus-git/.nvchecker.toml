@@ -1,0 +1,4 @@
+[vite-plus-git]
+source = "git"
+git = "https://github.com/voidzero-dev/vite-plus.git"
+prefix = "v"
