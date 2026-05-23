@@ -1,9 +1,7 @@
-# Maintainer: goodroot <hyprwhspr@goodroot.ca>
-
 _pkgname=hyprwhspr
 pkgname=hyprwhspr-git
-pkgver=0
-pkgrel=9
+pkgver=52fea63f276e33816dada781e85f07decf3b0d15
+pkgrel=1
 pkgdesc="Native Whisper speech-to-text for Arch/Omarchy with Waybar integration (git)"
 arch=('x86_64')
 url="https://github.com/goodroot/${_pkgname}"
@@ -14,6 +12,7 @@ makedepends=(
 )
 depends=(
   'cmake'
+  'git'
   'python'
   'python-pip'
   'python-setuptools'
@@ -35,7 +34,6 @@ depends=(
 optdepends=('gtk4-layer-shell: for themed Mic-OSD visualization')
 
 install="${_pkgname}.install"
-
 source=("git+https://github.com/goodroot/${_pkgname}.git")
 sha256sums=('SKIP')
 
@@ -54,14 +52,19 @@ build() {
 package() {
   cd "${srcdir}/${_pkgname}"
 
+  # Payload into /usr/lib keeps repo layout intact
   install -d "$pkgdir/usr/lib/${_pkgname}"
   cp -r lib bin config share README.md LICENSE requirements.txt \
     "$pkgdir/usr/lib/${_pkgname}"
 
+  # Note: scripts directory removed - functionality moved to CLI commands
+
+  # Make sure main launcher is executable
   if [ -f "$pkgdir/usr/lib/${_pkgname}/bin/${_pkgname}" ]; then
     chmod 755 "$pkgdir/usr/lib/${_pkgname}/bin/${_pkgname}"
   fi
 
+  # Install systemd user service
   install -Dm644 "config/systemd/${_pkgname}.service" \
     "$pkgdir/usr/lib/systemd/user/${_pkgname}.service"
 
@@ -71,8 +74,9 @@ package() {
     "$srcdir/${_pkgname}/bin/${_pkgname}" > "$pkgdir/usr/bin/${_pkgname}"
   chmod 755 "$pkgdir/usr/bin/${_pkgname}"
 
+  # Docs & license
   install -d "$pkgdir/usr/share/doc/${_pkgname}" \
              "$pkgdir/usr/share/licenses/${_pkgname}"
   install -m644 README.md "$pkgdir/usr/share/doc/${_pkgname}/README.md"
-  install -m644 LICENSE   "$pkgdir/usr/share/licenses/${_pkgname}/LICENSE"
+  install -m644 LICENSE "$pkgdir/usr/share/licenses/${_pkgname}/LICENSE"
 }
