@@ -1,33 +1,120 @@
-diff --git a/src/mullvad_country_model.cpp b/src/mullvad_country_model.cpp
-index 6d51208..1491844 100644
 --- a/src/mullvad_country_model.cpp
 +++ b/src/mullvad_country_model.cpp
-@@ -30,14 +30,20 @@ QVariant MullvadCountryModel::data(const QModelIndex &index, int role) const
+@@ -32,15 +32,25 @@
  
  void MullvadCountryModel::update(const QMap<QString, QString> &countries)
  {
 -    if (countries.size() == mCountries.size()) {
+-        return;
+-    }
+-    beginResetModel();
 +    QVector<QPair<QString, QString>> newCountries;
 +    newCountries.reserve(countries.size());
 +
-+    for (auto it = countries.cbegin(); it != countries.cend(); ++it) {
-+        if (it->isEmpty()) {
-+            continue;
-+        }
++    // Build the replacement snapshot first so we can compare the full content
++    // instead of using only the entry count as a proxy for equality.
+     for (auto it = countries.cbegin(); it != countries.cend(); ++it) {
+         if (it->isEmpty()) {
+             continue;
+         }
+-        mCountries.append({it.key(), it.value()});
 +        newCountries.append({it.key(), it.value()});
-+    }
-+
-+    if (mCountries == newCountries) {
-         return;
      }
 +
-     beginResetModel();
--    for (auto it = countries.cbegin(); it != countries.cend(); ++it) {
--        if (it->isEmpty()) {
--            continue;
--        }
--        mCountries.append({it.key(), it.value()});
--    }
++    if (mCountries == newCountries) {
++        return;
++    }
++
++    // Replace the whole backing store during the reset so old entries are
++    // released instead of accumulated across refresh cycles.
++    beginResetModel();
 +    mCountries = std::move(newCountries);
      endResetModel();
  }
+\ No newline at end of file
+--- a/tests/CMakeLists.txt
++++ b/tests/CMakeLists.txt
+@@ -1,3 +1,12 @@
+ enable_testing()
+ # add_executable(test_data test_data.cpp) target_link_libraries(test_data Qt6::Test KTailctl::Data KTailctl::Tailscale)
+ # add_test(NAME test_data COMMAND test_data)
++
++# Keep the regression standalone so it can exercise the model logic without
++# pulling the full GUI application target into the test binary.
++add_executable(test_mullvad_country_model test_mullvad_country_model.cpp ../src/mullvad_country_model.cpp)
++target_include_directories(test_mullvad_country_model PRIVATE ${CMAKE_SOURCE_DIR}/src)
++target_link_libraries(test_mullvad_country_model PRIVATE Qt6::Core Qt6::Test)
++add_test(NAME test_mullvad_country_model COMMAND test_mullvad_country_model)
++
++set_property(TARGET test_mullvad_country_model PROPERTY AUTOMOC ON)
+--- /dev/null
++++ b/tests/test_mullvad_country_model.cpp
+@@ -0,0 +1,67 @@
++#include "mullvad_country_model.hpp"
++
++#include <QMap>
++#include <QString>
++#include <QTest>
++
++class TestMullvadCountryModel : public QObject
++{
++    Q_OBJECT
++
++private slots:
++    void testUnboundedGrowth()
++    {
++        MullvadCountryModel model;
++
++        QMap<QString, QString> countries40;
++        for (int i = 0; i < 40; ++i) {
++            countries40.insert(QString::number(i), QStringLiteral("Country ") + QString::number(i));
++        }
++
++        QMap<QString, QString> countries41 = countries40;
++        countries41.insert(QStringLiteral("40"), QStringLiteral("Country 40"));
++
++        QMap<QString, QString> countries39 = countries40;
++        countries39.remove(QStringLiteral("39"));
++
++        model.update(countries40);
++        QCOMPARE(model.rowCount(QModelIndex()), 40);
++
++        // Repeatedly oscillate around the baseline size. The broken code keeps
++        // appending during resets, so rowCount() grows instead of stabilizing.
++        for (int i = 0; i < 300; ++i) {
++            model.update(countries41);
++            QCOMPARE(model.rowCount(QModelIndex()), 41);
++
++            model.update(countries39);
++            QCOMPARE(model.rowCount(QModelIndex()), 39);
++
++            model.update(countries40);
++            QCOMPARE(model.rowCount(QModelIndex()), 40);
++        }
++    }
++
++    void testSameSizeDataChangeTriggersReset()
++    {
++        MullvadCountryModel model;
++
++        const QMap<QString, QString> original{{QStringLiteral("de"), QStringLiteral("Germany")},
++                                              {QStringLiteral("se"), QStringLiteral("Sweden")}};
++        const QMap<QString, QString> updated{{QStringLiteral("de"), QStringLiteral("Germany")},
++                                             {QStringLiteral("us"), QStringLiteral("United States")}};
++
++        model.update(original);
++        QCOMPARE(model.rowCount(QModelIndex()), 2);
++        QCOMPARE(model.data(model.index(1, 0), MullvadCountryModel::CountryCode).toString(), QStringLiteral("se"));
++
++        // The earlier size-only fast path missed this mutation entirely,
++        // leaving the UI stale even though the available countries changed.
++        model.update(updated);
++        QCOMPARE(model.rowCount(QModelIndex()), 2);
++        QCOMPARE(model.data(model.index(1, 0), MullvadCountryModel::CountryCode).toString(), QStringLiteral("us"));
++        QCOMPARE(model.data(model.index(1, 0), MullvadCountryModel::CountryName).toString(), QStringLiteral("United States"));
++    }
++};
++
++QTEST_MAIN(TestMullvadCountryModel)
++#include "test_mullvad_country_model.moc"
+

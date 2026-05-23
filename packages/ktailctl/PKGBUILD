@@ -1,7 +1,7 @@
 # Maintainer: Okiki <okiki@thunderstrike.co>
 pkgname=ktailctl
 pkgver='0.21.5'
-pkgrel=2
+pkgrel=1
 _upstream_dir="KTailctl-$pkgver"
 arch=(x86_64 aarch64)
 url='https://github.com/f-koehler/KTailctl'
@@ -31,6 +31,7 @@ optdepends=(
   'qt6-wayland: native Wayland platform plugin support'
 )
 makedepends=(
+  appstream
   cmake
   extra-cmake-modules
   gettext
@@ -58,12 +59,14 @@ source=(
   # the exact Go dependency snapshot part of the package source contract.
   "ktailctl-wrapper-v$pkgver-vendor.tar.gz::$url/releases/download/v$pkgver/ktailctl-wrapper-vendor-v$pkgver.tar.gz"
 
-  # Backport the upstream-reported background memory leak fix from #481 / PR #483.
+  # Backport the upstream #481 / PR #483 fix and standalone regressions for both
+  # the runaway-growth leak and the same-size stale-UI case. Keeping the tests
+  # in the patch makes the release backport self-auditing instead of code-only.
   "$pkgname-mullvad-country-model.patch"
 )
 sha256sums=('17748d1e9e84d6ea5003111cf083bbe0133c245dc71d8beec652640354f05997'
             '3199b86a912f09d7b3e98bd00a3078b1d599a43a98c4b4b6fd3e032411406f1f'
-            '89dbad91d753d19ca74f7613200678369a1e7c48f53fe2ad4303dfd6357b95bd')
+            '6a7ba1c22885dd0255839ad2e4ac07feed1b7064d5733d84faff095b3adde50f')
 
 _prepare_go_env() {
   # Keep module downloads inside the build dir (avoid polluting ~/go)
@@ -83,11 +86,19 @@ prepare() {
 
   # #481 reports long-running idle OOMs. The upstream diagnosis is a model reset
   # bug in MullvadCountryModel that keeps appending instead of replacing entries.
+  # Keep the backport paired with regression coverage for both the leak and the
+  # same-size data-change case that previously left the UI stale.
   patch -Np1 -i "$srcdir/$pkgname-mullvad-country-model.patch"
 
   # Upstream's CMake wrapper has a fallback `go get` step for developer builds.
   # Keep Arch's build graph explicit by vendoring here and disabling that fetch.
   sed -i '/^if(NOT KTAILCTL_FLATPAK_BUILD)$/,/^endif()$/d' src/wrapper/CMakeLists.txt
+
+  # GCC warns about Clang-only `-Wno-*compat` flags in 0.21.5, and the
+  # Tailscale constructor initializes peer/account models out of declaration
+  # order. Trim that packaging noise without changing runtime behavior.
+  sed -i '/-Wno-c99-extensions \\/d; /-Wno-c++98-compat \\/d' CMakeLists.txt
+  perl -0pi -e 's@, mPeerModel\(new PeerModel\(this\)\)\n    , mAccountModel\(new AccountModel\(this\)\)@, mAccountModel(new AccountModel(this))\n    , mPeerModel(new PeerModel(this))@' src/tailscale.cpp
 
   # QT_MESSAGELOGCONTEXT bakes build paths into the package via context.file.
   sed -i '/target_compile_definitions(ktailctl PRIVATE QT_MESSAGELOGCONTEXT)/d' src/CMakeLists.txt
@@ -110,7 +121,9 @@ build() {
     -S .
     -DCMAKE_BUILD_TYPE=None
     -DCMAKE_INSTALL_PREFIX=/usr
-    -DCMAKE_INSTALL_LIBDIR=lib
+    # KDEInstallDirs owns this path; setting the KDE variable avoids the
+    # warning emitted when CMAKE_INSTALL_LIBDIR is overridden too early.
+    -DKDE_INSTALL_LIBDIR=lib
     -Wno-dev
   )
 
@@ -124,10 +137,10 @@ build() {
 
 check() {
   cd "$_upstream_dir"
-  
-  # Run tests if available
-  # Currently disabled as upstream may not have comprehensive test suite
-  # ctest --test-dir build --output-on-failure || true
+
+  # The backport includes a focused QtTest binary, so run ctest to keep the
+  # leak fix and stale-UI fix covered in package builds once deps are present.
+  ctest --test-dir build --output-on-failure
 }
 
 package() {
