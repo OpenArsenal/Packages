@@ -3,7 +3,6 @@ pkgbase = hyprwhspr-git
 	pkgver = 0
 	pkgrel = 9
 	url = https://github.com/goodroot/hyprwhspr
-	install = hyprwhspr.install
 	arch = x86_64
 	license = MIT
 	makedepends = git
