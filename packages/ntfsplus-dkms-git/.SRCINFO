@@ -1,6 +1,6 @@
 pkgbase = ntfsplus-dkms-git
 	pkgdesc = Backport DKMS module for the new Linux ntfs read-write filesystem driver
-	pkgver = 2026.05.03+9e031cf
+	pkgver = 2026.05.20+5893a4b
 	pkgrel = 1
 	url = https://github.com/namjaejeon/linux-ntfs
 	arch = any
