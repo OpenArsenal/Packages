@@ -1,7 +1,7 @@
 # Maintainer: Okiki <okiki@thunderstrike.co>
 
 pkgname=chromium-ffmpeg-git
-pkgver=8.2.dev.r1380.g0ac3b00a18
+pkgver=8.2.dev.r1404.g7a2424eb43
 pkgrel=1
 pkgdesc="Add codecs to Chromium (libavcodec git)"
 arch=('x86_64')
@@ -144,10 +144,4 @@ package() {
   # Block downloaded Vivaldi binaries.
   install -d "${pkgdir}"/opt/vivaldi{,-snapshot}
   touch "${pkgdir}"/opt/vivaldi{,-snapshot}/${_so}.{7.7,7.8,7.9,8.0,8.1,8.2,8.3,8.4,8.5,8.6,8.7}
-
-  for _n in {37..50}; do
-    install -d "${pkgdir}/usr/lib/electron${_n}/glibc-hwcaps/x86-64-v2"
-    ln -sf "/usr/lib/${_so}.${_avcodec}" \
-      "${pkgdir}/usr/lib/electron${_n}/glibc-hwcaps/x86-64-v2/${_so}"
-  done
 }
