@@ -1,4 +1,0 @@
-[hyprwhspr-git]
-source = "git"
-git = "https://github.com/goodroot/hyprwhspr.git"
-use_commit = true
