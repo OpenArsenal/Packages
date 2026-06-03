@@ -1,4 +1,0 @@
-[vivaldi-snapshot]
-source = "regex"
-url = "https://vivaldi.com/feed/"
-regex = 'vivaldi-snapshot-([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)-1\.x86_64\.rpm'
