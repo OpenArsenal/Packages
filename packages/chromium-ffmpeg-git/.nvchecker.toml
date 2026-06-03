@@ -1,4 +1,0 @@
-[chromium-ffmpeg-git]
-source = "git"
-git = "https://git.ffmpeg.org/ffmpeg.git"
-prefix = "v"
