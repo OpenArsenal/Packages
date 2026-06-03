@@ -1,0 +1,26 @@
+pkgbase = vivaldi-ffmpeg-git
+	pkgdesc = Additional proprietary codec support for Vivaldi (FFmpeg git HEAD)
+	pkgver = 8.2.dev.r0.g0000000
+	pkgrel = 1
+	url = https://git.ffmpeg.org/ffmpeg
+	arch = x86_64
+	license = LGPL-2.1-or-later
+	makedepends = git
+	makedepends = nasm
+	depends = glibc
+	provides = vivaldi-ffmpeg
+	provides = vivaldi-ffmpeg-codecs
+	conflicts = vivaldi-ffmpeg
+	conflicts = vivaldi-ffmpeg-codecs
+	options = !lto
+	source = ffmpeg::git+https://git.ffmpeg.org/ffmpeg.git
+	source = sigs.base64::https://chromium.googlesource.com/chromium/third_party/ffmpeg/+/refs/heads/master/chromium/ffmpeg.sigs?format=TEXT
+	source = 0001-Add-av_stream_get_first_dts-for-Chromium.patch::https://gitlab.archlinux.org/archlinux/packaging/packages/ffmpeg/-/raw/main/0001-Add-av_stream_get_first_dts-for-Chromium.patch
+	sha256sums = SKIP
+	sha256sums = 0b5cb2ff097869916b6d050c81e278985c9ad752fabcf2f9f39487574709b853
+	sha256sums = f865d677f8ad39c79dde69186629cb6468c2b289c4156dbb8dec8e68b0131b40
+	b2sums = SKIP
+	b2sums = 046f7fcb32ccd2d18a8a85a6ef4e1445cb6af682fb75999b12b60cd900fc4d37962dd86fc3f0201ec23ba296a834a01139ba379fabb33b1b49fa331a876593d5
+	b2sums = e5f7b79f7731be9ee5a7280a9221fb531ac5a2d9820fc5870b68b0eabea667dfbe8f39f41c1e1763a4c84982896afaa54c81ff57847d203b70afafd726689e5d
+
+pkgname = vivaldi-ffmpeg-git
