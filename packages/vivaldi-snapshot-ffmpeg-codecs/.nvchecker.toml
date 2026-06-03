@@ -1,3 +1,0 @@
-[vivaldi-snapshot-ffmpeg-codecs]
-source = "git"
-git = "https://chromium.googlesource.com/chromium/third_party/ffmpeg.git"
