@@ -1,40 +1,20 @@
 pkgbase = chromium-ffmpeg
-	pkgdesc = Add codecs to Chromium M138+ (libavcodec 62)
+	pkgdesc = Add codecs to Chromium (libavcodec 62)
 	pkgver = 8.1.1
 	pkgrel = 1
 	url = https://ffmpeg.org/
-	install = chromium-ffmpeg.install
 	arch = x86_64
 	license = LGPL-2.1-or-later
 	makedepends = nasm
 	depends = glibc
-	provides = nwjs-ffmpeg-codecs
-	provides = opera-ffmpeg-codecs
-	provides = opera-beta-ffmpeg-codecs
-	provides = opera-developer-ffmpeg-codecs
-	provides = vivaldi-ffmpeg-codecs
-	provides = vivaldi-snapshot-ffmpeg-codecs
-	conflicts = nwjs-ffmpeg-codecs
-	conflicts = opera-ffmpeg-codecs
-	conflicts = opera-beta-ffmpeg-codecs
-	conflicts = opera-developer-ffmpeg-codecs
-	conflicts = vivaldi-ffmpeg-codecs
-	conflicts = vivaldi-snapshot-ffmpeg-codecs
+	provides = chromium-ffmpeg
+	conflicts = chromium-ffmpeg-git
 	options = !lto
-	source = chromium-ffmpeg.install
-	source = chromium-ffmpeg.hook
 	source = https://ffmpeg.org/releases/ffmpeg-8.1.1.tar.xz
-	source = sigs.base64::https://chromium.googlesource.com/chromium/third_party/ffmpeg/+/dcdd0fa51b65a0b1688ff6b8f0cc81908f09ded2/chromium/ffmpeg.sigs?format=TEXT
+	source = sigs.base64::https://chromium.googlesource.com/chromium/third_party/ffmpeg/+/b5e18fb9da84e26ceef30d4e4886696bf59337c0/chromium/ffmpeg.sigs?format=TEXT
 	source = https://gitlab.archlinux.org/archlinux/packaging/packages/ffmpeg/-/raw/2-8.1.1-1/0001-Add-av_stream_get_first_dts-for-Chromium.patch
-	sha256sums = 2726a8abe72d73bab070f0868c653fc5b8aa6f0697ddb1d6bd3adbefdd6fd425
-	sha256sums = f3371c17a935787a17e949cd87c2a4527058eb220c4c8b1719ca7915e64092d0
 	sha256sums = b6863adde98898f42602017462871b5f6333e65aec803fdd7a6308639c52edf3
-	sha256sums = 65baa55bb8b32d43e4606ff84029f5180ab318bdf02011e1f3b510f873992341
+	sha256sums = 9aa34221682c13cf5c55b3ceabf8c26c887d95569f51fb73fed0691fec08b56f
 	sha256sums = f865d677f8ad39c79dde69186629cb6468c2b289c4156dbb8dec8e68b0131b40
-	b2sums = 0291ddd136ff1b08eaf8da9a2a8a0a15a0a1125901eb72801e553acea7259389338a42f81939829b220ec1de36a2d2c25445f2235355f7e705578addb86f82ae
-	b2sums = 1b896e60f51346f9ee586c5e8d6061650d1c153171706961f8c3b60366e167535ca7632bf4e5125e8ab8c974e20033449da2b2d99ede25760eb6122badf5d6d8
-	b2sums = 275f853672f5d8e84bed0cd98b272b576355ebb3d31ad0538ef40200cf319ac03bd10d18f67b29e8549910e7e089aef7bad1c9537ae025eae5c13fc3c4bdb6c9
-	b2sums = 44d4a75ebdf751cab757198b5da99892be30769e9e8a65dabf7fb803c288557c58a38573b15d73b59ae90ddd14fea623d725dd5aa1488104c2afd0e21b942202
-	b2sums = e5f7b79f7731be9ee5a7280a9221fb531ac5a2d9820fc5870b68b0eabea667dfbe8f39f41c1e1763a4c84982896afaa54c81ff57847d203b70afafd726689e5d
 
 pkgname = chromium-ffmpeg
