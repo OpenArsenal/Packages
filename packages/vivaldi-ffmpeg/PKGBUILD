@@ -1,0 +1,112 @@
+_browser=vivaldi
+pkgname=${_browser}-ffmpeg
+_ffmpeg_pkgver=8.1.1
+_vivaldi_major_version=8.0
+pkgrel=1
+pkgdesc="Additional support for proprietary codecs for ${_browser}"
+arch=('x86_64')
+url=https://ffmpeg.org/
+_chromium_ffmpeg_url=https://chromium.googlesource.com/chromium/third_party/ffmpeg
+license=('LGPL-2.1-or-later')
+_so=libffmpeg.so
+
+# Chromium 148.0.7778.221 third_party/ffmpeg submodule commit.
+# For newer Chromium majors, use update-ffmpeg-ref.sh to update this commit and run updpkgsums.
+_chromium_version=148.0.7778.221
+_chromium_ffmpeg_ref=b5e18fb9da84e26ceef30d4e4886696bf59337c0
+pkgver=${_chromium_version}
+
+source=(
+  "${url}releases/ffmpeg-${_ffmpeg_pkgver}.tar.xz"
+  "sigs.base64::${_chromium_ffmpeg_url}/+/${_chromium_ffmpeg_ref}/chromium/ffmpeg.sigs?format=TEXT"
+  "https://gitlab.archlinux.org/archlinux/packaging/packages/ffmpeg/-/raw/2-${_ffmpeg_pkgver}-1/0001-Add-av_stream_get_first_dts-for-Chromium.patch"
+)
+
+sha256sums=('b6863adde98898f42602017462871b5f6333e65aec803fdd7a6308639c52edf3'
+            '9aa34221682c13cf5c55b3ceabf8c26c887d95569f51fb73fed0691fec08b56f'
+            'f865d677f8ad39c79dde69186629cb6468c2b289c4156dbb8dec8e68b0131b40')
+
+depends=(glibc)
+makedepends=(nasm)
+options=('!lto')
+
+prepare() {
+  # List used functions from Chromium's ffmpeg.sigs for the selected Chromium tag.
+  base64 -d sigs.base64 |
+    grep -oP '\bav[a-z0-9_]*(?=\s*\()' |
+    sort -u >sigs.txt
+
+  sort -u -o sigs.txt sigs.txt
+
+  {
+    printf '{\nglobal:\n'
+    sed 's/$/;/' sigs.txt
+    printf 'local:\n*;\n};\n'
+  } >export.map
+
+  cd "ffmpeg-${_ffmpeg_pkgver}"
+
+  # Use native opus not in kAllowedAudioCodecs.
+  sed -i.bak 's/^ *\.p\.name *=.*/.p.name="libopus",/' libavcodec/opus/dec.c
+
+  # Chromium patches.
+  patch -Np1 -i ../0001-Add-av_stream_get_first_dts-for-Chromium.patch
+  sed -i.bak '/ff_aom_uninit_film_grain_params/d' libavcodec/h2645_sei.c
+  sed -i.bak -E \
+    -e '/&ff_dirac_codec,/d' \
+    -e '/&ff_speex_codec,/d' \
+    -e '/&ff_theora_codec,/d' \
+    -e '/&ff_celt_codec,/d' \
+    -e '/&ff_old_dirac_codec,/d' \
+    libavformat/oggdec.c
+  sed -i.bak 's/^int av_sscanf(.*/#define av_sscanf sscanf/' libavutil/avstring.h
+
+  # CHROMIUM_NO_LOGGING.
+  _av_log=$(grep -m1 -E '^void[[:space:]]+av_log\(' libavutil/log.c)
+  _av_log_once=$(grep -m1 -E '^void[[:space:]]+av_log_once\(' libavutil/log.c)
+  _av_vlog=$(grep -m1 -E '^void[[:space:]]+av_vlog\(' libavutil/log.c)
+
+  sed -i.bak -E \
+    '/^void[[:space:]]+(av_log|av_log_once|av_vlog)[[:space:]]*\(.*\)[[:space:]]*$/,/^[[:space:]]*}[[:space:]]*$/d' \
+    libavutil/log.c
+
+  printf '%s{}\n%s{}\n%s{}\n' \
+    "${_av_log}" \
+    "${_av_log_once}" \
+    "${_av_vlog}" >>libavutil/log.c
+}
+
+build() {
+  cd "ffmpeg-${_ffmpeg_pkgver}"
+
+  ./configure \
+    --disable-{debug,all,autodetect,doc,iconv,network,symver,large-tests} \
+    --disable-{error-resilience,faan,iamf} \
+    --enable-static \
+    --disable-shared \
+    --enable-av{format,codec,util} \
+    --enable-swresample \
+    --enable-demuxers \
+    --enable-decoders \
+    --enable-parsers \
+    --extra-cflags="-fno-math-errno -fno-signed-zeros -fno-semantic-interposition -fomit-frame-pointer" \
+    --enable-{pic,asm,hardcoded-tables} \
+    --libdir=/
+
+  make DESTDIR=.. install
+
+  cd ..
+  _symbols=$(sed 's/^/-Wl,-u,/' sigs.txt | paste -sd ' ' -)
+
+  gcc -shared $LDFLAGS \
+    -Wl,--start-group libav{codec,format,util}.a libswresample.a -Wl,--end-group \
+    ${_symbols} \
+    -Wl,--version-script=export.map \
+    -lm \
+    -Wl,-Bsymbolic \
+    -o "${_so}"
+}
+
+package() {
+  install -Dm755 "${_so}" "${pkgdir}/opt/${_browser}/${_so}.${_vivaldi_major_version}"
+}
