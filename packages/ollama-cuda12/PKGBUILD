@@ -1,12 +1,6 @@
-# Maintainer: Okiki <okiki@thunderstrike.co>
-
-# NOTE: This split PKGBUILD is for CUDA 12 only.
-# - Requires CUDA major version 12 at /opt/cuda
-# - Requires gcc14 for CUDA 12 toolchain compatibility
-
 pkgbase=ollama
 pkgname=(ollama ollama-cuda12 ollama-docs)
-pkgver='0.18.3'
+pkgver='0.30.4'
 pkgrel=1
 pkgdesc='Create, run and share large language models (LLMs)'
 arch=(x86_64)
@@ -14,151 +8,222 @@ url='https://github.com/ollama/ollama'
 license=(MIT)
 options=('!lto')
 depends=(gcc-libs glibc)
-makedepends=(cmake
-             ninja
-             git
-             go
-             gcc14
-             rocm-toolchain
-             rocm-hip-sdk
-             hipblas
-             cuda-12
-             clblast
-             vulkan-headers
-             vulkan-icd-loader
-             shaderc)
-source=(git+https://github.com/ollama/ollama#tag=v$pkgver
-        ollama-ld.conf
-        ollama.service
-        sysusers.conf
-        tmpfiles.d)
-b2sums=('ba305c030c2bdf4932dbb4c2da92ea8befa56b51121e7151815381ccd30c3734a810e974b41f5254357751014bfdb58d38c633f6aaf6fb70a8d392c3d99f26dc'
+makedepends=(
+  cmake
+  ninja
+  go
+  gcc14
+  cuda12
+  chrpath
+)
+source=(
+  "${pkgbase}-${pkgver}.tar.gz::${url}/archive/refs/tags/v${pkgver}.tar.gz"
+  ollama-ld.conf
+  ollama.service
+  sysusers.conf
+  tmpfiles.d
+)
+b2sums=('f3a276a68d1324ecf9bda4a53d459c4982b3bb01c704436672d23a4fea5ffce6c2cd1c335ce2aaed3c601f718de2c0c13d7fbf34f37c13fcda3ffda2ade3271e'
         '121a7854b5a7ffb60226aaf22eed1f56311ab7d0a5630579525211d5c096040edbcfd2608169a4b6d83e8b4e4855dbb22f8ebf3d52de78a34ea3d4631b7eff36'
         '031e0809a7f564de87017401c83956d43ac29bd0e988b250585af728b952a27d139b3cad0ab1e43750e2cd3b617287d3b81efc4a70ddd61709127f68bd15eabd'
         '68622ac2e20c1d4f9741c57d2567695ec7b5204ab43356d164483cd3bc9da79fad72489bb33c8a17c2e5cb3b142353ed5f466ce857b0f46965426d16fb388632'
         'e8f2b19e2474f30a4f984b45787950012668bf0acb5ad1ebb25cd9776925ab4a6aa927f8131ed53e35b1c71b32c504c700fe5b5145ecd25c7a8284373bb951ed')
 
-_cuda_build_dir="build-cuda12"
+_srcdir="${pkgbase}-${pkgver}"
+_build_dir='build-cuda12'
+_cuda_architectures='50;52;60;61;70;75;80;86;89;90;90a'
 
 _require_cuda12() {
-  if [[ ! -x "/opt/cuda/bin/nvcc" ]]; then
-    printf '==> ERROR: %s\n' "nvcc not found at /opt/cuda/bin/nvcc" >&2
-    printf '==> ERROR: %s\n' "Install CUDA 12 before building ollama-cuda12" >&2
+  if [[ ! -x '/opt/cuda/bin/nvcc' ]]; then
+    printf '==> ERROR: %s\n' 'nvcc not found at /opt/cuda/bin/nvcc' >&2
+    printf '==> ERROR: %s\n' 'Install cuda12 before building ollama-cuda12' >&2
     return 1
   fi
 
   local cuda_major
   cuda_major=$(/opt/cuda/bin/nvcc --version | sed -n 's/.*release \([0-9]*\)\..*/\1/p')
   echo "==> Detected CUDA version: ${cuda_major} at /opt/cuda"
+
   if [[ "${cuda_major}" -ne 12 ]]; then
     printf '==> ERROR: %s\n' "ollama-cuda12 requires CUDA major version 12 (detected: ${cuda_major})" >&2
-    printf '==> ERROR: %s\n' "Use ollama-cuda13 with CUDA 13+" >&2
     return 1
   fi
 
   if ! command -v gcc-14 >/dev/null 2>&1; then
-    printf '==> ERROR: %s\n' "CUDA 12 requires gcc14 but it's not installed" >&2
-    printf '==> ERROR: %s\n' "Install with: sudo pacman -S gcc14" >&2
-    return 1
-  fi
-
-  if [[ ! -d "/opt/cuda/targets/x86_64-linux/include/thrust" ]]; then
-    printf '==> ERROR: %s\n' "CCCL headers are missing from CUDA 12 installation" >&2
-    printf '==> ERROR: %s\n' "Expected: /opt/cuda/targets/x86_64-linux/include/thrust" >&2
+    printf '==> ERROR: %s\n' 'CUDA 12 build requires gcc14' >&2
+    printf '==> ERROR: %s\n' 'Install with: sudo pacman -S gcc14' >&2
     return 1
   fi
 }
 
+_rewrite_elf_rpath() {
+  local file rpath
+
+  while IFS= read -r -d '' file; do
+    rpath=$(chrpath -l "${file}" 2>/dev/null) || continue
+
+    if [[ "${rpath}" == *"${srcdir}"* || "${rpath}" == *"${_build_dir}"* ]]; then
+      chrpath -r '$ORIGIN' "${file}" >/dev/null || return 1
+    fi
+  done < <(find "$1" -type f \( -name '*.so' -o -name '*.so.*' \) -print0)
+}
+
 build() {
+  _require_cuda12
+
+  local _path_flags=(
+    "-ffile-prefix-map=${srcdir}=."
+    "-fmacro-prefix-map=${srcdir}=."
+    "-fdebug-prefix-map=${srcdir}=."
+  )
+
+  local _cuda_path_flags=(
+    "-Xcompiler=-ffile-prefix-map=${srcdir}=."
+    "-Xcompiler=-fmacro-prefix-map=${srcdir}=."
+    "-Xcompiler=-fdebug-prefix-map=${srcdir}=."
+  )
+
+  export CFLAGS+=" ${_path_flags[*]}"
+  export CXXFLAGS+=" ${_path_flags[*]}"
+  export CPPFLAGS+=" ${_path_flags[*]}"
+
   export CGO_CPPFLAGS="${CPPFLAGS}"
   export CGO_CFLAGS="${CFLAGS}"
   export CGO_CXXFLAGS="${CXXFLAGS}"
   export CGO_LDFLAGS="${LDFLAGS}"
+  export GOFLAGS="${GOFLAGS:-} -trimpath -buildvcs=false"
   export GOPATH="${srcdir}"
-  export GOFLAGS="-buildmode=pie -mod=readonly -modcacherw '-ldflags=-linkmode=external -compressdwarf=false -X=github.com/ollama/ollama/version.Version=$pkgver -X=github.com/ollama/ollama/server.mode=release'"
-
-  _require_cuda12
 
   export PATH="/opt/cuda/bin:${PATH}"
-  export CUDA_PATH="/opt/cuda"
+  export CUDA_PATH='/opt/cuda'
+  export CUDAToolkit_ROOT='/opt/cuda'
   export LD_LIBRARY_PATH="/opt/cuda/lib64:${LD_LIBRARY_PATH:-}"
   export CC=gcc-14
   export CXX=g++-14
   export CUDAHOSTCXX=g++-14
-  printf '  -> %s\n' "Using GCC 14 for CUDA 12 compatibility"
+  export CMAKE_CUDA_HOST_COMPILER=g++-14
 
-  cd ollama
+  cd "${_srcdir}"
 
-  # Remove the runtime dependencies from installation so CMake doesn't install
-  # lots of system dependencies into the target path.
+  # Do not let Ollama's CMake install bundled copies of system runtime deps.
   sed -i 's/PRE_INCLUDE_REGEXES.*/PRE_INCLUDE_REGEXES = ""/' CMakeLists.txt
 
-  # Common CMake options
-  local cmake_base_options=(
-    -G Ninja
-    -W no-dev
-    -D CMAKE_BUILD_TYPE=Release
-    -D CMAKE_INSTALL_PREFIX=/usr
-  )
+  rm -rf -- "${_build_dir}"
 
-  printf '  -> %s\n' "Building CUDA 12 variant..."
-  printf '  -> %s\n' "Architectures: 50 (Maxwell), 52, 53, 60 (Pascal), 61, 62, 70 (Volta), 72, 75 (Turing), 80 (Ampere), 86, 87, 89, 90 (Hopper), 90a"
+  cmake -S . -B "${_build_dir}" \
+    -G Ninja \
+    -W no-dev \
+    -D CMAKE_BUILD_TYPE=Release \
+    -D CMAKE_INSTALL_PREFIX=/usr \
+    -D CMAKE_SKIP_RPATH=ON \
+    -D CMAKE_SKIP_BUILD_RPATH=ON \
+    -D CMAKE_BUILD_WITH_INSTALL_RPATH=OFF \
+    -D CMAKE_INSTALL_RPATH='' \
+    -D OLLAMA_VERSION="${pkgver}" \
+    -D OLLAMA_LLAMA_BACKENDS='cuda_v12' \
+    -D OLLAMA_MLX_BACKENDS='' \
+    -D CMAKE_CUDA_ARCHITECTURES="${_cuda_architectures}" \
+    -D CMAKE_CUDA_FLAGS="-Wno-deprecated-gpu-targets -t 2 ${_cuda_path_flags[*]}"
 
-  local cmake_cuda_options=(
-    "${cmake_base_options[@]}"
-    -B "$_cuda_build_dir"
-    -D CMAKE_CUDA_COMPILER=/opt/cuda/bin/nvcc
-    -D CMAKE_HIP_COMPILER=OFF
-    -D CMAKE_CUDA_ARCHITECTURES="50;52;53;60;61;62;70;72;75;80;86;87;89;90;90a"
-    -D CMAKE_CUDA_FLAGS="-Wno-deprecated-gpu-targets"
-  )
-  rm -rf -- "$_cuda_build_dir"
-  cmake "${cmake_cuda_options[@]}"
-  cmake --build "$_cuda_build_dir"
-
-  # Build main ollama binary
-  go build .
+  cmake --build "${_build_dir}"
 }
 
 check() {
-  ollama/ollama --version > /dev/null
-  cd ollama
-  go test .
+  cd "${_srcdir}"
+  ./ollama --version >/dev/null
 }
 
 package_ollama() {
-  _require_cuda12
+  pkgdesc='Create, run and share large language models (LLMs)'
+  depends=(gcc-libs glibc)
+  optdepends=('ollama-cuda12: CUDA 12 backend for NVIDIA GPUs')
+  backup=('etc/ld.so.conf.d/ollama.conf')
 
-  local build_dir="ollama/${_cuda_build_dir}"
-  [[ -d "$build_dir" ]] || { printf '==> ERROR: %s\n' "Missing build dir: $build_dir" >&2; return 1; }
+  local payload="${_srcdir}/${_build_dir}/lib/ollama"
 
-  DESTDIR="$pkgdir" cmake --install "$build_dir" --component CPU
+  [[ -x "${_srcdir}/ollama" ]] || {
+    printf '==> ERROR: %s\n' 'ollama Go binary was not built' >&2
+    return 1
+  }
 
-  install -Dm755 ollama/ollama "$pkgdir/usr/bin/ollama"
-  install -dm755 "$pkgdir/var/lib/ollama"
-  install -Dm644 ollama.service "$pkgdir/usr/lib/systemd/system/ollama.service"
-  install -Dm644 sysusers.conf "$pkgdir/usr/lib/sysusers.d/ollama.conf"
-  install -Dm644 tmpfiles.d "$pkgdir/usr/lib/tmpfiles.d/ollama.conf"
-  install -Dm644 ollama/LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  [[ -x "${payload}/llama-server" ]] || {
+    printf '==> ERROR: missing %s\n' "${payload}/llama-server" >&2
+    return 1
+  }
 
-  ln -s /var/lib/ollama "$pkgdir/usr/share/ollama"
+  [[ -f "${payload}/libllama-server-impl.so" ]] || {
+    printf '==> ERROR: missing %s\n' "${payload}/libllama-server-impl.so" >&2
+    return 1
+  }
+
+  install -Dm755 "${_srcdir}/ollama" "${pkgdir}/usr/bin/ollama"
+
+  install -dm755 "${pkgdir}/usr/lib/ollama"
+  shopt -s dotglob nullglob
+
+  local item
+  for item in "${payload}"/*; do
+    case "$(basename "${item}")" in
+    cuda_v12 | cuda_v13 | rocm_v7_1 | rocm_v7_2 | vulkan | cuda_jetpack5 | cuda_jetpack6 | mlx_*)
+      continue
+      ;;
+    esac
+    cp -a "${item}" "${pkgdir}/usr/lib/ollama/"
+  done
+
+  shopt -u dotglob nullglob
+
+  # libggml-cpu-* can retain a build-tree RUNPATH string like:
+  # $ORIGIN:${srcdir}/${_srcdir}/${_build_dir}/llama-server-local/bin:
+  #
+  # patchelf --remove-rpath removes the active dynamic tag, but can leave
+  # stale string bytes behind. chrpath -r overwrites the string in-place.
+  _rewrite_elf_rpath "${pkgdir}/usr/lib/ollama"
+
+  install -dm755 "${pkgdir}/usr/bin"
+  ln -s ../lib/ollama/llama-server "${pkgdir}/usr/bin/llama-server"
+
+  install -dm755 "${pkgdir}/var/lib/ollama"
+  install -Dm644 ollama.service "${pkgdir}/usr/lib/systemd/system/ollama.service"
+  install -Dm644 sysusers.conf "${pkgdir}/usr/lib/sysusers.d/ollama.conf"
+  install -Dm644 tmpfiles.d "${pkgdir}/usr/lib/tmpfiles.d/ollama.conf"
+  install -Dm644 ollama-ld.conf "${pkgdir}/etc/ld.so.conf.d/ollama.conf"
+  install -Dm644 "${_srcdir}/LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+
+  ln -s /var/lib/ollama "${pkgdir}/usr/share/ollama"
 }
 
 package_ollama-cuda12() {
-  pkgdesc='CUDA 12 support for Ollama (Maxwell, Pascal, Volta, Turing, Ampere, Hopper)'
-  depends=(ollama cuda)
+  pkgdesc='CUDA 12 backend for Ollama'
+  depends=(ollama cuda12)
   provides=(ollama-cuda)
   conflicts=(ollama-cuda13)
 
-  _require_cuda12
+  local payload="${_srcdir}/${_build_dir}/lib/ollama/cuda_v12"
 
-  DESTDIR="$pkgdir" cmake --install "ollama/$_cuda_build_dir" --component CUDA
+  [[ -d "${payload}" ]] || {
+    printf '==> ERROR: missing CUDA backend directory: %s\n' "${payload}" >&2
+    printf '==> ERROR: check that OLLAMA_LLAMA_BACKENDS=cuda_v12 was used during configure\n' >&2
+    return 1
+  }
+
+  [[ -f "${payload}/libggml-cuda.so" ]] || {
+    printf '==> ERROR: missing CUDA backend library: %s\n' "${payload}/libggml-cuda.so" >&2
+    find "${payload}" -maxdepth 1 -type f -print >&2 || true
+    return 1
+  }
+
+  install -dm755 "${pkgdir}/usr/lib/ollama"
+  cp -a "${payload}" "${pkgdir}/usr/lib/ollama/"
+
+  install -Dm644 "${_srcdir}/LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 }
 
 package_ollama-docs() {
   pkgdesc='Documentation for Ollama'
+  depends=()
 
-  install -d "$pkgdir/usr/share/doc"
-  cp -r ollama/docs "$pkgdir/usr/share/doc/ollama"
-  install -Dm644 ollama/LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -d "${pkgdir}/usr/share/doc"
+  cp -r "${_srcdir}/docs" "${pkgdir}/usr/share/doc/ollama"
+  install -Dm644 "${_srcdir}/LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 }
