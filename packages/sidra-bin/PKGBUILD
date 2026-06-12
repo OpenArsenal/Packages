@@ -1,0 +1,101 @@
+pkgname=sidra-bin
+pkgver=0.3.4
+pkgrel=1
+pkgdesc='An elegant Apple Music desktop client for Linux - binary app package using CastLabs Electron'
+arch=('x86_64')
+url='https://github.com/wimpysworld/sidra'
+license=('BlueOak-1.0.0')
+depends=(
+  'electron40-castlab-bin'
+  'hicolor-icon-theme'
+)
+makedepends=(
+  'libarchive'
+  'imagemagick'
+)
+optdepends=(
+  'discord: Discord Rich Presence integration'
+  'playerctl: command-line MPRIS control/testing'
+)
+provides=("sidra=${pkgver}")
+conflicts=('sidra' 'sidra-git')
+source=("sidra-${pkgver}.tar.gz::${url}/archive/refs/tags/${pkgver}.tar.gz")
+source_x86_64=("Sidra-${pkgver}-linux-x86_64.rpm::${url}/releases/download/${pkgver}/Sidra-${pkgver}-linux-x86_64.rpm")
+sha256sums=('3bfbc0a5f9a03ba532658ea98fa01360438689e25677d3e2a0e11479c4b5cc82')
+sha256sums_x86_64=('31ac9bca5e5c8fe0f1f76abd02bab25900983860bc3f1b695865fe6e1f16a30a')
+b2sums=('10e97ca3b0c367b9f4b19cdb2db8f41bbbf8f03fe000ed9def960573425d02f23e53440d34c22e0570ffed500083bb82d11f1b7e8b26a10941a35803d81c82cf')
+b2sums_x86_64=('33770a474c1b5b73dc5669eec962afab5f0c1d6f778b631e9313e17e6ce5a1b88ca09ab15862f109ddd3105c144bfe244d44eb3919ff03d19e260bcb2c184f5e')
+noextract=("Sidra-${pkgver}-linux-x86_64.rpm")
+
+_install_hicolor_icons() {
+  local _src="$1"
+  local _size
+
+  if [[ ! -f "${_src}" ]]; then
+    printf 'Sidra icon source not found: %s\n' "${_src}" >&2
+    return 1
+  fi
+
+  for _size in 16 22 24 32 48 64 128 256 512; do
+    install -dm755 "${pkgdir}/usr/share/icons/hicolor/${_size}x${_size}/apps"
+    magick "${_src}" -resize "${_size}x${_size}" \
+      "${pkgdir}/usr/share/icons/hicolor/${_size}x${_size}/apps/sidra.png"
+  done
+
+  install -Dm644 "${pkgdir}/usr/share/icons/hicolor/512x512/apps/sidra.png" \
+    "${pkgdir}/usr/share/pixmaps/sidra.png"
+}
+
+prepare() {
+  local _rpm="${srcdir}/Sidra-${pkgver}-linux-x86_64.rpm"
+  local _payload="${srcdir}/sidra-bin-rpm-payload"
+
+  rm -rf "${_payload}"
+  install -dm755 "${_payload}"
+  bsdtar -xf "${_rpm}" -C "${_payload}"
+}
+
+package() {
+  local _payload="${srcdir}/sidra-bin-rpm-payload"
+  local _appasar
+  _appasar="$(find "${_payload}" -type f -path '*/resources/app.asar' -print -quit)"
+  if [[ -z "${_appasar}" ]]; then
+    printf 'Could not find resources/app.asar in extracted Sidra RPM\n' >&2
+    return 1
+  fi
+
+  local _resources_dir
+  _resources_dir="$(dirname "${_appasar}")"
+
+  install -dm755 "${pkgdir}/usr/lib/sidra/resources"
+  install -Dm644 "${_resources_dir}/app.asar" "${pkgdir}/usr/lib/sidra/resources/app.asar"
+
+  if [[ -d "${_resources_dir}/app.asar.unpacked" ]]; then
+    cp -a "${_resources_dir}/app.asar.unpacked" "${pkgdir}/usr/lib/sidra/resources/"
+  fi
+
+  install -Dm755 /dev/stdin "${pkgdir}/usr/bin/sidra" <<'LAUNCHER'
+#!/bin/sh
+export SIDRA_DISABLE_AUTO_UPDATE=1
+exec electron40-castlab --class=sidra --name=sidra /usr/lib/sidra/resources/app.asar "$@"
+LAUNCHER
+
+  _install_hicolor_icons "${srcdir}/sidra-${pkgver}/build/icon.png"
+
+  install -Dm644 /dev/stdin "${pkgdir}/usr/share/applications/sidra.desktop" <<'DESKTOP'
+[Desktop Entry]
+Name=Sidra
+Comment=An elegant Apple Music desktop client
+Exec=sidra %U
+Icon=/usr/share/icons/hicolor/48x48/apps/sidra.png
+Keywords=Apple;Music;Streaming;Audio;Player;Sidra;
+Terminal=false
+Type=Application
+Categories=AudioVideo;Audio;Music;
+MimeType=x-scheme-handler/itms;
+StartupNotify=true
+StartupWMClass=sidra
+DESKTOP
+
+  install -Dm644 "${srcdir}/sidra-${pkgver}/LICENSE" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
