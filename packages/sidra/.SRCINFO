@@ -1,0 +1,21 @@
+pkgbase = sidra
+	pkgdesc = An elegant Apple Music desktop client for Linux
+	pkgver = 0.3.4
+	pkgrel = 1
+	url = https://github.com/wimpysworld/sidra
+	arch = x86_64
+	license = BlueOak-1.0.0
+	makedepends = nodejs-lts-krypton
+	makedepends = npm
+	makedepends = imagemagick
+	depends = electron40-castlab
+	depends = hicolor-icon-theme
+	optdepends = discord: Discord Rich Presence integration
+	optdepends = playerctl: command-line MPRIS control/testing
+	conflicts = sidra-bin
+	conflicts = sidra-git
+	source = sidra-0.3.4.tar.gz::https://github.com/wimpysworld/sidra/archive/refs/tags/0.3.4.tar.gz
+	sha256sums = 3bfbc0a5f9a03ba532658ea98fa01360438689e25677d3e2a0e11479c4b5cc82
+	b2sums = 10e97ca3b0c367b9f4b19cdb2db8f41bbbf8f03fe000ed9def960573425d02f23e53440d34c22e0570ffed500083bb82d11f1b7e8b26a10941a35803d81c82cf
+
+pkgname = sidra
