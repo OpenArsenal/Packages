@@ -1,0 +1,27 @@
+_pkgbin=geesefs
+_pkgsrc=geesefs-linux-amd64
+pkgname=${_pkgbin}-bin
+pkgver=0.43.7
+pkgrel=1
+pkgdesc='High-performance, POSIX-ish FUSE filesystem for S3-compatible object storage (upstream binary)'
+arch=('x86_64')
+url='https://github.com/yandex-cloud/geesefs'
+license=('Apache-2.0')
+depends=('fuse3')
+provides=('geesefs')
+conflicts=('geesefs' 'geesefs-git')
+source=(
+  "${_pkgsrc}-${pkgver}-${pkgrel}::${url}/releases/download/v${pkgver}/${_pkgsrc}"
+  "LICENSE::https://raw.githubusercontent.com/yandex-cloud/geesefs/v${pkgver}/LICENSE"
+)
+sha256sums=('a81e368d0cbd1f83d190cacdc396fc950ea9412085504b82546b01122c2f7e03'
+            '07dab8d16eac4a5de66d7bd860b287e8f36cd2d8d6c5b34f90498341f6c9989e')
+sha512sums=('412f17fd4a85c9ba3272e0fdde1d6bcb690af15d64606f80e1214b50565e7edd52c50a97d967b7e05fdd2113c5adf93e3ffa5ad83ab5c6c804221cc4e5cd37cf'
+            '34e066f8925ff51a4164d55d8ae3fd390fc2fd0d4bdf4ddc599f21a815e8886401cf95385b4c18d97276f4d3aee0ec323be3adf1b7fc773a192e31147d0a06da')
+b2sums=('d753509cfe047dbe99b023e04f217fbac0063b6a24228efaa8f6fd6da99546bdcffb7f23109e060a53f147e005eea6f00967d7ff6a7583077e224ede51062725'
+        'cc04a7c42e4f3659308a54255fde94c861b971185469510771e5258d7ff02a5d30fe27ff4a4391325297329758ee38faab3e701fb33b512236bdecaa595ff2fd')
+
+package() {
+  install -Dm755 "${_pkgsrc}-${pkgver}-${pkgrel}" "${pkgdir}/usr/bin/${_pkgbin}"
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
