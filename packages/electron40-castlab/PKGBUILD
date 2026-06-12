@@ -1,0 +1,77 @@
+pkgname=electron40-castlab
+pkgver=40.10.2
+pkgrel=1
+pkgdesc='Electron 40 for Content Security by castLabs with Widevine CDM support'
+arch=('x86_64')
+url='https://github.com/castlabs/electron-releases'
+license=('MIT')
+depends=(
+  'brotli'
+  'c-ares'
+  'flac'
+  'fontconfig'
+  'freetype2'
+  'gcc-libs'
+  'glibc'
+  'gtk3'
+  'harfbuzz'
+  'libdrm'
+  'libevent'
+  'libffi'
+  'libjpeg-turbo'
+  'libpulse'
+  'libxml2'
+  'libxslt'
+  'minizip'
+  'nss'
+  'opus'
+  'zlib'
+)
+makedepends=('libarchive')
+optdepends=(
+  'gtk4: for --gtk-version=4'
+  'kde-cli-tools: file deletion support via kioclient'
+  'pipewire: WebRTC desktop sharing under Wayland'
+  'trash-cli: file deletion support via trash-put'
+  'xdg-utils: open URLs with the desktop default handler'
+)
+provides=(
+  "electron40-castlab=${pkgver}"
+  "electron-castlab=${pkgver}"
+)
+conflicts=('electron40-castlab-bin' 'electron40-castlab-git')
+options=('!strip' '!debug')
+
+_variant='wvcus'
+_upstream_ver="${pkgver}+${_variant}"
+_zip="electron-v${_upstream_ver}-linux-x64.zip"
+source=("electron-releases-${_upstream_ver}.tar.gz::${url}/archive/refs/tags/v${pkgver}%2B${_variant}.tar.gz")
+source_x86_64=("${_zip}::${url}/releases/download/v${pkgver}%2B${_variant}/${_zip}")
+sha256sums=('a72480ddcd66354d1c2b657b35236bae84c687009fd5e7ba8ea164b1db36bac3')
+sha256sums_x86_64=('e179c0b4134e32e59a2c87e09e5086cce4c33928333565add57f16e865dd224d')
+b2sums=('f610d57acc9005099f335ca2e81cbbf1deebe635d270637700ec7fed5ddf87ba2eb1d1c5d8ea0a8d61d5a8628b1818f8205537a06a539666fdd03ae9e397582c')
+b2sums_x86_64=('c470e0ee6599342a9e1d5ccaccba7987ccc63887b3e854ba36a43133ea5347136ad0043ed808b01bb9ba6e09bafedbe546dcbbee9af93155021fcf8a3b21a598')
+noextract=("${_zip}")
+
+package() {
+  install -dm755 "${pkgdir}/usr/lib/electron40-castlab"
+  bsdtar -xf "${srcdir}/${_zip}" -C "${pkgdir}/usr/lib/electron40-castlab"
+
+  chmod 755 "${pkgdir}/usr/lib/electron40-castlab/electron"
+  if [[ -f "${pkgdir}/usr/lib/electron40-castlab/chrome-sandbox" ]]; then
+    chmod 4755 "${pkgdir}/usr/lib/electron40-castlab/chrome-sandbox"
+  fi
+
+  install -Dm755 /dev/stdin "${pkgdir}/usr/bin/electron40-castlab" <<'LAUNCHER'
+#!/bin/sh
+exec /usr/lib/electron40-castlab/electron "$@"
+LAUNCHER
+
+  ln -s electron40-castlab "${pkgdir}/usr/bin/electron-castlab"
+
+  local _license
+  _license="$(find "${srcdir}" -mindepth 2 -maxdepth 3 -type f -name LICENSE -print -quit)"
+  if [[ -n "${_license}" ]]; then
+    install -Dm644 "${_license}" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+  fi
+}
