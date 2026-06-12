@@ -1,0 +1,45 @@
+_pkgname=geesefs
+pkgname=${_pkgname}-git
+pkgver=0.43.7.r2.g8ba4075
+pkgrel=1
+pkgdesc='High-performance, POSIX-ish FUSE filesystem for S3-compatible object storage (git version)'
+arch=('x86_64' 'aarch64')
+url='https://github.com/yandex-cloud/geesefs'
+license=('Apache-2.0')
+depends=('fuse3')
+makedepends=('git' 'go')
+provides=('geesefs')
+conflicts=('geesefs' 'geesefs-bin')
+source=("${_pkgname}::git+${url}.git")
+sha256sums=('SKIP')
+b2sums=('SKIP')
+
+pkgver() {
+  cd "${_pkgname}"
+  git describe --long --tags --abbrev=7 --exclude='*[a-zA-Z][a-zA-Z]*' |
+    sed -E 's/^[^0-9]*//;s/([^-]*-g)/r\1/;s/-/./g'
+}
+
+build() {
+  cd "${_pkgname}"
+
+  # Upstream Makefile sets CGO_ENABLED=0 and embeds a commit-derived Version.
+  export CGO_ENABLED=0
+  export GOTOOLCHAIN=local
+  export GOPATH="${srcdir}/go"
+  export GOMODCACHE="${srcdir}/go/pkg/mod"
+  export GOCACHE="${srcdir}/go-build"
+  export GOFLAGS='-trimpath -mod=readonly -modcacherw'
+
+  go build \
+    -ldflags "-s -w -buildid= -X main.Version=$(git rev-parse HEAD)" \
+    -o geesefs \
+    .
+}
+
+package() {
+  cd "${_pkgname}"
+
+  install -Dm755 geesefs "${pkgdir}/usr/bin/geesefs"
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
