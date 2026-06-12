@@ -1,0 +1,39 @@
+pkgname=geesefs
+pkgver=0.43.7
+pkgrel=1
+pkgdesc='High-performance, POSIX-ish FUSE filesystem for S3-compatible object storage'
+arch=('x86_64' 'aarch64')
+url='https://github.com/yandex-cloud/geesefs'
+license=('Apache-2.0')
+depends=('fuse3')
+makedepends=('git' 'go')
+provides=('geesefs')
+conflicts=('geesefs-bin' 'geesefs-git')
+source=("${pkgname}::git+${url}.git#tag=v${pkgver}")
+sha256sums=('09624fc0b4a90c9f0529389c3a0dcdedee70e8d16dfa288f30629c33e2d0d21f')
+b2sums=('e1c5c7118a82aad721fa18ac12daa79ce8da20e74e6358d72aeb77a82a65bbf1469a4dd3793593b050b0209599b436a97022360c8d44bf414a7aa80f84df8447')
+
+build() {
+  cd "${pkgname}"
+
+  # Match upstream intent: static Go build and explicit version embedding.
+  # Keep all Go cache/module state inside makepkg's srcdir.
+  export CGO_ENABLED=0
+  export GOTOOLCHAIN=local
+  export GOPATH="${srcdir}/go"
+  export GOMODCACHE="${srcdir}/go/pkg/mod"
+  export GOCACHE="${srcdir}/go-build"
+  export GOFLAGS='-trimpath -mod=readonly -modcacherw'
+
+  go build \
+    -ldflags "-s -w -buildid= -X main.Version=v${pkgver}" \
+    -o geesefs \
+    .
+}
+
+package() {
+  cd "${pkgname}"
+
+  install -Dm755 geesefs "${pkgdir}/usr/bin/geesefs"
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
