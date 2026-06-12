@@ -1,6 +1,6 @@
 pkgbase = vivaldi-ffmpeg-git
 	pkgdesc = Additional proprietary codec support for Vivaldi (FFmpeg git HEAD)
-	pkgver = 8.2.dev.r0.g0000000
+	pkgver = 8.2.dev.r1716.gdd9083cb89
 	pkgrel = 1
 	url = https://git.ffmpeg.org/ffmpeg
 	arch = x86_64
