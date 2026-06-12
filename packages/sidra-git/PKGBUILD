@@ -1,0 +1,139 @@
+pkgname=sidra-git
+pkgver=0.3.2.r54.g8e9889f
+pkgrel=1
+pkgdesc='An elegant Apple Music desktop client for Linux - git version'
+arch=('x86_64')
+url='https://github.com/wimpysworld/sidra'
+license=('BlueOak-1.0.0')
+depends=(
+  'electron40-castlab-git'
+  'hicolor-icon-theme'
+)
+makedepends=(
+  'git'
+  'nodejs-lts-krypton'
+  'npm'
+  'imagemagick'
+)
+optdepends=(
+  'discord: Discord Rich Presence integration'
+  'playerctl: command-line MPRIS control/testing'
+)
+provides=('sidra')
+conflicts=('sidra' 'sidra-bin')
+source=('sidra::git+https://github.com/wimpysworld/sidra.git')
+sha256sums=('SKIP')
+b2sums=('SKIP')
+
+pkgver() {
+  cd sidra
+  git describe --tags --long --abbrev=7 | sed 's/^v//;s/-/.r/;s/-/./g'
+}
+
+_patch_browserwindow_icons() {
+  local _file
+  for _file in src/main.ts src/aboutWindow.ts; do
+    [[ -f "${_file}" ]] || continue
+    perl -0pi -e "s/new BrowserWindow\(\{\n/new BrowserWindow({\n    icon: getAssetPath('assets', 'icon.png'),\n/g" "${_file}"
+  done
+
+  local _main_count _about_count
+  _main_count=$(grep -c "icon.png" src/main.ts || true)
+  _about_count=$(grep -c "icon.png" src/aboutWindow.ts || true)
+  if ((_main_count < 2 || _about_count < 1)); then
+    printf 'Sidra BrowserWindow icon patch did not apply as expected.\n' >&2
+    printf 'src/main.ts icon count: %s, src/aboutWindow.ts icon count: %s\n' "${_main_count}" "${_about_count}" >&2
+    grep -n "new BrowserWindow" src/main.ts src/aboutWindow.ts >&2 || true
+    return 1
+  fi
+}
+_install_hicolor_icons() {
+  local _src="$1"
+  local _size
+
+  if [[ ! -f "${_src}" ]]; then
+    printf 'Sidra icon source not found: %s\n' "${_src}" >&2
+    return 1
+  fi
+
+  for _size in 16 22 24 32 48 64 128 256 512; do
+    install -dm755 "${pkgdir}/usr/share/icons/hicolor/${_size}x${_size}/apps"
+    magick "${_src}" -resize "${_size}x${_size}" \
+      "${pkgdir}/usr/share/icons/hicolor/${_size}x${_size}/apps/sidra.png"
+  done
+
+  install -Dm644 "${pkgdir}/usr/share/icons/hicolor/512x512/apps/sidra.png" \
+    "${pkgdir}/usr/share/pixmaps/sidra.png"
+}
+
+prepare() {
+  cd sidra
+  _patch_browserwindow_icons
+
+  export ELECTRON_SKIP_BINARY_DOWNLOAD=1
+  npm ci \
+    --cache "${srcdir}/npm-cache" \
+    --prefer-offline \
+    --no-audit \
+    --fund=false \
+    --ignore-scripts
+}
+
+build() {
+  cd sidra
+  npm run build
+
+  local _main_count _about_count
+  _main_count=$(grep -c "icon.png" dist/main.js || true)
+  _about_count=$(grep -c "icon.png" dist/aboutWindow.js || true)
+  if ((_main_count < 2 || _about_count < 1)); then
+    printf 'Compiled Sidra BrowserWindow icon patch is incomplete.\n' >&2
+    printf 'dist/main.js icon count: %s, dist/aboutWindow.js icon count: %s\n' "${_main_count}" "${_about_count}" >&2
+    return 1
+  fi
+}
+
+check() {
+  cd sidra
+  npm test
+}
+
+package() {
+  cd sidra
+
+  npm prune \
+    --omit=dev \
+    --cache "${srcdir}/npm-cache" \
+    --no-audit \
+    --fund=false \
+    --ignore-scripts
+
+  install -dm755 "${pkgdir}/usr/lib/sidra"
+  cp -a dist assets node_modules package.json "${pkgdir}/usr/lib/sidra/"
+  install -Dm644 build/icon.png "${pkgdir}/usr/lib/sidra/assets/icon.png"
+
+  install -Dm755 /dev/stdin "${pkgdir}/usr/bin/sidra" <<'LAUNCHER'
+#!/bin/sh
+export SIDRA_DISABLE_AUTO_UPDATE=1
+exec electron40-castlab --class=sidra --name=sidra /usr/lib/sidra "$@"
+LAUNCHER
+
+  _install_hicolor_icons build/icon.png
+
+  install -Dm644 /dev/stdin "${pkgdir}/usr/share/applications/sidra.desktop" <<'DESKTOP'
+[Desktop Entry]
+Name=Sidra
+Comment=An elegant Apple Music desktop client
+Exec=sidra %U
+Icon=/usr/share/icons/hicolor/48x48/apps/sidra.png
+Keywords=Apple;Music;Streaming;Audio;Player;Sidra;
+Terminal=false
+Type=Application
+Categories=AudioVideo;Audio;Music;
+MimeType=x-scheme-handler/itms;
+StartupNotify=true
+StartupWMClass=sidra
+DESKTOP
+
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
