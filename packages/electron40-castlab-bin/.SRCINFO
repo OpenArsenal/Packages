@@ -1,0 +1,48 @@
+pkgbase = electron40-castlab-bin
+	pkgdesc = Electron 40 for Content Security by castLabs with Widevine CDM support - binary release
+	pkgver = 40.10.2
+	pkgrel = 1
+	url = https://github.com/castlabs/electron-releases
+	arch = x86_64
+	license = MIT
+	makedepends = libarchive
+	depends = brotli
+	depends = c-ares
+	depends = flac
+	depends = fontconfig
+	depends = freetype2
+	depends = gcc-libs
+	depends = glibc
+	depends = gtk3
+	depends = harfbuzz
+	depends = libdrm
+	depends = libevent
+	depends = libffi
+	depends = libjpeg-turbo
+	depends = libpulse
+	depends = libxml2
+	depends = libxslt
+	depends = minizip
+	depends = nss
+	depends = opus
+	depends = zlib
+	optdepends = gtk4: for --gtk-version=4
+	optdepends = kde-cli-tools: file deletion support via kioclient
+	optdepends = pipewire: WebRTC desktop sharing under Wayland
+	optdepends = trash-cli: file deletion support via trash-put
+	optdepends = xdg-utils: open URLs with the desktop default handler
+	provides = electron40-castlab=40.10.2
+	provides = electron-castlab=40.10.2
+	conflicts = electron40-castlab
+	conflicts = electron40-castlab-git
+	noextract = electron-v40.10.2+wvcus-linux-x64.zip
+	options = !strip
+	options = !debug
+	source = electron-releases-40.10.2+wvcus.tar.gz::https://github.com/castlabs/electron-releases/archive/refs/tags/v40.10.2%2Bwvcus.tar.gz
+	sha256sums = a72480ddcd66354d1c2b657b35236bae84c687009fd5e7ba8ea164b1db36bac3
+	b2sums = f610d57acc9005099f335ca2e81cbbf1deebe635d270637700ec7fed5ddf87ba2eb1d1c5d8ea0a8d61d5a8628b1818f8205537a06a539666fdd03ae9e397582c
+	source_x86_64 = electron-v40.10.2+wvcus-linux-x64.zip::https://github.com/castlabs/electron-releases/releases/download/v40.10.2%2Bwvcus/electron-v40.10.2+wvcus-linux-x64.zip
+	sha256sums_x86_64 = e179c0b4134e32e59a2c87e09e5086cce4c33928333565add57f16e865dd224d
+	b2sums_x86_64 = c470e0ee6599342a9e1d5ccaccba7987ccc63887b3e854ba36a43133ea5347136ad0043ed808b01bb9ba6e09bafedbe546dcbbee9af93155021fcf8a3b21a598
+
+pkgname = electron40-castlab-bin
