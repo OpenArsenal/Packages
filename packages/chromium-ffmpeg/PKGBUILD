@@ -1,7 +1,6 @@
 pkgname=chromium-ffmpeg
 _ffmpeg_pkgver=8.1.1
 _avcodec=62
-pkgver=${_ffmpeg_pkgver}
 pkgrel=1
 pkgdesc="Add codecs to Chromium (libavcodec ${_avcodec})"
 arch=('x86_64')
@@ -10,10 +9,12 @@ _chromium_ffmpeg_url=https://chromium.googlesource.com/chromium/third_party/ffmp
 license=('LGPL-2.1-or-later')
 _so=libffmpeg.so
 
-# Chromium 148.0.7778.215 third_party/ffmpeg submodule commit.
+# Chromium 149.0.7827.53 third_party/ffmpeg submodule commit.
 # For newer Chromium majors, use update-ffmpeg-ref.sh to update this commit and run updpkgsums.
-_chromium_version=148.0.7778.215
-_chromium_ffmpeg_ref=b5e18fb9da84e26ceef30d4e4886696bf59337c0
+_chromium_version=149.0.7827.53
+_chromium_ffmpeg_ref=f45bab87ce4c5fafc67fd53fcde777578d01bfa0
+
+pkgver=${_ffmpeg_pkgver}_${_chromium_version}
 
 source=(
   "${url}releases/ffmpeg-${_ffmpeg_pkgver}.tar.xz"
@@ -24,6 +25,9 @@ source=(
 sha256sums=('b6863adde98898f42602017462871b5f6333e65aec803fdd7a6308639c52edf3'
             '9aa34221682c13cf5c55b3ceabf8c26c887d95569f51fb73fed0691fec08b56f'
             'f865d677f8ad39c79dde69186629cb6468c2b289c4156dbb8dec8e68b0131b40')
+b2sums=('275f853672f5d8e84bed0cd98b272b576355ebb3d31ad0538ef40200cf319ac03bd10d18f67b29e8549910e7e089aef7bad1c9537ae025eae5c13fc3c4bdb6c9'
+        'c92deb468a018ae7f04150d35cb71d3cf7e2e151f23ab84533bca9ccb0c678b94897668c48362aa6549cfa9127250e094719a14f95b59ed4e95f69dcebb3bca1'
+        'e5f7b79f7731be9ee5a7280a9221fb531ac5a2d9820fc5870b68b0eabea667dfbe8f39f41c1e1763a4c84982896afaa54c81ff57847d203b70afafd726689e5d')
 
 depends=(glibc)
 makedepends=(nasm)
