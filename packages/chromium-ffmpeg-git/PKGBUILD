@@ -1,7 +1,7 @@
 # Maintainer: Okiki <okiki@thunderstrike.co>
 
 pkgname=chromium-ffmpeg-git
-pkgver=8.2.dev.r1512.g8df8f8b1bb
+pkgver=8.2.dev.r1716.gdd9083cb89
 pkgrel=1
 pkgdesc="Add codecs to Chromium (FFmpeg git HEAD)"
 arch=('x86_64')

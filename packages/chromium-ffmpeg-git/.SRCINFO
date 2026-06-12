@@ -1,6 +1,6 @@
 pkgbase = chromium-ffmpeg-git
 	pkgdesc = Add codecs to Chromium (FFmpeg git HEAD)
-	pkgver = 8.2.dev.r0.g0000000
+	pkgver = 8.2.dev.r1512.g8df8f8b1bb
 	pkgrel = 1
 	url = https://git.ffmpeg.org/ffmpeg
 	arch = x86_64
