@@ -1,0 +1,25 @@
+pkgbase = sidra-bin
+	pkgdesc = An elegant Apple Music desktop client for Linux - binary app package using CastLabs Electron
+	pkgver = 0.3.4
+	pkgrel = 1
+	url = https://github.com/wimpysworld/sidra
+	arch = x86_64
+	license = BlueOak-1.0.0
+	makedepends = libarchive
+	makedepends = imagemagick
+	depends = electron40-castlab-bin
+	depends = hicolor-icon-theme
+	optdepends = discord: Discord Rich Presence integration
+	optdepends = playerctl: command-line MPRIS control/testing
+	provides = sidra=0.3.4
+	conflicts = sidra
+	conflicts = sidra-git
+	noextract = Sidra-0.3.4-linux-x86_64.rpm
+	source = sidra-0.3.4.tar.gz::https://github.com/wimpysworld/sidra/archive/refs/tags/0.3.4.tar.gz
+	sha256sums = 3bfbc0a5f9a03ba532658ea98fa01360438689e25677d3e2a0e11479c4b5cc82
+	b2sums = 10e97ca3b0c367b9f4b19cdb2db8f41bbbf8f03fe000ed9def960573425d02f23e53440d34c22e0570ffed500083bb82d11f1b7e8b26a10941a35803d81c82cf
+	source_x86_64 = Sidra-0.3.4-linux-x86_64.rpm::https://github.com/wimpysworld/sidra/releases/download/0.3.4/Sidra-0.3.4-linux-x86_64.rpm
+	sha256sums_x86_64 = 31ac9bca5e5c8fe0f1f76abd02bab25900983860bc3f1b695865fe6e1f16a30a
+	b2sums_x86_64 = 33770a474c1b5b73dc5669eec962afab5f0c1d6f778b631e9313e17e6ce5a1b88ca09ab15862f109ddd3105c144bfe244d44eb3919ff03d19e260bcb2c184f5e
+
+pkgname = sidra-bin
