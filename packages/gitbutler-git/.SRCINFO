@@ -1,6 +1,6 @@
 pkgbase = gitbutler-git
 	pkgdesc = Version control client, backed by Git, powered by Tauri/Rust/Svelte (git version)
-	pkgver = 0.19.10.r139.ga95c193
+	pkgver = 0.20.0.r583.g6c713ea
 	pkgrel = 1
 	url = https://github.com/gitbutlerapp/gitbutler
 	arch = x86_64
