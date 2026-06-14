@@ -2,6 +2,7 @@ pkgbase = ntfsplus-udev
 	pkgdesc = udev and udisks2 rules for preferring the ntfsplus/new ntfs driver
 	pkgver = 1.0.0
 	pkgrel = 1
+	epoch = 1
 	arch = any
 	license = GPL-2.0-only
 	depends = udev
