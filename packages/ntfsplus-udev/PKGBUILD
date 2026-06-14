@@ -1,4 +1,5 @@
 pkgname=ntfsplus-udev
+epoch=1
 pkgver=1.0.0
 pkgrel=1
 pkgdesc="udev and udisks2 rules for preferring the ntfsplus/new ntfs driver"
