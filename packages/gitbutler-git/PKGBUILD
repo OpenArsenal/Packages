@@ -1,6 +1,6 @@
 pkgname=gitbutler-git
 _pkgname=${pkgname%-git}
-pkgver=0.19.10.r139.ga95c193
+pkgver=0.20.0.r583.g6c713ea
 pkgrel=1
 pkgdesc="Version control client, backed by Git, powered by Tauri/Rust/Svelte (git version)"
 arch=('x86_64')
