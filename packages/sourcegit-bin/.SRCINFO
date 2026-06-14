@@ -1,6 +1,6 @@
 pkgbase = sourcegit-bin
 	pkgdesc = GUI client for GIT users (prebuilt release)
-	pkgver = 2026.10
+	pkgver = 2026.12
 	pkgrel = 1
 	url = https://github.com/sourcegit-scm/sourcegit
 	arch = x86_64
@@ -10,18 +10,18 @@ pkgbase = sourcegit-bin
 	depends = git
 	depends = xdg-utils
 	optdepends = git-credential-manager: third-party authentication support
-	provides = sourcegit=2026.10
+	provides = sourcegit=2026.12
 	conflicts = sourcegit
 	conflicts = sourcegit-git
 	options = !strip
-	source = sourcegit_2026.10.LICENSE::https://github.com/sourcegit-scm/sourcegit/raw/refs/tags/v2026.10/LICENSE
+	source = sourcegit_2026.12.LICENSE::https://github.com/sourcegit-scm/sourcegit/raw/refs/tags/v2026.12/LICENSE
 	sha256sums = ec746490472d7ae4317d257df27ea8077f68c6079b07f8ff32ac6ae12db9f32f
 	b2sums = 6ab18c3f004b400902c4cd4cb4471f00373187feff420a20cd2a6466dd0ca57f227771f0137cedfb82ee027d5d2d3ef52b6df10e21aca2b6f106cd44c36e6eaf
-	source_x86_64 = sourcegit-2026.10-1.x86_64.rpm::https://github.com/sourcegit-scm/sourcegit/releases/download/v2026.10/sourcegit-2026.10-1.x86_64.rpm
-	sha256sums_x86_64 = 21c62294585f003d9a72531a1f1be7c0e919e9f99daa40ad11f2e5187e0db8b7
-	b2sums_x86_64 = 1ef7aabf9c5f25218fea1a207f6ba0c1909c77e9ce2d46c390fd9bd0e7c3fc9daaa7e0bba0a437492cf2c9e8e9a9eb4ab8c330cb6a451638ed4bc6bb011d8133
-	source_aarch64 = sourcegit-2026.10-1.aarch64.rpm::https://github.com/sourcegit-scm/sourcegit/releases/download/v2026.10/sourcegit-2026.10-1.aarch64.rpm
-	sha256sums_aarch64 = e5aafa982ba1bc83c7695665cdf0386b3830740110c82bef7ebb2f9cb3d8b5b9
-	b2sums_aarch64 = a2bff44a5eb122a5a8242f3a35b53f567bc5bb6ab81ff755c31ccf8a8f4a701b6f16ea37a7e83686740f05a833315a7de62ab6ec3120758fd30884bd41d53596
+	source_x86_64 = sourcegit-2026.12-1.x86_64.rpm::https://github.com/sourcegit-scm/sourcegit/releases/download/v2026.12/sourcegit-2026.12-1.x86_64.rpm
+	sha256sums_x86_64 = 0d822c028a36448671cf75a5c4bffef9bc28f85fd965dc0be19cb58a67585712
+	b2sums_x86_64 = 5562bb7c0130222984e2fcf924faefd856f2854902f365c2bb29c4826931ef0ba4d7125a9a054d36e25ec663836115a5ee369142bba8be985d157fa69d5e9f38
+	source_aarch64 = sourcegit-2026.12-1.aarch64.rpm::https://github.com/sourcegit-scm/sourcegit/releases/download/v2026.12/sourcegit-2026.12-1.aarch64.rpm
+	sha256sums_aarch64 = aedffc1cf268685fe52b0b672789bcee6af0af133de2cdf8d840663da458550b
+	b2sums_aarch64 = bce5246b1c2c8229f3301cb246673b61c9110b7950c77ac8a2cda3a2e32aa34379cf9b4c591d5b922ae54390b68a4bd8e0bee7099adc5766c26db640fc29ff1a
 
 pkgname = sourcegit-bin
