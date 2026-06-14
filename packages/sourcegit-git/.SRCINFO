@@ -1,6 +1,6 @@
 pkgbase = sourcegit-git
 	pkgdesc = GUI client for GIT users (git version)
-	pkgver = 2026.10.r0.g57c9151
+	pkgver = 2026.12.r0.gd67c995
 	pkgrel = 1
 	url = https://github.com/sourcegit-scm/sourcegit
 	arch = x86_64
