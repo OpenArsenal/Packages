@@ -1,6 +1,6 @@
 pkgbase = vivaldi-ffmpeg
 	pkgdesc = Additional support for proprietary codecs for vivaldi
-	pkgver = 8.1.1_148.0.7778.263
+	pkgver = 8.1.1_148.0.7778.267
 	pkgrel = 1
 	url = https://ffmpeg.org/
 	arch = x86_64
