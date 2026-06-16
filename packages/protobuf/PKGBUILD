@@ -2,8 +2,8 @@
 
 pkgbase='protobuf'
 pkgname=('protobuf' 'python-protobuf' 'ruby-google-protobuf')
-pkgver='34.1'
-pkgrel=3
+pkgver='35.1'
+pkgrel=1
 pkgdesc="Protocol Buffers - Google's data interchange format"
 arch=('x86_64')
 url='https://developers.google.com/protocol-buffers/'
@@ -42,11 +42,9 @@ checkdepends=(
 source=(
   ${_srcname}::git+https://github.com/protocolbuffers/protobuf.git#tag=v$pkgver
   protobuf-fix-build-type-none.patch
-  protobuf-33-patch-enum-traits-impl.patch
 )
-sha512sums=('22083bdc3b71d4b77902eb2372b04136bbcac9a7ee05a2d3e197d9d2ce45e8cf0b6c0c445076102ace485162c5020b93ef52bd26d4fd8fba780137b80cacd1a4'
-            '18bc71031bbcbc3810a9985fa670465040f06a6c104ab8079b56bdfc499bb6cec40805a0cefd455031142490a576dc60aa8000523877ac0353b93558e9beabbd'
-            '8f7b8cb3829490962668bbb0eb8104f565a16bb336669e03afdc355c7ad50efb094851f7f78eba0d0a9704290b1c45ec56c9e6d6677cbf96ccfbfb659c014756')
+sha512sums=('70104fd3ae0d13fc5afc2d2835d10d4a45949d528ecb15b88dc29cc6e52ecea1d62dbbcb17a49fd129a53bb78243051b4f10e6b90552146403898d517272df68'
+            '18bc71031bbcbc3810a9985fa670465040f06a6c104ab8079b56bdfc499bb6cec40805a0cefd455031142490a576dc60aa8000523877ac0353b93558e9beabbd')
 
 options=(!lto)
 
@@ -56,8 +54,7 @@ prepare() {
   cd "${_srcname}"
   bazel --version
 
-  patch -p1 < ../protobuf-fix-build-type-none.patch # Fix cmake config compatibility mode
-  patch -p1 < ../protobuf-33-patch-enum-traits-impl.patch
+  patch -p1 <../protobuf-fix-build-type-none.patch # Fix cmake config compatibility mode
 }
 
 build() {
@@ -96,7 +93,6 @@ build() {
   local _gemplatform=$(ruby -e "puts Gem::Platform.local")
   local _rubyapi=$(ruby -e 'require "rbconfig"; puts RbConfig::CONFIG["RUBY_API_VERSION"]')
 
-
   PROTOC="$srcdir"/build/protoc \
     rake
   rake gem
@@ -111,7 +107,7 @@ build() {
     "pkg/${_gemname}-${_gemver}.gem"
 
   # install shared libraries to standard location and symlink to that location from custom location Gem requires
-   install -D lib/google/protobuf_c.so \
+  install -D lib/google/protobuf_c.so \
     "tmp_install${_gemdir}/extensions/${_gemplatform}/${_rubyapi}/${_gemname}-${_gemver}"/protobuf_c.so
   install -d "tmp_install${_gemdir}/gems/${_gemname}-${_gemver}"/lib/google/${_rubyapi}
   ln -s "${_gemdir}/extensions/${_gemplatform}/${_rubyapi}/${_gemname}-${_gemver}"/protobuf_c.so \
@@ -130,19 +126,19 @@ build() {
   find "tmp_install${_gemdir}/gems/" \
     -type f \
     \( \
-      -iname "*.o" -o \
-      -iname "*.c" -o \
-      -iname "*.time" -o \
-      -iname "gem.build_complete" -o \
-      -iname "Makefile" \
+    -iname "*.o" -o \
+    -iname "*.c" -o \
+    -iname "*.time" -o \
+    -iname "gem.build_complete" -o \
+    -iname "Makefile" \
     \) \
     -delete
 
   find "tmp_install${_gemdir}/extensions/" \
     -type f \
     \( \
-      -iname "mkmf.log" -o \
-      -iname "gem_make.out" \
+    -iname "mkmf.log" -o \
+    -iname "gem_make.out" \
     \) \
     -delete
 }

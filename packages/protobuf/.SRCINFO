@@ -1,7 +1,7 @@
 pkgbase = protobuf
 	pkgdesc = Protocol Buffers - Google's data interchange format
-	pkgver = 34.1
-	pkgrel = 3
+	pkgver = 35.1
+	pkgrel = 1
 	url = https://developers.google.com/protocol-buffers/
 	arch = x86_64
 	license = BSD-3-Clause
@@ -28,12 +28,10 @@ pkgbase = protobuf
 	depends = libstdc++
 	depends = zlib
 	options = !lto
-	source = protobuf-src::git+https://github.com/protocolbuffers/protobuf.git#tag=v34.1
+	source = protobuf-src::git+https://github.com/protocolbuffers/protobuf.git#tag=v35.1
 	source = protobuf-fix-build-type-none.patch
-	source = protobuf-33-patch-enum-traits-impl.patch
-	sha512sums = 22083bdc3b71d4b77902eb2372b04136bbcac9a7ee05a2d3e197d9d2ce45e8cf0b6c0c445076102ace485162c5020b93ef52bd26d4fd8fba780137b80cacd1a4
+	sha512sums = 70104fd3ae0d13fc5afc2d2835d10d4a45949d528ecb15b88dc29cc6e52ecea1d62dbbcb17a49fd129a53bb78243051b4f10e6b90552146403898d517272df68
 	sha512sums = 18bc71031bbcbc3810a9985fa670465040f06a6c104ab8079b56bdfc499bb6cec40805a0cefd455031142490a576dc60aa8000523877ac0353b93558e9beabbd
-	sha512sums = 8f7b8cb3829490962668bbb0eb8104f565a16bb336669e03afdc355c7ad50efb094851f7f78eba0d0a9704290b1c45ec56c9e6d6677cbf96ccfbfb659c014756
 
 pkgname = protobuf
 	provides = libprotoc.so
@@ -43,7 +41,7 @@ pkgname = protobuf
 
 pkgname = python-protobuf
 	pkgdesc = Python 3 bindings for Google Protocol Buffers
-	depends = protobuf=34.1
+	depends = protobuf=35.1
 	depends = python
 
 pkgname = ruby-google-protobuf
