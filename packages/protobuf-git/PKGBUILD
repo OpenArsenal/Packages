@@ -1,0 +1,196 @@
+# Maintainer: Okiki <okiki@thunderstrike.co>
+
+pkgbase='protobuf-git'
+pkgname=('protobuf-git' 'python-protobuf-git' 'ruby-google-protobuf-git')
+pkgver=35.dev.r475.g71f553ee83
+pkgrel=1
+pkgdesc="Protocol Buffers - Google's data interchange format"
+arch=('x86_64')
+url='https://developers.google.com/protocol-buffers/'
+license=('BSD-3-Clause')
+_srcname=protobuf
+depends=(
+  # protoc links against abseil shared libraries, so protobuf needs a rebuild
+  # whenever abseil-cpp bumps its SONAME.
+  'abseil-cpp'
+  'glibc'
+  'libgcc'
+  'libstdc++'
+  'zlib'
+)
+makedepends=(
+  'bazelisk'
+  'cmake'
+  'git'
+  'gtest'
+  'python'
+  'python-build'
+  'python-installer'
+  'python-setuptools'
+  'python-wheel'
+  'ruby'
+  'ruby-erb'
+  'ruby-ffi-compiler'
+  'ruby-rake'
+  'ruby-rake-compiler'
+  'ruby-bigdecimal'
+)
+checkdepends=(
+  python-pytest
+  python-numpy
+)
+source=(
+  ${_srcname}::git+https://github.com/protocolbuffers/protobuf.git
+  protobuf-fix-build-type-none.patch
+)
+sha256sums=('SKIP'
+            'dd273e1adbda2f8ca2021451afe19d30bfc7cb9daf944a299f181da0e2d250cb')
+
+options=(!lto)
+
+_gemname=google-protobuf
+
+pkgver() {
+  cd "${_srcname}"
+  git describe --tags --long | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+prepare() {
+  cd "${_srcname}"
+  bazel --version
+
+  patch -p1 <../protobuf-fix-build-type-none.patch # Fix cmake config compatibility mode
+}
+
+build() {
+  local cmake_options=(
+    -B build
+    -D CMAKE_BUILD_TYPE=None
+    -D CMAKE_INSTALL_PREFIX=/usr
+    -D CMAKE_C_FLAGS="$CFLAGS -ffat-lto-objects -ffile-prefix-map=$srcdir=/usr/src/debug/$pkgbase"
+    -D CMAKE_CXX_FLAGS="$CXXFLAGS -ffat-lto-objects -ffile-prefix-map=$srcdir=/usr/src/debug/$pkgbase"
+    -D protobuf_BUILD_SHARED_LIBS=ON
+    -D protobuf_USE_EXTERNAL_GTEST=ON
+    -D protobuf_LOCAL_DEPENDENCIES_ONLY=ON
+    -S "${_srcname}"
+  )
+
+  cmake "${cmake_options[@]}"
+  cmake --build build --verbose
+
+  cd "${_srcname}"
+  local bazel_options=()
+
+  # protobuf has both osx-aarch_64 and linux-aarch_64 platforms
+  # so we need to explicitly specify the target CPU when building
+  # for aarch64
+  [[ $CARCH == "aarch64" ]] && bazel_options+=(--cpu=linux-aarch_64)
+
+  bazel build //python/dist:binary_wheel "${bazel_options[@]}"
+
+  cd ruby
+  local _gemdir="$(gem env gemdir)"
+  local _gemplatform=$(ruby -e "puts Gem::Platform.local")
+  local _rubyapi=$(ruby -e 'require "rbconfig"; puts RbConfig::CONFIG["RUBY_API_VERSION"]')
+
+  PROTOC="$srcdir"/build/protoc \
+    rake
+  rake gem
+
+  local _gemfile=(pkg/${_gemname}-*.gem)
+  local _gemver="${_gemfile[0]#pkg/${_gemname}-}"
+  _gemver="${_gemver%.gem}"
+
+  gem install \
+    --local \
+    --verbose \
+    --ignore-dependencies \
+    --no-user-install \
+    --install-dir "tmp_install${_gemdir}" \
+    --bindir "tmp_install/usr/bin" \
+    "pkg/${_gemname}-${_gemver}.gem"
+
+  # install shared libraries to standard location and symlink to that location from custom location Gem requires
+  install -D lib/google/protobuf_c.so \
+    "tmp_install${_gemdir}/extensions/${_gemplatform}/${_rubyapi}/${_gemname}-${_gemver}"/protobuf_c.so
+  install -d "tmp_install${_gemdir}/gems/${_gemname}-${_gemver}"/lib/google/${_rubyapi}
+  ln -s "${_gemdir}/extensions/${_gemplatform}/${_rubyapi}/${_gemname}-${_gemver}"/protobuf_c.so \
+    "tmp_install${_gemdir}/gems/${_gemname}-${_gemver}"/lib/google/${_rubyapi}/protobuf_c.so
+  mv "tmp_install${_gemdir}/gems/${_gemname}-${_gemver}"/ext/google/protobuf_c/${_gemplatform}/libprotobuf_c_ffi.so \
+    "tmp_install${_gemdir}/extensions/${_gemplatform}/${_rubyapi}/${_gemname}-${_gemver}"
+  ln -s "${_gemdir}/extensions/${_gemplatform}/${_rubyapi}/${_gemname}-${_gemver}"/libprotobuf_c_ffi.so \
+    "tmp_install${_gemdir}/gems/${_gemname}-${_gemver}"/ext/google/protobuf_c/${_gemplatform}/libprotobuf_c_ffi.so
+
+  # remove unrepreducible files
+  rm --force --recursive --verbose \
+    "tmp_install${_gemdir}/cache/" \
+    "tmp_install${_gemdir}/gems/${_gemname}-${_gemver}/vendor/" \
+    "tmp_install${_gemdir}/doc/${_gemname}-${_gemver}/ri/ext/"
+
+  find "tmp_install${_gemdir}/gems/" \
+    -type f \
+    \( \
+    -iname "*.o" -o \
+    -iname "*.c" -o \
+    -iname "*.time" -o \
+    -iname "gem.build_complete" -o \
+    -iname "Makefile" \
+    \) \
+    -delete
+
+  find "tmp_install${_gemdir}/extensions/" \
+    -type f \
+    \( \
+    -iname "mkmf.log" -o \
+    -iname "gem_make.out" \
+    \) \
+    -delete
+}
+
+check() {
+  ctest --test-dir build
+}
+
+package_protobuf-git() {
+  provides=("protobuf=$pkgver" 'libprotoc.so' 'libprotobuf.so' 'libprotobuf-lite.so')
+  conflicts=('protobuf' 'protobuf-cpp')
+
+  DESTDIR="$pkgdir" cmake --install build
+
+  cd "${_srcname}"
+  install -vDm 644 LICENSE -t "$pkgdir/usr/share/licenses/$pkgname/"
+  install -vDm 644 editors/protobuf-mode.el \
+    -t "$pkgdir/usr/share/emacs/site-lisp/"
+  install -vDm 644 editors/proto.vim \
+    -t "${pkgdir}/usr/share/vim/vimfiles/syntax"
+}
+
+package_python-protobuf-git() {
+  pkgdesc='Python 3 bindings for Google Protocol Buffers'
+  depends=(
+    "protobuf-git=$pkgver"
+    'python'
+  )
+  provides=("python-protobuf=$pkgver")
+  conflicts=('python-protobuf')
+
+  python -m installer --destdir="$pkgdir" "${_srcname}"/bazel-bin/python/dist/*.whl
+  install -vDm 644 "${_srcname}"/LICENSE -t "$pkgdir/usr/share/licenses/$pkgname/"
+}
+
+package_ruby-google-protobuf-git() {
+  pkgdesc='Ruby bindings for Google Protocol Buffers'
+  depends=(
+    'libgcc'
+    'ruby'
+    'ruby-bigdecimal'
+    'ruby-rake'
+  )
+  provides=("ruby-google-protobuf=$pkgver")
+  conflicts=('ruby-google-protobuf')
+
+  cp -a "${_srcname}"/ruby/tmp_install/* "$pkgdir"
+
+  install -vDm 644 "${_srcname}"/LICENSE -t "$pkgdir/usr/share/licenses/$pkgname/"
+  install -Dm 0644 "${_srcname}"/ruby/*.md -t "$pkgdir/usr/share/doc/${pkgname}"
+}

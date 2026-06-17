@@ -1,0 +1,58 @@
+pkgbase = protobuf-git
+	pkgdesc = Protocol Buffers - Google's data interchange format
+	pkgver = 35.1.r0.g35cd01f
+	pkgrel = 2
+	url = https://developers.google.com/protocol-buffers/
+	arch = x86_64
+	license = BSD-3-Clause
+	checkdepends = python-pytest
+	checkdepends = python-numpy
+	makedepends = bazelisk
+	makedepends = cmake
+	makedepends = git
+	makedepends = gtest
+	makedepends = python
+	makedepends = python-build
+	makedepends = python-installer
+	makedepends = python-setuptools
+	makedepends = python-wheel
+	makedepends = ruby
+	makedepends = ruby-erb
+	makedepends = ruby-ffi-compiler
+	makedepends = ruby-rake
+	makedepends = ruby-rake-compiler
+	makedepends = ruby-bigdecimal
+	depends = abseil-cpp
+	depends = glibc
+	depends = libgcc
+	depends = libstdc++
+	depends = zlib
+	options = !lto
+	source = protobuf::git+https://github.com/protocolbuffers/protobuf.git
+	source = protobuf-fix-build-type-none.patch
+	sha256sums = SKIP
+	sha256sums = dd273e1adbda2f8ca2021451afe19d30bfc7cb9daf944a299f181da0e2d250cb
+
+pkgname = protobuf-git
+	provides = protobuf=35.1.r0.g35cd01f
+	provides = libprotoc.so
+	provides = libprotobuf.so
+	provides = libprotobuf-lite.so
+	conflicts = protobuf
+	conflicts = protobuf-cpp
+
+pkgname = python-protobuf-git
+	pkgdesc = Python 3 bindings for Google Protocol Buffers
+	depends = protobuf-git=35.1.r0.g35cd01f
+	depends = python
+	provides = python-protobuf=35.1.r0.g35cd01f
+	conflicts = python-protobuf
+
+pkgname = ruby-google-protobuf-git
+	pkgdesc = Ruby bindings for Google Protocol Buffers
+	depends = libgcc
+	depends = ruby
+	depends = ruby-bigdecimal
+	depends = ruby-rake
+	provides = ruby-google-protobuf=35.1.r0.g35cd01f
+	conflicts = ruby-google-protobuf
