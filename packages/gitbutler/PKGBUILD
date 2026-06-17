@@ -1,5 +1,5 @@
 pkgname=gitbutler
-pkgver=0.20.0
+pkgver=0.20.1
 pkgrel=1
 pkgdesc="Version control client, backed by Git, powered by Tauri/Rust/Svelte"
 arch=('x86_64')
@@ -12,9 +12,9 @@ options=('!lto')
 
 source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/release/${pkgver}.tar.gz"
   "gitbutler-flags-wrapper.sh")
-sha256sums=('0c44b09d62a98befb562c04c21bc40a242e077b4d0d42f18dfcb7a81c06e8e08'
+sha256sums=('e25d21323b93df02d2086d35f7f36fb1cdffec2b8daeed4a168d888d62b5e0ed'
             '9a34df546f30e5aa0e0c3309d0f4ce0b95af456936b2ef79223f6602d235e3bc')
-b2sums=('7a3e03d1e3547cd36cffa6c2de7640e6a1854ff06dc123157946887ddea25c29822497e05693aae2cbe1be6da11767addff5693b6ed958161d4cf2a618388918'
+b2sums=('30da0136cc166e3b9196525511c9b4fd0a438caca9fd7c0fea798a428aa9d0ecb079f532bd4d50f2140ff5b578a61f799af5c0a45f578d51137e758ec9c99ae9'
         'af6a176a6430a292c158f55573ac17fb543bed5af71a814d0ff0e34cf2c1fbc1892e477261b2150c51e1c89021b5e01b103700e4cc845ff143f6e9b80b3bed44')
 
 _wrapper_target='/usr/lib/gitbutler/gitbutler-tauri'
