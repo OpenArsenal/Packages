@@ -9,7 +9,6 @@ pkgbase = protobuf
 	checkdepends = python-numpy
 	makedepends = bazelisk
 	makedepends = cmake
-	makedepends = git
 	makedepends = gtest
 	makedepends = python
 	makedepends = python-build
@@ -28,10 +27,10 @@ pkgbase = protobuf
 	depends = libstdc++
 	depends = zlib
 	options = !lto
-	source = protobuf-src::git+https://github.com/protocolbuffers/protobuf.git#tag=v35.1
+	source = https://github.com/protocolbuffers/protobuf/releases/download/v35.1/protobuf-35.1.bazel.tar.gz
 	source = protobuf-fix-build-type-none.patch
-	sha512sums = 70104fd3ae0d13fc5afc2d2835d10d4a45949d528ecb15b88dc29cc6e52ecea1d62dbbcb17a49fd129a53bb78243051b4f10e6b90552146403898d517272df68
-	sha512sums = 18bc71031bbcbc3810a9985fa670465040f06a6c104ab8079b56bdfc499bb6cec40805a0cefd455031142490a576dc60aa8000523877ac0353b93558e9beabbd
+	sha256sums = 75b7b0b36b630c7b6e3aeb07b2e58993fb9494fbb2b08bba0891aaa231d4e4d1
+	sha256sums = dd273e1adbda2f8ca2021451afe19d30bfc7cb9daf944a299f181da0e2d250cb
 
 pkgname = protobuf
 	provides = libprotoc.so
