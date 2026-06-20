@@ -1,6 +1,6 @@
 pkgname=vite-plus
-pkgver=0.1.23
-pkgrel=1
+pkgver=0.2.1
+pkgrel=2
 pkgdesc='Unified toolchain and entry point for web development'
 arch=('x86_64' 'aarch64')
 url='https://github.com/voidzero-dev/vite-plus'
@@ -12,31 +12,47 @@ optdepends=('git: initialize repositories in vp create and use git-backed templa
 conflicts=('vite-plus-bin' 'vite-plus-git')
 _srcname='vite-plus'
 _rust_toolchain='nightly-2026-05-24'
-_rolldown_commit='a287faaa3db70e9e4145b6bc16567f596a3c2e1f'
-_vite_commit='c917f1ef9d9c6ef131af96d89089d8ec680b18f2'
+
+# Vite+ records the upstream projects it bundles for each release. Keep these
+# pins in sync with the v${pkgver} release notes rather than treating Rolldown
+# and Vite as independently-upgraded package inputs.
+_bundled_rolldown_pkgver='1.1.1'
+_bundled_rolldown_commit='d7f919c18980e6b4a26d06bd071d7cf14cf810a7'
+_bundled_vite_pkgver='8.0.16'
+_bundled_vite_commit='f94df87ff03b40b65e29bacdc04cc18c7bccaa4a'
+
+# Vite Task is not listed in the release Bundled Versions table because Vite+
+# consumes it as Rust git dependencies. Keep this rev in sync with the
+# workspace.dependencies vite-task entries in the matching Vite+ Cargo.toml.
 _vite_task_commit='5833b374c6edb05c2f2f8e133ff8c796b378472a'
-_rolldown_pkgver='1.0.3'
+
 source=(
   "${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/v${pkgver}.tar.gz"
-  "rolldown-${_rolldown_commit}.tar.gz::https://github.com/rolldown/rolldown/archive/${_rolldown_commit}.tar.gz"
-  "vite-${_vite_commit}.tar.gz::https://github.com/vitejs/vite/archive/${_vite_commit}.tar.gz"
+  "rolldown-${_bundled_rolldown_commit}.tar.gz::https://github.com/rolldown/rolldown/archive/${_bundled_rolldown_commit}.tar.gz"
+  "vite-${_bundled_vite_commit}.tar.gz::https://github.com/vitejs/vite/archive/${_bundled_vite_commit}.tar.gz"
   "vite-task-${_vite_task_commit}.tar.gz::https://github.com/voidzero-dev/vite-task/archive/${_vite_task_commit}.tar.gz"
 )
 source_x86_64=(
-  "rolldown-binding-linux-x64-gnu-${_rolldown_pkgver}.tgz::https://registry.npmjs.org/@rolldown/binding-linux-x64-gnu/-/binding-linux-x64-gnu-${_rolldown_pkgver}.tgz"
+  "rolldown-binding-linux-x64-gnu-${_bundled_rolldown_pkgver}.tgz::https://registry.npmjs.org/@rolldown/binding-linux-x64-gnu/-/binding-linux-x64-gnu-${_bundled_rolldown_pkgver}.tgz"
 )
 source_aarch64=(
-  "rolldown-binding-linux-arm64-gnu-${_rolldown_pkgver}.tgz::https://registry.npmjs.org/@rolldown/binding-linux-arm64-gnu/-/binding-linux-arm64-gnu-${_rolldown_pkgver}.tgz"
+  "rolldown-binding-linux-arm64-gnu-${_bundled_rolldown_pkgver}.tgz::https://registry.npmjs.org/@rolldown/binding-linux-arm64-gnu/-/binding-linux-arm64-gnu-${_bundled_rolldown_pkgver}.tgz"
 )
-sha256sums=('6ade217f0c43bc92122af832be722cdce8f413049a34252eaed069316b6b5c36'
-            'c9c48e149a49abcf936a25574962c1d21d2519a3e1d8284d24b755ffd793e6a7'
-            'f7baaca03e995613de37cadaf1a7deef850fc1eb7c43f018a031eda3a41fd23e'
+
+# Run updpkgsums after saving this PKGBUILD. The unchanged vite-plus and
+# vite-task hashes are preserved from the previous package draft; the updated
+# Rolldown, Vite, and native binding inputs are intentionally marked SKIP here
+# because their checksums must be regenerated against the downloaded sources.
+sha256sums=('30f116d1a8703d36008ef9b3ff19e26ad05b6478468ef3cb4ad37ec013fc7cae'
+            '89f7a2bf40a2d8aaf88ea12c86c89231ea78fc81c5655cf31d444c3ef24ecef5'
+            '1c76e2b0a2c958c9819e06b120be291112fd1a0a60296ca49b402bae48a574d8'
             '7c618838e3297371f11a24fecf945a9009ff1bee1875b3129d27c44521a8caab')
-sha256sums_x86_64=('784bbac856c5928660c9419aa599d55b9c869484e37ac938501d513a7d58fe76')
-sha256sums_aarch64=('a6a9cb076799f9c45da18e5aca41321f4df6ca56dae16d53e5f42d1e9b09f595')
+sha256sums_x86_64=('55bf455e4d6c5df19636c40b434718891a574214bbf09a50e2e7b21b9f640d56')
+sha256sums_aarch64=('af458cfd2ce237a5161bdfdcef960e710c394b966537e1d1374840fb7fc78308')
+
 noextract=(
-  "rolldown-binding-linux-x64-gnu-${_rolldown_pkgver}.tgz"
-  "rolldown-binding-linux-arm64-gnu-${_rolldown_pkgver}.tgz"
+  "rolldown-binding-linux-x64-gnu-${_bundled_rolldown_pkgver}.tgz"
+  "rolldown-binding-linux-arm64-gnu-${_bundled_rolldown_pkgver}.tgz"
 )
 
 _napi_target() {
@@ -52,8 +68,8 @@ _napi_target() {
 
 _rolldown_binding_package() {
   case "${CARCH}" in
-  x86_64) echo "rolldown-binding-linux-x64-gnu-${_rolldown_pkgver}.tgz" ;;
-  aarch64) echo "rolldown-binding-linux-arm64-gnu-${_rolldown_pkgver}.tgz" ;;
+  x86_64) echo "rolldown-binding-linux-x64-gnu-${_bundled_rolldown_pkgver}.tgz" ;;
+  aarch64) echo "rolldown-binding-linux-arm64-gnu-${_bundled_rolldown_pkgver}.tgz" ;;
   *)
     echo "Unsupported architecture: ${CARCH}" >&2
     return 1
@@ -105,8 +121,8 @@ prepare() {
 
   rm -rf rolldown vite
   rm -rf "${srcdir}/vite-task"
-  cp -a "${srcdir}/rolldown-${_rolldown_commit}" rolldown
-  cp -a "${srcdir}/vite-${_vite_commit}" vite
+  cp -a "${srcdir}/rolldown-${_bundled_rolldown_commit}" rolldown
+  cp -a "${srcdir}/vite-${_bundled_vite_commit}" vite
   cp -a "${srcdir}/vite-task-${_vite_task_commit}" "${srcdir}/vite-task"
 
   if ! grep -q '^\[patch."https://github.com/voidzero-dev/vite-task.git"\]' Cargo.toml; then
@@ -125,8 +141,23 @@ PATCH
 
   local _source_rolldown_version
   _source_rolldown_version="$(node -p "require('./rolldown/packages/rolldown/package.json').version")"
-  if [[ "${_source_rolldown_version}" != "${_rolldown_pkgver}" ]]; then
-    echo "Rolldown source version ${_source_rolldown_version} does not match _rolldown_pkgver=${_rolldown_pkgver}" >&2
+  if [[ "${_source_rolldown_version}" != "${_bundled_rolldown_pkgver}" ]]; then
+    echo "Rolldown source version ${_source_rolldown_version} does not match bundled Rolldown ${_bundled_rolldown_pkgver}" >&2
+    return 1
+  fi
+
+  local _source_vite_version
+  _source_vite_version="$(node -p "require('./vite/packages/vite/package.json').version")"
+  if [[ "${_source_vite_version}" != "${_bundled_vite_pkgver}" ]]; then
+    echo "Vite source version ${_source_vite_version} does not match bundled Vite ${_bundled_vite_pkgver}" >&2
+    return 1
+  fi
+
+  # Cargo normally fetches these crates from the pinned git rev. Arch builds
+  # should use declared and checksummed source inputs instead, so fail early if
+  # the Vite+ release moved to a different Vite Task revision.
+  if ! grep -q "https://github.com/voidzero-dev/vite-task.git.*rev = \"${_vite_task_commit}\"" Cargo.toml; then
+    echo "Vite+ Cargo.toml does not pin vite-task to ${_vite_task_commit}" >&2
     return 1
   fi
 
