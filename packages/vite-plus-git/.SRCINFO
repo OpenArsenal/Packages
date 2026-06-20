@@ -1,6 +1,6 @@
 pkgbase = vite-plus-git
 	pkgdesc = Unified toolchain and entry point for web development (development version)
-	pkgver = 0.1.23.r4.g1f48b2c
+	pkgver = 0.2.1.r3.g4c793b7
 	pkgrel = 1
 	url = https://github.com/voidzero-dev/vite-plus
 	arch = x86_64

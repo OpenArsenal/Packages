@@ -1,6 +1,6 @@
 pkgname=vite-plus-git
 _pkgname=vite-plus
-pkgver=0.1.23.r4.g1f48b2c
+pkgver=0.2.1.r3.g4c793b7
 pkgrel=1
 pkgdesc='Unified toolchain and entry point for web development (development version)'
 arch=('x86_64' 'aarch64')
@@ -42,28 +42,6 @@ _napi_target() {
   esac
 }
 
-_rolldown_binding_target() {
-  case "${CARCH}" in
-  x86_64) echo 'linux-x64-gnu' ;;
-  aarch64) echo 'linux-arm64-gnu' ;;
-  *)
-    echo "Unsupported architecture: ${CARCH}" >&2
-    return 1
-    ;;
-  esac
-}
-
-_rolldown_binding_node() {
-  case "${CARCH}" in
-  x86_64) echo 'rolldown-binding.linux-x64-gnu.node' ;;
-  aarch64) echo 'rolldown-binding.linux-arm64-gnu.node' ;;
-  *)
-    echo "Unsupported architecture: ${CARCH}" >&2
-    return 1
-    ;;
-  esac
-}
-
 _rust_toolchain() {
   sed -n 's/^channel = "\(.*\)"/\1/p' "${srcdir}/${_srcname}/rust-toolchain.toml"
 }
@@ -86,8 +64,7 @@ _set_build_env() {
   export RELEASE_BUILD=1
   export TARGET_CC=clang
 
-  # Prevent Rust/NAPI native artifacts from embedding makepkg work directories.
-  # The NAPI build can otherwise leave absolute build paths in the shared object.
+  # Native artifacts should not retain makepkg's temporary work directories.
   export CARGO_PROFILE_RELEASE_DEBUG=0
   export CARGO_PROFILE_RELEASE_STRIP='symbols'
   export RUSTFLAGS="${RUSTFLAGS} --remap-path-prefix=${srcdir}=. --remap-path-prefix=${pkgdir}=."
@@ -105,7 +82,34 @@ _checkout_clean() {
 
   git -C "${_repo}" reset --hard
   git -C "${_repo}" clean -fdx
-  git -C "${_repo}" checkout --detach "${_rev}"
+  git -C "${_repo}" -c advice.detachedHead=false checkout --detach "${_rev}"
+}
+
+_upstream_commit() {
+  local _name="$1"
+
+  node -p "require('./packages/tools/.upstream-versions.json').${_name}.hash"
+}
+
+_vite_task_commit() {
+  node <<'NODE'
+const fs = require('fs')
+const cargo = fs.readFileSync('Cargo.toml', 'utf8')
+const revs = [...cargo.matchAll(/https:\/\/github\.com\/voidzero-dev\/vite-task\.git[^\n]*rev\s*=\s*"([^"]+)"/g)].map((match) => match[1])
+const uniqueRevs = [...new Set(revs)]
+
+if (uniqueRevs.length === 0) {
+  console.error('Unable to find a vite-task git revision in Cargo.toml')
+  process.exit(1)
+}
+
+if (uniqueRevs.length !== 1) {
+  console.error(`Expected every vite-task crate to use one revision, found: ${uniqueRevs.join(', ')}`)
+  process.exit(1)
+}
+
+console.log(uniqueRevs[0])
+NODE
 }
 
 prepare() {
@@ -113,20 +117,9 @@ prepare() {
   _set_build_env
 
   local _rolldown_commit _vite_commit _vite_task_commit
-  _rolldown_commit="$(node -p "require('./packages/tools/.upstream-versions.json').rolldown.hash")"
-  _vite_commit="$(node -p "require('./packages/tools/.upstream-versions.json').vite.hash")"
-  _vite_task_commit="$(
-    node <<'NODE'
-const fs = require('fs')
-const cargo = fs.readFileSync('Cargo.toml', 'utf8')
-const match = cargo.match(/https:\/\/github\.com\/voidzero-dev\/vite-task\.git[^\n]*rev\s*=\s*"([^"]+)"/)
-if (!match) {
-  console.error('Unable to find vite-task git revision in Cargo.toml')
-  process.exit(1)
-}
-console.log(match[1])
-NODE
-  )"
+  _rolldown_commit="$(_upstream_commit rolldown)"
+  _vite_commit="$(_upstream_commit vite)"
+  _vite_task_commit="$(_vite_task_commit)"
 
   _checkout_clean "${srcdir}/rolldown" "${_rolldown_commit}"
   _checkout_clean "${srcdir}/vite" "${_vite_commit}"
@@ -142,7 +135,6 @@ NODE
 
 [patch."https://github.com/voidzero-dev/vite-task.git"]
 fspy = { path = "../vite-task/crates/fspy" }
-vite_glob = { path = "../vite-task/crates/vite_glob" }
 vite_path = { path = "../vite-task/crates/vite_path" }
 vite_powershell = { path = "../vite-task/crates/vite_powershell" }
 vite_str = { path = "../vite-task/crates/vite_str" }
@@ -150,21 +142,6 @@ vite_task = { path = "../vite-task/crates/vite_task" }
 vite_workspace = { path = "../vite-task/crates/vite_workspace" }
 PATCH
   fi
-
-  local _rolldown_version _binding_target _binding_node _binding_pkg
-  _rolldown_version="$(node -p "require('./rolldown/packages/rolldown/package.json').version")"
-  _binding_target="$(_rolldown_binding_target)"
-  _binding_node="$(_rolldown_binding_node)"
-  _binding_pkg="rolldown-binding-${_binding_target}-${_rolldown_version}.tgz"
-
-  rm -rf "${srcdir}/package" "${srcdir:?}/${_binding_pkg}"
-  npm pack "@rolldown/binding-${_binding_target}@${_rolldown_version}" \
-    --pack-destination "${srcdir}"
-
-  tar -xzf "${srcdir}/${_binding_pkg}" -C "${srcdir}"
-  install -Dm755 "${srcdir}/package/${_binding_node}" \
-    "rolldown/packages/rolldown/src/${_binding_node}"
-  rm -rf "${srcdir}/package"
 }
 
 build() {
@@ -177,10 +154,11 @@ build() {
 
   pnpm install --frozen-lockfile
 
-  # Follow upstream release CI shape instead of the root development build script.
-  # Upstream bootstraps rolldown build-node with a prebuilt @rolldown/binding-* package,
-  # then compiles the final vite-plus native module from source with RELEASE_BUILD=1.
+  # A -git package follows Vite+'s moving upstream source pins. Build the
+  # bootstrap Rolldown native binding from the checked-out source instead of
+  # downloading an unchecksummed @rolldown/binding-* tarball during prepare().
   pnpm --filter @rolldown/pluginutils build
+  pnpm --filter rolldown build-binding:release --target "${_target}"
   pnpm --filter rolldown build-node
   pnpm --filter vite build-types
   pnpm --filter '@voidzero-dev/*' build
