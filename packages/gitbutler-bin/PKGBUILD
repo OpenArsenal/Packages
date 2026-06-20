@@ -1,6 +1,6 @@
 pkgname=gitbutler-bin
 _name=${pkgname%-bin}
-pkgver=0.20.1
+pkgver=0.20.2
 pkgrel=1
 pkgdesc="Version control client, backed by Git, powered by Tauri/Rust/Svelte (prebuilt release)"
 arch=('x86_64')
@@ -16,10 +16,10 @@ source=("${_name}-${pkgver}.LICENSE.md::${url}/raw/refs/tags/release/${pkgver}/L
 source_x86_64=("GitButler-${pkgver}-1.x86_64.rpm::https://app.gitbutler.com/downloads/release/linux/x86_64/rpm")
 sha256sums=('2a3154bf44e0b219014291b96249082f3305844a1d73796741468c8128c2829e'
             '9a34df546f30e5aa0e0c3309d0f4ce0b95af456936b2ef79223f6602d235e3bc')
-sha256sums_x86_64=('c9c1cbd539b60e473c7535b072d3885cf9b6a026bcb4d51c54228a8a53f5de25')
+sha256sums_x86_64=('a942d94c7949c523c0c4730dc37e23416a53e2922a264c73e2a30a30ed209284')
 b2sums=('36777381aa01f14ac466a5bdad0603e5e1f15c8f7ab134ded4c1a827aedc6f7c192640e2321454ad0c206c57efb32d7e717c1268bb001098fba27202db1e53f0'
         'af6a176a6430a292c158f55573ac17fb543bed5af71a814d0ff0e34cf2c1fbc1892e477261b2150c51e1c89021b5e01b103700e4cc845ff143f6e9b80b3bed44')
-b2sums_x86_64=('47cc5673fb65927a887f2b4e5d666eccb772d5b3c7a71283113169789faea5a47eb176c2cd5d2c176be8fa6ce5be4363b41318d3ddfcc55f6da2e0879ec000e5')
+b2sums_x86_64=('bab04f211169f73277183f4735c2a988f410aa43715d31237f06002d15ee692254e60aea19fba8f1ff215fdab90b21a5c4e9cfdacf3273163280d7fc0614c9a0')
 
 _wrapper_target='/usr/lib/gitbutler/gitbutler-tauri'
 
