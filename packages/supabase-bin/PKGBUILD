@@ -1,47 +1,95 @@
-# Maintainer: Pierre Chapuis <arch@catwell.info>
-# Contributor:  Vitalii Kuzhdin <vitaliikuzhdin@gmail.com>
-# Contributor: Angelo Verlain  <hey@vixalien.com>
-
 pkgname=supabase-bin
-pkgver='2.95.4'
+pkgver=2.107.0
 pkgrel=1
-pkgdesc="CLI for Supabase, an open source Firebase alternative"
-arch=(aarch64 x86_64)
-url="https://supabase.com/docs/reference/cli/about"
-_url="https://github.com/supabase/cli"
-license=(MIT)
-depends=(glibc)
-provides=(supabase)
-conflicts=(supabase supabase-git)
+pkgdesc='CLI for Supabase, an open source Firebase alternative'
+arch=('x86_64' 'aarch64')
+url='https://supabase.com/docs/reference/cli/about'
+_url='https://github.com/supabase/cli'
+license=('MIT')
+depends=('gcc-libs' 'glibc')
+optdepends=('docker: run the local Supabase stack')
+provides=("supabase=${pkgver}")
+conflicts=('supabase' 'supabase-git')
+options=('!strip')
+source=(
+  "LICENSE-${pkgver}::https://raw.githubusercontent.com/supabase/cli/v${pkgver}/apps/cli-go/LICENSE"
+)
+source_x86_64=(
+  "supabase-${pkgver}-linux-amd64.tar.gz::${_url}/releases/download/v${pkgver}/supabase_${pkgver}_linux_amd64.tar.gz"
+)
+source_aarch64=(
+  "supabase-${pkgver}-linux-arm64.tar.gz::${_url}/releases/download/v${pkgver}/supabase_${pkgver}_linux_arm64.tar.gz"
+)
+sha256sums=('81f7d60afa4316010b1c0df8eb8f0c80b27586a86b72f1bde85e129bfd10d52a')
+sha256sums_x86_64=('ea233b337be698cee5bbca0795ee3e63b9dd154948c515c03cb72f191b3d103c')
+sha256sums_aarch64=('d54648dd7f46ab824ba483bf4db712235a58c3242c2ff675ac7732a9b4f21e0f')
 
-source_x86_64=("supabase-$pkgver-${CARCH}.tar.gz::$_url/releases/download/v$pkgver/supabase_linux_amd64.tar.gz")
-source_aarch64=("supabase-$pkgver-aarch64.tar.gz::$_url/releases/download/v$pkgver/supabase_linux_arm64.tar.gz")
+_build_dir() {
+  printf '%s\n' "${srcdir}/build"
+}
 
-sha256sums_aarch64=('1489c1722e3c587fc5d240ddcb4e742fde0e9136d8f9a23491fb8929d8feb344')
-sha256sums_x86_64=('01a3b8f5861d108a934937cae88e8d503093c3f7d3aa32d959f69b099b4f9ef3')
+_completion_dir() {
+  printf '%s\n' "${srcdir}/completions"
+}
+
+_completion_work_dir() {
+  printf '%s\n' "${srcdir}/completion-work"
+}
 
 prepare() {
-  cd "$srcdir"
-  mkdir -p completions
-  chmod +x ./supabase
+  local _builddir _completiondir _completionworkdir
+  _builddir="$(_build_dir)"
+  _completiondir="$(_completion_dir)"
+  _completionworkdir="$(_completion_work_dir)"
+
+  chmod 755 "${srcdir}/supabase" "${srcdir}/supabase-go"
+  install -dm755 "${_builddir}" "${_completiondir}" "${_completionworkdir}"
 }
 
 build() {
-  cd "$srcdir"
-  for _sh in bash fish zsh powershell; do
-    ./"supabase" completion "$_sh" > "completions/supabase.$_sh"
+  local _completiondir _completionworkdir
+  _completiondir="$(_completion_dir)"
+  _completionworkdir="$(_completion_work_dir)"
+
+  # The Bun shell probes project configuration before it can proxy some
+  # commands. In the extracted release archive the executable itself is named
+  # ${srcdir}/supabase, so that probe can become ${srcdir}/supabase/config.json
+  # and fail with ENOTDIR before completion text is emitted. Completion support
+  # still lives in the Go sidecar, so generate static completion files from the
+  # sidecar directly and keep the installed runtime layout two-binary compatible.
+  for _shell in bash fish zsh powershell; do
+    (
+      cd "${_completionworkdir}"
+      "${srcdir}/supabase-go" completion "${_shell}"
+    ) >"${_completiondir}/supabase.${_shell}"
   done
 }
 
 package() {
-  cd "$srcdir"
-  install -vDm755 "supabase" "$pkgdir/usr/bin/supabase"
-  install -vDm644 "README.md" "$pkgdir/usr/share/doc/supabase/README.md"
-  install -vDm644 "LICENSE" "$pkgdir/usr/share/licenses/supabase-bin/LICENSE"
+  local _prefix _completiondir
+  _prefix="${pkgdir}/usr/lib/supabase/bin"
+  _completiondir="$(_completion_dir)"
 
-  cd "completions"
-  install -vDm644 "supabase.bash" "$pkgdir/usr/share/bash-completion/completions/supabase"
-  install -vDm644 "supabase.fish" "$pkgdir/usr/share/fish/vendor_completions.d/supabase.fish"
-  install -vDm644 "supabase.zsh" "$pkgdir/usr/share/zsh/site-functions/_supabase"
-  install -vDm644 "supabase.powershell" "$pkgdir/usr/share/powershell/Modules/supabase/supabase.ps1"
+  install -dm755 \
+    "${_prefix}" \
+    "${pkgdir}/usr/bin" \
+    "${pkgdir}/usr/share/licenses/${pkgname}"
+
+  install -Dm755 "${srcdir}/supabase" "${_prefix}/supabase"
+  install -Dm755 "${srcdir}/supabase-go" "${_prefix}/supabase-go"
+
+  ln -s '../lib/supabase/bin/supabase' "${pkgdir}/usr/bin/supabase"
+  ln -s '../lib/supabase/bin/supabase-go' "${pkgdir}/usr/bin/supabase-go"
+
+  install -Dm644 "${srcdir}/LICENSE-${pkgver}" \
+    "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+
+  install -Dm644 "${_completiondir}/supabase.bash" \
+    "${pkgdir}/usr/share/bash-completion/completions/supabase"
+  install -Dm644 "${_completiondir}/supabase.fish" \
+    "${pkgdir}/usr/share/fish/vendor_completions.d/supabase.fish"
+  install -Dm644 "${_completiondir}/supabase.zsh" \
+    "${pkgdir}/usr/share/zsh/site-functions/_supabase"
+  install -Dm644 "${_completiondir}/supabase.powershell" \
+    "${pkgdir}/usr/share/powershell/Modules/supabase/supabase.ps1"
 }
