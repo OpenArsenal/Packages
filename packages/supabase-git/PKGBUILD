@@ -1,40 +1,162 @@
-# Maintainer: 
-# Contributor: Fabio 'Lolix' Loli <fabio.loli@disroot.org>
-# Contributor: Fernando Nogueira <mrfernando2509@gmail.com>
-
 pkgname=supabase-git
-pkgver=2.76.15.r4.g6258d35f
+pkgver=2.108.0.beta.13.r0.g893960a6e
 pkgrel=1
-pkgdesc="CLI for Supabase, an open source Firebase alternative"
-arch=(x86_64)
-url="https://supabase.com/docs/reference/cli/about"
-license=(MIT)
-depends=(glibc)
-makedepends=(git go)
-provides=(supabase)
-conflicts=(supabase supabase-bin)
-options=(!lto)
-source=("supabase-cli::git+https://github.com/supabase/cli.git")
+pkgdesc='CLI for Supabase, an open source Firebase alternative'
+arch=('x86_64' 'aarch64')
+url='https://supabase.com/docs/reference/cli/about'
+_url='https://github.com/supabase/cli'
+license=('MIT')
+depends=('gcc-libs' 'glibc')
+makedepends=('bun' 'git' 'go' 'nodejs' 'pnpm')
+optdepends=('docker: run the local Supabase stack')
+provides=("supabase=${pkgver}")
+conflicts=('supabase' 'supabase-bin')
+options=('debug')
+source=('supabase-cli::git+https://github.com/supabase/cli.git#branch=develop')
 sha256sums=('SKIP')
 
 pkgver() {
-  cd supabase-cli
-  git describe --long --tags | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+  cd 'supabase-cli'
+
+  git describe --long --tags --match 'v[0-9]*' 2>/dev/null |
+    sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+_bun_target() {
+  case "${CARCH}" in
+  x86_64) echo 'bun-linux-x64-baseline' ;;
+  aarch64) echo 'bun-linux-arm64' ;;
+  *)
+    echo "Unsupported architecture: ${CARCH}" >&2
+    return 1
+    ;;
+  esac
+}
+
+_build_dir() {
+  printf '%s\n' "${srcdir}/build"
+}
+
+_completion_dir() {
+  printf '%s\n' "${srcdir}/completions"
+}
+
+_json_string() {
+  node -e 'process.stdout.write(JSON.stringify(process.argv[1]))' "$1"
+}
+
+_set_build_env() {
+  export HOME="${srcdir}/.home"
+  export BUN_INSTALL_CACHE_DIR="${srcdir}/bun-cache"
+  export GOCACHE="${srcdir}/go-cache"
+  export GOMODCACHE="${srcdir}/go-mod-cache"
+  export GOTOOLCHAIN='local'
+  export PNPM_HOME="${srcdir}/pnpm-home"
+  export PATH="${PNPM_HOME}:${PATH}"
+  export npm_config_audit=false
+  export npm_config_fund=false
+  export npm_config_loglevel=error
+  export npm_config_cache="${srcdir}/npm-cache"
+  export NPM_CONFIG_MANAGE_PACKAGE_MANAGER_VERSIONS=false
+
+  export CGO_CPPFLAGS="${CPPFLAGS}"
+  export CGO_CFLAGS="${CFLAGS}"
+  export CGO_CXXFLAGS="${CXXFLAGS}"
+  export CGO_LDFLAGS="${LDFLAGS}"
+  export GOFLAGS='-buildmode=pie -trimpath -mod=readonly -modcacherw'
+}
+
+prepare() {
+  cd 'supabase-cli'
+  _set_build_env
+
+  pnpm fetch --frozen-lockfile
+
+  cd 'apps/cli-go'
+  go mod download -x
+  find "${GOMODCACHE}" -type d -exec chmod 755 {} +
+  find "${GOMODCACHE}" -type f -exec chmod 644 {} +
+
+  install -dm755 "$(_build_dir)" "$(_completion_dir)"
 }
 
 build() {
-  cd supabase-cli
-  go build \
-    -trimpath \
-    -buildmode=pie \
-    -mod=readonly \
-    -modcacherw \
-    -ldflags "-linkmode external -extldflags \"${LDFLAGS}\"" \
-    -o supabase
+  cd 'supabase-cli'
+  _set_build_env
+
+  local _builddir _completiondir _target _version_json _glibc_json _empty_json
+  _builddir="$(_build_dir)"
+  _completiondir="$(_completion_dir)"
+  _target="$(_bun_target)"
+  _version_json="$(_json_string "${pkgver}")"
+  _glibc_json="$(_json_string 'glibc')"
+  _empty_json="$(_json_string '')"
+
+  pnpm install --offline --frozen-lockfile
+
+  rm -f "${_builddir}/supabase" "${_builddir}/supabase-go"
+  rm -rf .*.bun-build apps/cli/.*.bun-build
+
+  bun build 'apps/cli/src/legacy/main.ts' \
+    --compile \
+    --minify \
+    --target="${_target}" \
+    --define="process.env.SUPABASE_CLI_VERSION=${_version_json}" \
+    --define="SUPABASE_LIBC=${_glibc_json}" \
+    --define="process.env.SUPABASE_CLI_POSTHOG_KEY=${_empty_json}" \
+    --define="process.env.SUPABASE_CLI_POSTHOG_HOST=${_empty_json}" \
+    --outfile="${_builddir}/supabase"
+
+  cd 'apps/cli-go'
+  go build -v \
+    -ldflags="-linkmode=external -X github.com/supabase/cli/internal/utils.Version=${pkgver}" \
+    -o "${_builddir}/supabase-go" \
+    .
+
+  for _shell in bash fish zsh powershell; do
+    "${_builddir}/supabase" completion "${_shell}" >"${_completiondir}/supabase.${_shell}"
+  done
+}
+
+check() {
+  cd 'supabase-cli'
+  _set_build_env
+
+  local _builddir
+  _builddir="$(_build_dir)"
+
+  "${_builddir}/supabase" --version
+  "${_builddir}/supabase-go" --version
 }
 
 package() {
-  cd supabase-cli
-  install -Dm755 supabase -t "${pkgdir}/usr/bin/"
-  install -Dm644 LICENSE -t "${pkgdir}/usr/share/licenses/${pkgname}/"
+  cd 'supabase-cli'
+
+  local _builddir _completiondir _prefix
+  _builddir="$(_build_dir)"
+  _completiondir="$(_completion_dir)"
+  _prefix="${pkgdir}/usr/lib/supabase/bin"
+
+  install -dm755 \
+    "${_prefix}" \
+    "${pkgdir}/usr/bin" \
+    "${pkgdir}/usr/share/licenses/${pkgname}"
+
+  install -Dm755 "${_builddir}/supabase" "${_prefix}/supabase"
+  install -Dm755 "${_builddir}/supabase-go" "${_prefix}/supabase-go"
+
+  ln -s '../lib/supabase/bin/supabase' "${pkgdir}/usr/bin/supabase"
+  ln -s '../lib/supabase/bin/supabase-go' "${pkgdir}/usr/bin/supabase-go"
+
+  install -Dm644 'apps/cli-go/LICENSE' \
+    "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+
+  install -Dm644 "${_completiondir}/supabase.bash" \
+    "${pkgdir}/usr/share/bash-completion/completions/supabase"
+  install -Dm644 "${_completiondir}/supabase.fish" \
+    "${pkgdir}/usr/share/fish/vendor_completions.d/supabase.fish"
+  install -Dm644 "${_completiondir}/supabase.zsh" \
+    "${pkgdir}/usr/share/zsh/site-functions/_supabase"
+  install -Dm644 "${_completiondir}/supabase.powershell" \
+    "${pkgdir}/usr/share/powershell/Modules/supabase/supabase.ps1"
 }

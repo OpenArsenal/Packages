@@ -1,18 +1,24 @@
 pkgbase = supabase-git
 	pkgdesc = CLI for Supabase, an open source Firebase alternative
-	pkgver = 2.76.15.r4.g6258d35f
+	pkgver = 893960a6e9fae412eb0215afae05f1348e356e62
 	pkgrel = 1
 	url = https://supabase.com/docs/reference/cli/about
 	arch = x86_64
+	arch = aarch64
 	license = MIT
+	makedepends = bun
 	makedepends = git
 	makedepends = go
+	makedepends = nodejs
+	makedepends = pnpm
+	depends = gcc-libs
 	depends = glibc
-	provides = supabase
+	optdepends = docker: run the local Supabase stack
+	provides = supabase=893960a6e9fae412eb0215afae05f1348e356e62
 	conflicts = supabase
 	conflicts = supabase-bin
-	options = !lto
-	source = supabase-cli::git+https://github.com/supabase/cli.git
+	options = debug
+	source = supabase-cli::git+https://github.com/supabase/cli.git#branch=develop
 	sha256sums = SKIP
 
 pkgname = supabase-git
