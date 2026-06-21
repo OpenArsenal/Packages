@@ -1,65 +1,227 @@
-# Maintainer:  Alexis Aguilar <aaguilar1892@gmail.com>
-
-pkgname="supabase"
-pkgver='2.84.2'
+pkgname=supabase
+pkgver=2.107.0
 pkgrel=1
-pkgdesc="CLI for Supabase, an open source Firebase alternative"
-arch=('aarch64' 'x86_64')
-url="https://supabase.com/docs/reference/cli/about"
-_url="https://github.com/${pkgname}/cli"
+pkgdesc='CLI for Supabase, an open source Firebase alternative'
+arch=('x86_64' 'aarch64')
+url='https://supabase.com/docs/reference/cli/about'
+_source_url='https://github.com/supabase/cli'
 license=('MIT')
-depends=('glibc')
-makedepends=('go')
+options=('debug')
+depends=('gcc-libs' 'glibc')
+makedepends=('bun' 'go' 'nodejs' 'pnpm')
+optdepends=(
+  'docker: run the local Supabase stack'
+  'podman: run the local Supabase stack with a Docker-compatible runtime'
+  'git: initialize and inspect project repositories'
+  'powershell: use the packaged PowerShell completion script'
+)
 conflicts=('supabase-bin' 'supabase-git')
-# checkdepends=('docker')
 _pkgsrc="cli-${pkgver}"
-source=("${pkgname}-${_pkgsrc}.tar.gz::${_url}/archive/refs/tags/v${pkgver}.tar.gz")
-b2sums=('774d61dddfff7e9694a52575e071c227ebad67a623697570e5127305c6e56ced4d4243f8fb81a0a143c707fc58d7f7b06a73016be5cd3d11b635453d23c06e98')
+source=("${pkgname}-cli-${pkgver}.tar.gz::${_source_url}/archive/refs/tags/v${pkgver}.tar.gz")
+b2sums=('3948ab9d1ddfdc5ff5e197d52741b6a389d4b5011cdb19e2f30e00d30be0c211af0da9a140ab13f9d9ff9d88a810adc92aedfc7fa30bf0399ee836dc1eb2e7c3')
 
-prepare() {
-  export GOMODCACHE="${srcdir}/go-mod-cache"
-
-  cd "${srcdir}/${_pkgsrc}"
-  go mod download -x
-  find "${GOMODCACHE}" -type d -exec chmod 755 {} +
-  find "${GOMODCACHE}" -type f -exec chmod 644 {} +
-
-  mkdir -p "build" "completions"
+_build_dir() {
+  printf '%s\n' "${srcdir}/build"
 }
 
-build() {
+_bun_target() {
+  case "${CARCH}" in
+  x86_64) echo 'bun-linux-x64-baseline' ;;
+  aarch64) echo 'bun-linux-arm64' ;;
+  *)
+    echo "Unsupported architecture: ${CARCH}" >&2
+    return 1
+    ;;
+  esac
+}
+
+_set_build_env() {
+  export HOME="${srcdir}/home"
+  export XDG_CACHE_HOME="${srcdir}/cache"
+  export GOCACHE="${srcdir}/go-build-cache"
+  export GOMODCACHE="${srcdir}/go-mod-cache"
+  export GOPATH="${srcdir}/go"
+  export npm_config_cache="${srcdir}/npm-cache"
+  export PNPM_HOME="${srcdir}/pnpm-home"
+  export PNPM_STORE_DIR="${srcdir}/pnpm-store"
+  export PATH="${PNPM_HOME}:${PATH}"
+  export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+  export NPM_CONFIG_AUDIT=false
+  export NPM_CONFIG_FUND=false
+  export npm_config_audit=false
+  export npm_config_fund=false
+
+  # Go 1.21+ can download a newer toolchain automatically when go.mod asks for
+  # one. Arch packages should fail against the declared makedepends instead of
+  # fetching an implicit compiler during prepare() or build().
+  export GOTOOLCHAIN=local
+
+  # The Go sidecar is built as an Arch binary, not as Supabase's fully static
+  # cross-platform artifact. Feeding makepkg's flags through CGO lets CachyOS and
+  # Arch toolchain settings participate in external linking where Go uses C.
+  export CGO_ENABLED=1
   export CGO_CPPFLAGS="${CPPFLAGS}"
   export CGO_CFLAGS="${CFLAGS}"
   export CGO_CXXFLAGS="${CXXFLAGS}"
   export CGO_LDFLAGS="${LDFLAGS}"
-  export GOCACHE="${srcdir}/go-cache"
-  export GOMODCACHE="${srcdir}/go-mod-cache"
-  export GOFLAGS="-buildmode=pie -trimpath -ldflags=-linkmode=external -mod=readonly -modcacherw"
+}
 
+_verify_source_layout() {
+  [[ -f 'apps/cli/package.json' ]] || {
+    echo 'apps/cli/package.json is missing; Supabase CLI package layout changed.' >&2
+    return 1
+  }
+
+  [[ -f 'apps/cli-go/go.mod' ]] || {
+    echo 'apps/cli-go/go.mod is missing; the Go sidecar layout changed.' >&2
+    return 1
+  }
+
+  grep -qx 'module github.com/supabase/cli' 'apps/cli-go/go.mod' || {
+    echo 'apps/cli-go/go.mod no longer declares module github.com/supabase/cli.' >&2
+    return 1
+  }
+}
+
+prepare() {
   cd "${srcdir}/${_pkgsrc}"
-  go build -v -o "build/${pkgname}" -ldflags "\
-    -X ${_url#https://}/internal/utils.Version=${pkgver}" \
+  _set_build_env
+  _verify_source_layout
+
+  local _builddir
+  _builddir="$(_build_dir)"
+
+  mkdir -p "${_builddir}" "${_builddir}/completions"
+
+  # Fetch the pnpm store from the checked-in lockfile first, then perform the
+  # actual workspace install offline in build(). This keeps dependency resolution
+  # frozen while still making missing lockfile updates fail early.
+  pnpm config set store-dir "${PNPM_STORE_DIR}"
+  pnpm fetch --frozen-lockfile
+
+  cd 'apps/cli-go'
+  go mod download -x
+  find "${GOMODCACHE}" -type d -exec chmod 755 {} +
+  find "${GOMODCACHE}" -type f -exec chmod 644 {} +
+}
+
+build() {
+  cd "${srcdir}/${_pkgsrc}"
+  _set_build_env
+  _verify_source_layout
+
+  local _bun_target _builddir
+  _bun_target="$(_bun_target)"
+  _builddir="$(_build_dir)"
+
+  pnpm config set store-dir "${PNPM_STORE_DIR}"
+  pnpm install --offline --frozen-lockfile
+
+  cd 'apps/cli-go'
+  go build -v \
+    -trimpath \
+    -buildmode=pie \
+    -mod=readonly \
+    -modcacherw \
+    -ldflags "-linkmode=external -X github.com/supabase/cli/internal/utils.Version=${pkgver}" \
+    -o "${_builddir}/supabase-go" \
     .
 
-  for _sh in bash fish zsh powershell; do
-    ./"build/${pkgname}" completion "${_sh}" > "completions/${pkgname}.${_sh}"
+  cd "${srcdir}/${_pkgsrc}"
+  rm -f "${_builddir}/supabase"
+  rm -rf .*.bun-build
+  bun build 'apps/cli/src/legacy/main.ts' \
+    --compile \
+    --minify \
+    --target="${_bun_target}" \
+    --define="process.env.SUPABASE_CLI_VERSION=\"${pkgver}\"" \
+    --define='SUPABASE_LIBC="glibc"' \
+    --define='process.env.SUPABASE_CLI_POSTHOG_KEY=""' \
+    --define='process.env.SUPABASE_CLI_POSTHOG_HOST=""' \
+    --outfile="${_builddir}/supabase"
+
+  chmod 755 "${_builddir}/supabase" "${_builddir}/supabase-go"
+
+  # Generate completions from the final two-binary layout. The TypeScript shell
+  # proxies legacy commands to the Go sidecar, so point it at the sidecar built
+  # by this package rather than anything on PATH.
+  for _shell in bash fish zsh powershell; do
+    SUPABASE_GO_BINARY="${_builddir}/supabase-go" \
+      "${_builddir}/supabase" completion "${_shell}" \
+      >"${_builddir}/completions/${pkgname}.${_shell}"
   done
 }
 
-# check() {
-#   cd "${srcdir}/${_pkgsrc}"
-#   go test ./...
-# }
+check() {
+  cd "${srcdir}/${_pkgsrc}"
+  _set_build_env
+
+  local _version_output _go_version_output _builddir
+  _builddir="$(_build_dir)"
+
+  _version_output="$(SUPABASE_GO_BINARY="${_builddir}/supabase-go" "${_builddir}/supabase" --version)"
+  _go_version_output="$(${_builddir}/supabase-go --version)"
+
+  [[ "${_version_output}" == *"${pkgver}"* ]] || {
+    echo "supabase --version did not include ${pkgver}: ${_version_output}" >&2
+    return 1
+  }
+
+  [[ "${_go_version_output}" == *"${pkgver}"* ]] || {
+    echo "supabase-go --version did not include ${pkgver}: ${_go_version_output}" >&2
+    return 1
+  }
+
+  [[ -s "${_builddir}/completions/${pkgname}.bash" ]] || {
+    echo 'bash completion was not generated.' >&2
+    return 1
+  }
+}
+
+_install_license() {
+  local _licensedir
+  _licensedir="${pkgdir}/usr/share/licenses/${pkgname}"
+
+  # The repository root does not carry a LICENSE file in this tag, but the Go
+  # sidecar module ships the upstream MIT license text. Install that file as the
+  # package license instead of synthesizing metadata from package.json.
+  install -Dm644 'apps/cli-go/LICENSE' "${_licensedir}/LICENSE"
+}
+
+_install_doc_if_present() {
+  local _source="$1"
+  local _target="$2"
+
+  [[ -f "${_source}" ]] || return 0
+  install -Dm644 "${_source}" "${_target}"
+}
 
 package() {
   cd "${srcdir}/${_pkgsrc}"
-  install -vDm755 "build/${pkgname}" "${pkgdir}/usr/bin/${pkgname}"
-  install -vDm644 "README.md" "${pkgdir}/usr/share/doc/${pkgname}/README.md"
-  install -vDm644 "LICENSE"   "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 
-  cd "completions"
-  install -vDm644 "${pkgname}.bash"       "${pkgdir}/usr/share/bash-completion/completions/${pkgname}"
-  install -vDm644 "${pkgname}.fish"       "${pkgdir}/usr/share/fish/vendor_completions.d/${pkgname}.fish"
-  install -vDm644 "${pkgname}.zsh"        "${pkgdir}/usr/share/zsh/site-functions/_${pkgname}"
-  install -vDm644 "${pkgname}.powershell" "${pkgdir}/usr/share/powershell/Modules/${pkgname}/${pkgname}.ps1"
+  local _prefix _builddir
+  _prefix="${pkgdir}/usr/lib/${pkgname}"
+  _builddir="$(_build_dir)"
+
+  install -Dm755 "${_builddir}/supabase" "${_prefix}/bin/supabase"
+  install -Dm755 "${_builddir}/supabase-go" "${_prefix}/bin/supabase-go"
+
+  install -dm755 "${pkgdir}/usr/bin"
+  ln -s "../lib/${pkgname}/bin/supabase" "${pkgdir}/usr/bin/supabase"
+  ln -s "../lib/${pkgname}/bin/supabase-go" "${pkgdir}/usr/bin/supabase-go"
+
+  _install_license
+
+  _install_doc_if_present 'README.md' "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+  _install_doc_if_present 'apps/cli/docs/binary-distribution.md' \
+    "${pkgdir}/usr/share/doc/${pkgname}/binary-distribution.md"
+
+  install -Dm644 "${_builddir}/completions/${pkgname}.bash" \
+    "${pkgdir}/usr/share/bash-completion/completions/${pkgname}"
+  install -Dm644 "${_builddir}/completions/${pkgname}.fish" \
+    "${pkgdir}/usr/share/fish/vendor_completions.d/${pkgname}.fish"
+  install -Dm644 "${_builddir}/completions/${pkgname}.zsh" \
+    "${pkgdir}/usr/share/zsh/site-functions/_${pkgname}"
+  install -Dm644 "${_builddir}/completions/${pkgname}.powershell" \
+    "${pkgdir}/usr/share/powershell/Modules/${pkgname}/${pkgname}.ps1"
 }
