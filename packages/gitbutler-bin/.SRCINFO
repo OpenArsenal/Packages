@@ -1,6 +1,6 @@
 pkgbase = gitbutler-bin
 	pkgdesc = Version control client, backed by Git, powered by Tauri/Rust/Svelte (prebuilt release)
-	pkgver = 0.20.2
+	pkgver = 0.20.3
 	pkgrel = 1
 	url = https://github.com/gitbutlerapp/gitbutler
 	arch = x86_64
@@ -14,17 +14,17 @@ pkgbase = gitbutler-bin
 	depends = openssl
 	depends = webkit2gtk-4.1
 	depends = xdg-utils
-	provides = gitbutler=0.20.2
+	provides = gitbutler=0.20.3
 	conflicts = gitbutler
 	conflicts = gitbutler-git
 	options = !strip
-	source = gitbutler-0.20.2.LICENSE.md::https://github.com/gitbutlerapp/gitbutler/raw/refs/tags/release/0.20.2/LICENSE.md
+	source = gitbutler-0.20.3.LICENSE.md::https://github.com/gitbutlerapp/gitbutler/raw/refs/tags/release/0.20.3/LICENSE.md
 	source = gitbutler-flags-wrapper.sh
 	sha256sums = 2a3154bf44e0b219014291b96249082f3305844a1d73796741468c8128c2829e
 	sha256sums = 9a34df546f30e5aa0e0c3309d0f4ce0b95af456936b2ef79223f6602d235e3bc
 	b2sums = 36777381aa01f14ac466a5bdad0603e5e1f15c8f7ab134ded4c1a827aedc6f7c192640e2321454ad0c206c57efb32d7e717c1268bb001098fba27202db1e53f0
 	b2sums = af6a176a6430a292c158f55573ac17fb543bed5af71a814d0ff0e34cf2c1fbc1892e477261b2150c51e1c89021b5e01b103700e4cc845ff143f6e9b80b3bed44
-	source_x86_64 = GitButler-0.20.2-1.x86_64.rpm::https://app.gitbutler.com/downloads/release/linux/x86_64/rpm
+	source_x86_64 = GitButler-0.20.3-1.x86_64.rpm::https://app.gitbutler.com/downloads/release/linux/x86_64/rpm
 	sha256sums_x86_64 = a942d94c7949c523c0c4730dc37e23416a53e2922a264c73e2a30a30ed209284
 	b2sums_x86_64 = bab04f211169f73277183f4735c2a988f410aa43715d31237f06002d15ee692254e60aea19fba8f1ff215fdab90b21a5c4e9cfdacf3273163280d7fc0614c9a0
 
