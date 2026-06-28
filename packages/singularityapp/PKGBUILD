@@ -1,0 +1,92 @@
+pkgname=singularityapp
+pkgver=12.4.1
+pkgrel=1
+pkgdesc='Task manager, planner, calendar, notes, habits, and Pomodoro timer'
+arch=('x86_64')
+url='https://singularity-app.com/'
+license=('custom')
+depends=(
+  'alsa-lib'
+  'at-spi2-core'
+  'desktop-file-utils'
+  'gtk3'
+  'hicolor-icon-theme'
+  'libnotify'
+  'libsecret'
+  'libxss'
+  'libxtst'
+  'nss'
+  'xdg-utils'
+)
+makedepends=('squashfs-tools')
+options=('!strip' '!debug')
+
+_snap_id='MGxJGb96XBV8UshTS2iqLOI4ylXW8xwY'
+_snap_revision='141'
+
+source=(
+  "${pkgname}-${pkgver}.snap::https://api.snapcraft.io/api/v1/snaps/download/${_snap_id}_${_snap_revision}.snap"
+  "${pkgname}-flags-wrapper.sh"
+)
+noextract=("${pkgname}-${pkgver}.snap")
+sha256sums=('bee4a4e6eae4bf8dd2d996b30b994efd274c36e3bad71d96a7673998a8c833c0'
+            '14e4d67651222478ef46fc007e654d7ab641f2a53c737914809c5d3984e92ef1')
+
+prepare() {
+  cd "$srcdir"
+
+  rm -rf squashfs-root
+  unsquashfs -d squashfs-root "${pkgname}-${pkgver}.snap"
+}
+
+package() {
+  cd "$srcdir/squashfs-root"
+
+  install -dm755 "$pkgdir/opt/${pkgname}"
+  cp -a . "$pkgdir/opt/${pkgname}/"
+
+  # Electron/Chromium sandbox helper, if present
+  find "$pkgdir/opt/${pkgname}" -name chrome-sandbox -exec chmod 4755 {} + 2>/dev/null || true
+
+  # Wrapper
+  install -Dm755 "$srcdir/${pkgname}-flags-wrapper.sh" "$pkgdir/usr/bin/${pkgname}"
+
+  # Desktop entry
+  local _desktop
+  _desktop="$(find meta/gui -maxdepth 1 -name '*.desktop' -print -quit 2>/dev/null || true)"
+
+  if [[ -n "$_desktop" ]]; then
+    install -Dm644 "$_desktop" "$pkgdir/usr/share/applications/${pkgname}.desktop"
+
+    sed -i \
+      -e "s|^Exec=.*|Exec=${pkgname} %U|" \
+      -e "s|^Icon=.*|Icon=${pkgname}|" \
+      "$pkgdir/usr/share/applications/${pkgname}.desktop"
+  else
+    install -dm755 "$pkgdir/usr/share/applications"
+
+    cat >"$pkgdir/usr/share/applications/${pkgname}.desktop" <<EOF
+[Desktop Entry]
+Name=SingularityApp
+Comment=Task manager, planner, calendar, notes, habits, and Pomodoro timer
+Exec=${pkgname} %U
+Icon=${pkgname}
+Terminal=false
+Type=Application
+Categories=Office;ProjectManagement;
+StartupWMClass=SingularityApp
+EOF
+  fi
+
+  # Icon
+  local _icon
+  _icon="$(find meta/gui -maxdepth 1 -type f \( -iname '*.png' -o -iname '*.svg' \) -print -quit 2>/dev/null || true)"
+
+  if [[ -n "$_icon" ]]; then
+    local _ext="${_icon##*.}"
+    install -Dm644 "$_icon" "$pkgdir/usr/share/pixmaps/${pkgname}.${_ext}"
+  fi
+
+  # Keep snap metadata around for debugging/reference
+  install -Dm644 meta/snap.yaml "$pkgdir/usr/share/doc/${pkgname}/snap.yaml"
+}
