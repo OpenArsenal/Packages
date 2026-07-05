@@ -8,6 +8,10 @@ usage: update-ffmpeg-ref.sh <chromium-version> [PKGBUILD] [vivaldi-major-version
 Resolve Chromium's third_party/ffmpeg commit for the supplied Chromium tag,
 then update _chromium_version and _chromium_ffmpeg_ref in the PKGBUILD.
 
+If the exact Chromium tag is not public, the resolver falls back to the nearest
+lower patch tag on the same Chromium branch. This handles Vivaldi ESR builds
+whose reported Chromium version can be ahead of Chromium's public src.git tags.
+
 examples:
   ./update-ffmpeg-ref.sh 148.0.7778.221
   ./update-ffmpeg-ref.sh 148.0.7778.221 path/to/PKGBUILD
@@ -17,6 +21,10 @@ USAGE
 
 err() {
   printf 'error: %s\n' "$*" >&2
+}
+
+warn() {
+  printf 'warning: %s\n' "$*" >&2
 }
 
 have_cmd() {
@@ -34,13 +42,35 @@ base64_decode() {
 
 fetch_text() {
   local url=$1
-  curl -fsSL "$url"
+  local tmp http_code curl_status
+
+  tmp="$(mktemp)"
+  http_code="$(curl -sS -L -w '%{http_code}' -o "$tmp" "$url")"
+  curl_status=$?
+
+  if (( curl_status != 0 )); then
+    rm -f "$tmp"
+    return "$curl_status"
+  fi
+
+  if [[ ! "$http_code" =~ ^2[0-9][0-9]$ ]]; then
+    rm -f "$tmp"
+    return 22
+  fi
+
+  cat "$tmp"
+  rm -f "$tmp"
 }
 
 fetch_gitiles_text() {
-  # Gitiles returns ?format=TEXT bodies as base64 encoded text.
+  # Gitiles returns file ?format=TEXT bodies as base64 encoded text.
   local url=$1
   fetch_text "$url" | base64_decode
+}
+
+chromium_deps_url() {
+  local chromium_version=$1
+  printf 'https://chromium.googlesource.com/chromium/src.git/+/refs/tags/%s/DEPS?format=TEXT\n' "$chromium_version"
 }
 
 extract_ffmpeg_ref_from_deps() {
@@ -55,24 +85,47 @@ extract_ffmpeg_ref_from_deps() {
 
 resolve_ffmpeg_ref() {
   local chromium_version=$1
-  local deps_url="https://chromium.googlesource.com/chromium/src.git/+/refs/tags/${chromium_version}/DEPS?format=TEXT"
-  local deps ffmpeg_ref
+  local major minor build requested_patch patch candidate deps_url deps ffmpeg_ref status
 
-  deps="$(fetch_gitiles_text "$deps_url")" || {
-    err "could not fetch Chromium DEPS for ${chromium_version}"
-    printf 'checked: %s\n' "$deps_url" >&2
-    return 1
-  }
+  IFS=. read -r major minor build requested_patch <<<"$chromium_version"
 
-  ffmpeg_ref="$(printf '%s\n' "$deps" | extract_ffmpeg_ref_from_deps)"
+  for (( patch = requested_patch; patch >= 0; patch-- )); do
+    candidate="${major}.${minor}.${build}.${patch}"
+    deps_url="$(chromium_deps_url "$candidate")"
 
-  if [[ ! "$ffmpeg_ref" =~ ^[0-9a-f]{40}$ ]]; then
-    err "could not resolve ffmpeg_revision for Chromium ${chromium_version}"
-    printf 'checked: %s\n' "$deps_url" >&2
-    return 1
-  fi
+    if deps="$(fetch_gitiles_text "$deps_url" 2>/dev/null)"; then
+      ffmpeg_ref="$(printf '%s\n' "$deps" | extract_ffmpeg_ref_from_deps)"
 
-  printf '%s\n' "$ffmpeg_ref"
+      if [[ ! "$ffmpeg_ref" =~ ^[0-9a-f]{40}$ ]]; then
+        err "could not resolve ffmpeg_revision for Chromium ${candidate}"
+        printf 'checked: %s\n' "$deps_url" >&2
+        return 1
+      fi
+
+      if [[ "$candidate" != "$chromium_version" ]]; then
+        warn "Chromium tag ${chromium_version} was not public; using DEPS from nearest lower public tag ${candidate}"
+      fi
+
+      # stdout is parsed by main(): <ffmpeg_ref><TAB><deps_version>
+      printf '%s\t%s\n' "$ffmpeg_ref" "$candidate"
+      return 0
+    else
+      status=$?
+      # curl uses 22 for HTTP errors. Those are expected when probing missing tags.
+      # Other failures usually mean DNS, TLS, or connectivity problems; do not hide them
+      # behind hundreds of fallback attempts.
+      if (( status != 22 )); then
+        err "could not fetch Chromium DEPS for ${candidate}"
+        printf 'checked: %s\n' "$deps_url" >&2
+        return 1
+      fi
+    fi
+  done
+
+  err "could not fetch Chromium DEPS for ${chromium_version} or any lower patch tag on ${major}.${minor}.${build}.x"
+  printf 'first checked: %s\n' "$(chromium_deps_url "$chromium_version")" >&2
+  printf 'last checked: %s\n' "$(chromium_deps_url "${major}.${minor}.${build}.0")" >&2
+  return 1
 }
 
 update_pkgbuild() {
@@ -80,6 +133,7 @@ update_pkgbuild() {
   local chromium_version=$2
   local ffmpeg_ref=$3
   local vivaldi_major_version=$4
+  local deps_version=$5
   local tmp
 
   if ! grep -qE '^_chromium_version=' "$pkgbuild"; then
@@ -101,9 +155,14 @@ update_pkgbuild() {
   awk \
     -v chromium_version="$chromium_version" \
     -v ffmpeg_ref="$ffmpeg_ref" \
-    -v vivaldi_major_version="$vivaldi_major_version" '
-      /^# Chromium .* third_party\/ffmpeg submodule commit\.$/ {
-        print "# Chromium " chromium_version " third_party/ffmpeg submodule commit."
+    -v vivaldi_major_version="$vivaldi_major_version" \
+    -v deps_version="$deps_version" '
+      /^# Chromium .* third_party\/ffmpeg submodule commit/ {
+        if (deps_version != "" && deps_version != chromium_version) {
+          print "# Chromium " chromium_version " third_party/ffmpeg submodule commit; DEPS resolved from public tag " deps_version "."
+        } else {
+          print "# Chromium " chromium_version " third_party/ffmpeg submodule commit."
+        }
         next
       }
       /^_chromium_version=/ {
@@ -133,7 +192,7 @@ main() {
   local chromium_version="${1:-}"
   local pkgbuild="${2:-PKGBUILD}"
   local vivaldi_major_version="${3:-}"
-  local ffmpeg_ref
+  local resolve_result ffmpeg_ref deps_version
 
   if [[ -z "$chromium_version" ]]; then
     usage
@@ -164,12 +223,18 @@ main() {
     fi
   done
 
-  ffmpeg_ref="$(resolve_ffmpeg_ref "$chromium_version")"
-  update_pkgbuild "$pkgbuild" "$chromium_version" "$ffmpeg_ref" "$vivaldi_major_version"
+  resolve_result="$(resolve_ffmpeg_ref "$chromium_version")"
+  ffmpeg_ref="${resolve_result%%$'\t'*}"
+  deps_version="${resolve_result#*$'\t'}"
+
+  update_pkgbuild "$pkgbuild" "$chromium_version" "$ffmpeg_ref" "$vivaldi_major_version" "$deps_version"
 
   printf 'Updated %s:\n' "$pkgbuild"
   printf '  _chromium_version=%s\n' "$chromium_version"
   printf '  _chromium_ffmpeg_ref=%s\n' "$ffmpeg_ref"
+  if [[ "$deps_version" != "$chromium_version" ]]; then
+    printf '  DEPS resolved from Chromium public tag %s\n' "$deps_version"
+  fi
   if [[ -n "$vivaldi_major_version" ]]; then
     printf '  _vivaldi_major_version=%s\n' "$vivaldi_major_version"
   fi
