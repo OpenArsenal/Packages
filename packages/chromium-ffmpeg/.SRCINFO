@@ -1,6 +1,6 @@
 pkgbase = chromium-ffmpeg
 	pkgdesc = Add codecs to Chromium (libavcodec 62)
-	pkgver = 8.1.1_149.0.7827.53
+	pkgver = 8.1.1_150.0.7871.46
 	pkgrel = 1
 	url = https://ffmpeg.org/
 	arch = x86_64
@@ -11,7 +11,7 @@ pkgbase = chromium-ffmpeg
 	conflicts = chromium-ffmpeg-git
 	options = !lto
 	source = https://ffmpeg.org/releases/ffmpeg-8.1.1.tar.xz
-	source = sigs.base64::https://chromium.googlesource.com/chromium/third_party/ffmpeg/+/f45bab87ce4c5fafc67fd53fcde777578d01bfa0/chromium/ffmpeg.sigs?format=TEXT
+	source = sigs.base64::https://chromium.googlesource.com/chromium/third_party/ffmpeg/+/ad41607c61898cf7150e0fb20fe4bbabd44922a3/chromium/ffmpeg.sigs?format=TEXT
 	source = https://gitlab.archlinux.org/archlinux/packaging/packages/ffmpeg/-/raw/2-8.1.1-1/0001-Add-av_stream_get_first_dts-for-Chromium.patch
 	sha256sums = b6863adde98898f42602017462871b5f6333e65aec803fdd7a6308639c52edf3
 	sha256sums = 9aa34221682c13cf5c55b3ceabf8c26c887d95569f51fb73fed0691fec08b56f
