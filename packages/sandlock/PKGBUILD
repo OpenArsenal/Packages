@@ -1,0 +1,67 @@
+pkgname=sandlock
+pkgver=0.8.4
+pkgrel=1
+pkgdesc='Lightweight process sandbox for Linux using Landlock and seccomp'
+arch=('x86_64' 'aarch64' 'riscv64')
+url='https://github.com/multikernel/sandlock'
+license=('Apache-2.0')
+depends=('gcc-libs')
+makedepends=('cargo')
+options=('!lto')
+# ring currently fails to link with Arch LTO in release builds; keep LTO disabled.
+# Remap build directories so namcap does not find references to $srcdir/$pkgdir
+# in Rust binaries or the FFI shared library.
+_set_cargo_env() {
+  export CARGO_HOME="${srcdir}/cargo-home"
+  export CARGO_TARGET_DIR=target
+  export RUSTFLAGS="${RUSTFLAGS:-} --remap-path-prefix=${srcdir}=/usr/src/debug/${pkgname} --remap-path-prefix=${pkgdir}=/usr/src/debug/${pkgname}/pkg"
+}
+# Replace SKIP before submitting to the AUR:
+#   updpkgsums
+source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/v${pkgver}.tar.gz")
+sha256sums=('34781bb40a999b20e1ca0c2fef555c9935056f0760e4ecaf1e93c3f685b22d73')
+b2sums=('39e7f8d0e6a72d68adfe3ff33d4575d9e160d1335d948a5d475d3d53b397e1643532e87b29627040b58636ac8cc2688ee36cae59742a3f95d59be4163f5abeed')
+
+prepare() {
+  cd "${pkgname}-${pkgver}"
+  export CARGO_HOME="${srcdir}/cargo-home"
+  cargo fetch --locked
+}
+
+build() {
+  cd "${pkgname}-${pkgver}"
+  _set_cargo_env
+  cargo build --frozen --release
+}
+
+check() {
+  cd "${pkgname}-${pkgver}"
+  _set_cargo_env
+
+  # Keep package checks to the Rust library/unit tests. The upstream integration
+  # harness exercises live sandboxing features (pidfd_getfd/seccomp/ptrace,
+  # Landlock, namespaces, networking, cgroups, and UID mapping) that are often
+  # blocked by makechrootpkg/systemd-nspawn and fail with EPERM in clean chroots.
+  cargo test --frozen --release --lib -- --test-threads=1 \
+    --skip checkpoint::resume::tests::restore_into_reconstructs_memory_and_regs \
+    --skip seccomp::notif::tests::dup_fd_from_pid_handles_worker_thread_fd
+}
+
+package() {
+  cd "${pkgname}-${pkgver}"
+
+  install -Dm755 target/release/sandlock "${pkgdir}/usr/bin/sandlock"
+  install -Dm755 target/release/sandlock-oci "${pkgdir}/usr/bin/sandlock-oci"
+  install -Dm755 target/release/libsandlock_ffi.so "${pkgdir}/usr/lib/libsandlock_ffi.so"
+
+  install -Dm644 crates/sandlock-ffi/include/sandlock.h "${pkgdir}/usr/include/sandlock.h"
+
+  install -Dm644 go/sandlock.pc.in "${pkgdir}/usr/lib/pkgconfig/sandlock.pc"
+  sed -i \
+    -e 's|@PREFIX@|/usr|g' \
+    -e "s|@VERSION@|${pkgver}|g" \
+    "${pkgdir}/usr/lib/pkgconfig/sandlock.pc"
+
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+  install -Dm644 README.md "${pkgdir}/usr/share/doc/${pkgname}/README.md"
+}
