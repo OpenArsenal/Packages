@@ -1,15 +1,20 @@
-# Maintainer: Okiki <okiki@thunderstrike.co>
 pkgname=ktailctl
-pkgver='0.21.5'
+pkgver=0.22.1
 pkgrel=1
 _upstream_dir="KTailctl-$pkgver"
+
 arch=(x86_64 aarch64)
 url='https://github.com/f-koehler/KTailctl'
 pkgdesc='GUI to monitor and manage Tailscale'
-license=(GPL-3.0-only)
+license=(
+  GPL-3.0-or-later
+  CC0-1.0
+  FSFAP
+  CC-BY-4.0
+)
+
 depends=(
   breeze-icons
-  gcc-libs
   glibc
   hicolor-icon-theme
   kconfig
@@ -17,138 +22,243 @@ depends=(
   kdbusaddons
   kguiaddons
   ki18n
+  kiconthemes
   kirigami
   kirigami-addons
   knotifications
   kwindowsystem
+  libgcc
+  libstdc++
   qqc2-desktop-style
   qt6-base
   qt6-declarative
   qt6-svg
   tailscale
 )
+
 optdepends=(
   'qt6-wayland: native Wayland platform plugin support'
 )
+
 makedepends=(
-  appstream
   cmake
   extra-cmake-modules
-  gettext
   go
-  nlohmann-json
 )
-changelog=$pkgname.changelog
-install=$pkgname.install
 
-# use any of:
-#   gpg --keyserver keyserver.ubuntu.com --search-keys me@fkoehler.org
-#   gpg --recv-keys fingerprint_below
-#   gpg --import keys/pgp/*.asc
-validpgpkeys=(
-  # 'C5DC80511469AD81C84E3564D55A35AFB2900A11' # Fabian Köhler <me@fkoehler.org>
+checkdepends=(
+  appstream
+  desktop-file-utils
 )
+
+install=$pkgname.install
 
 source=(
   # Stable package: use the release tag archive rather than a VCS source.
+  #
+  # We intentionally avoid git+$url.git#tag=v$pkgver?signed because that requires
+  # users/builders to import and trust upstream's signing key locally. For this
+  # package, the lower-friction path is to use explicit release artifacts with
+  # checksums in the PKGBUILD.
   "$pkgname-$pkgver-tag.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz"
 
-  # Arch's Go guidance permits module downloads in prepare(), but this wrapper is
-  # already built with `-mod vendor` upstream. Keeping the vendored module tree as
-  # an explicit, checksummed source avoids undeclared network fetches and makes
-  # the exact Go dependency snapshot part of the package source contract.
-  "ktailctl-wrapper-v$pkgver-vendor.tar.gz::$url/releases/download/v$pkgver/ktailctl-wrapper-vendor-v$pkgver.tar.gz"
-
-  # Backport the upstream #481 / PR #483 fix and standalone regressions for both
-  # the runaway-growth leak and the same-size stale-UI case. Keeping the tests
-  # in the patch makes the release backport self-auditing instead of code-only.
-  "$pkgname-mullvad-country-model.patch"
+  # Arch's Go guidance permits module downloads in prepare(), but this package is
+  # better treated as a network-sensitive GUI wrapper around tailscaled. Upstream
+  # publishes a vendored Go module snapshot for releases, and the wrapper build
+  # already uses `-mod vendor`, so keep that dependency tree as an explicit,
+  # checksummed source.
+  #
+  # This makes the exact Go dependency snapshot part of the package source
+  # contract and avoids undeclared build-time network access.
+  "ktailctl-wrapper-vendor-v$pkgver.tar.gz::$url/releases/download/v$pkgver/ktailctl-wrapper-vendor-v$pkgver.tar.gz"
 )
-sha256sums=('17748d1e9e84d6ea5003111cf083bbe0133c245dc71d8beec652640354f05997'
-            '3199b86a912f09d7b3e98bd00a3078b1d599a43a98c4b4b6fd3e032411406f1f'
-            '6a7ba1c22885dd0255839ad2e4ac07feed1b7064d5733d84faff095b3adde50f')
+
+sha256sums=('5ec2c685b3507e4e1f73e147b3789473a03d63779011871864527d1b38ff7d6f'
+            '308aa3646b6d1bbd3d5fe35b86a6a2aa8126a7aa80fff124617820d3a5cda614')
 
 _prepare_go_env() {
-  # Keep module downloads inside the build dir (avoid polluting ~/go)
+  # Keep all Go build state inside $srcdir. This avoids polluting the builder's
+  # home directory and makes accidental dependency materialization easier to spot
+  # in clean-chroot builds.
   export GOPATH="${srcdir}/.gopath"
   export GOCACHE="${srcdir}/.gocache"
   export GOMODCACHE="${srcdir}/.gomodcache"
+
+  # Upstream's go.mod currently requests Go 1.26.4. `GOTOOLCHAIN=local` prevents
+  # newer Go versions from downloading another toolchain behind makepkg's back.
+  export GOTOOLCHAIN=local
+
+  # The wrapper is a c-archive linked into the Qt/KDE application, so keep CGO
+  # enabled and pass Arch's hardening flags through in build().
+  export CGO_ENABLED=1
+
+  # Release tag archives are not Git checkouts. Disabling build VCS stamping
+  # prevents Go from trying to inspect unavailable VCS metadata.
+  export GOFLAGS="-buildvcs=false"
+}
+
+_check_go_toolchain() {
+  local go_version_text
+  local go_version
+  local version
+  local major
+  local minor
+  local patch
+
+  go_version_text="$(go version 2>/dev/null || true)"
+  go_version="$(go env GOVERSION 2>/dev/null || true)"
+
+  if [[ -z "$go_version_text" || -z "$go_version" ]]; then
+    error "failed to query the Go toolchain"
+    return 1
+  fi
+
+  # KTailctl's wrapper uses the standard Go toolchain. gcc-go/gccgo has already
+  # caused confusing AUR build failures with go.mod version parsing, e.g. rejecting
+  # `go 1.26.4` as an invalid version. Fail early with a clear package-side error.
+  if grep -qiE 'gccgo|gcc-go' <<< "$go_version_text"; then
+    error "KTailctl does not build with gcc-go; install Arch's official go package"
+    return 1
+  fi
+
+  # Upstream's wrapper go.mod currently requires Go 1.26.4. Accept newer official
+  # Go releases, but reject older toolchains before CMake or Go fails with a less
+  # useful go.mod parser error.
+  version="${go_version#go}"
+  IFS=. read -r major minor patch <<< "$version"
+
+  if (( major < 1 || (major == 1 && minor < 26) )); then
+    error "KTailctl requires Go 1.26 or newer; found $go_version"
+    return 1
+  fi
 }
 
 prepare() {
   cd "$_upstream_dir"
   _prepare_go_env
+  _check_go_toolchain
 
+  # v0.22.x moved the Go wrapper from src/wrapper to src/tailscale/wrapper and
+  # renamed the release vendor artifact from the older tailwrap form to
+  # ktailctl-wrapper-vendor-v$pkgver.tar.gz.
+  #
   # Reuse the declared vendored dependency snapshot rather than running
-  # `go mod vendor` here and letting dependency materialization drift at build time.
-  rm -rf src/wrapper/vendor
-  bsdtar -xf "$srcdir/ktailctl-wrapper-v$pkgver-vendor.tar.gz" -C src/wrapper
+  # `go mod vendor` here and letting dependency materialization drift at build
+  # time.
+  rm -rf src/tailscale/wrapper/vendor
+  bsdtar -xf "$srcdir/ktailctl-wrapper-vendor-v$pkgver.tar.gz" -C src/tailscale/wrapper
 
-  # #481 reports long-running idle OOMs. The upstream diagnosis is a model reset
-  # bug in MullvadCountryModel that keeps appending instead of replacing entries.
-  # Keep the backport paired with regression coverage for both the leak and the
-  # same-size data-change case that previously left the UI stale.
-  patch -Np1 -i "$srcdir/$pkgname-mullvad-country-model.patch"
+  # v0.22.1 is a patch release, but the tagged CMake project still declares
+  # VERSION 0.22.0. The application uses the generated version header for
+  # KAboutData, so leaving this unfixed makes the installed app report the wrong
+  # version and complicates user bug reports.
+  sed -i "s/VERSION 0\.22\.0/VERSION $pkgver/" CMakeLists.txt
 
-  # Upstream's CMake wrapper has a fallback `go get` step for developer builds.
-  # Keep Arch's build graph explicit by vendoring here and disabling that fetch.
-  sed -i '/^if(NOT KTAILCTL_FLATPAK_BUILD)$/,/^endif()$/d' src/wrapper/CMakeLists.txt
-
-  # GCC warns about Clang-only `-Wno-*compat` flags in 0.21.5, and the
-  # Tailscale constructor initializes peer/account models out of declaration
-  # order. Trim that packaging noise without changing runtime behavior.
+  # GCC warns about Clang-only `-Wno-*compat` flags. Trim packaging warning noise
+  # without changing runtime behavior.
   sed -i '/-Wno-c99-extensions \\/d; /-Wno-c++98-compat \\/d' CMakeLists.txt
-  perl -0pi -e 's@, mPeerModel\(new PeerModel\(this\)\)\n    , mAccountModel\(new AccountModel\(this\)\)@, mAccountModel(new AccountModel(this))\n    , mPeerModel(new PeerModel(this))@' src/tailscale.cpp
 
-  # QT_MESSAGELOGCONTEXT bakes build paths into the package via context.file.
-  sed -i '/target_compile_definitions(ktailctl PRIVATE QT_MESSAGELOGCONTEXT)/d' src/CMakeLists.txt
-  sed -i '/target_compile_definitions(ktailctl_wrapper_logging PRIVATE QT_MESSAGELOGCONTEXT)/d' src/wrapper/CMakeLists.txt
+  # QT_MESSAGELOGCONTEXT bakes source file paths into logging metadata via
+  # context.file. Keep packaged builds reproducible by removing it from the
+  # wrapper logging target.
+  #
+  # In 0.22.1 this define only appears on ktailctl_wrapper_logging. If upstream
+  # adds it to more targets later, re-audit with:
+  #   grep -R "QT_MESSAGELOGCONTEXT" -n .
+  sed -i '/target_compile_definitions(ktailctl_wrapper_logging PRIVATE QT_MESSAGELOGCONTEXT)/d' \
+    src/tailscale/wrapper/CMakeLists.txt
 }
 
 build() {
   cd "$_upstream_dir"
   _prepare_go_env
-  
-  # CRITICAL: Export CGO flags for Go wrapper hardening
-  # Without these, the Go wrapper lacks RELRO and PIE protection
+  _check_go_toolchain
+
+  # CRITICAL: export CGO flags for the Go wrapper hardening path.
+  #
+  # KTailctl builds the Go wrapper as a c-archive and links it into the C++/Qt
+  # application. Without these, the CGO objects may miss the hardening flags that
+  # Arch normally applies to native code.
   export CGO_CPPFLAGS="${CPPFLAGS}"
   export CGO_CFLAGS="${CFLAGS}"
   export CGO_CXXFLAGS="${CXXFLAGS}"
   export CGO_LDFLAGS="${LDFLAGS}"
-  
+
   local cmake_options=(
     -B build
     -S .
     -DCMAKE_BUILD_TYPE=None
     -DCMAKE_INSTALL_PREFIX=/usr
-    # KDEInstallDirs owns this path; setting the KDE variable avoids the
-    # warning emitted when CMAKE_INSTALL_LIBDIR is overridden too early.
+
+    # KDEInstallDirs owns this path. Setting the KDE variable avoids the warning
+    # emitted when CMAKE_INSTALL_LIBDIR is overridden too early.
     -DKDE_INSTALL_LIBDIR=lib
+
+    # v0.22.x adds a real CTest test suite. Enable it for package builds so the
+    # rewritten property-list model, Tailscale status parsing, and utility logic
+    # are exercised before packaging.
+    -DKTAILCTL_ENABLE_TESTS=ON
+
+    # Upstream added a CMake path that can download a Go toolchain from go.dev.
+    # Arch packages must use declared system makedepends instead of fetching a
+    # compiler during the build.
+    -DKTAILCTL_FETCH_GO=OFF
+
+    # Despite the name, this is currently the cleanest upstream switch for
+    # networkless Go dependency handling. With this enabled, the wrapper CMake
+    # assumes vendor/ is already present instead of running `go mod vendor`.
+    #
+    # Keep this under review on every upstream bump. If KTAILCTL_FLATPAK_BUILD
+    # starts affecting runtime behavior or install layout, replace this with a
+    # focused patch that disables only the vendoring command.
+    -DKTAILCTL_FLATPAK_BUILD=ON
+
     -Wno-dev
   )
 
-  # Upstream's wrapper build already uses `-mod vendor`; keep the package build
-  # on that offline path instead of letting CMake fall back to `go get`.
   cmake "${cmake_options[@]}"
-
-  # Build with parallelization
-  cmake --build build --parallel
+  cmake --build build
 }
 
 check() {
   cd "$_upstream_dir"
 
-  # The backport includes a focused QtTest binary, so run ctest to keep the
-  # leak fix and stale-UI fix covered in package builds once deps are present.
+  # The tests are Qt-based. Offscreen mode keeps clean-chroot checks independent
+  # of a running display server.
+  export QT_QPA_PLATFORM=offscreen
+
+  # Run upstream's test suite. This matters more in 0.22.x than in 0.21.x because
+  # the release is built on a rewritten backend and property-list model.
   ctest --test-dir build --output-on-failure
+
+  # Validate installed desktop/appstream metadata early. KTailctl is a GUI app,
+  # so broken desktop metadata is a package bug, not cosmetic noise.
+  desktop-file-validate org.fkoehler.KTailctl.desktop
+  appstreamcli validate --no-net org.fkoehler.KTailctl.metainfo.xml
 }
 
 package() {
   cd "$_upstream_dir"
-  
-  # Install built files
+
   DESTDIR="$pkgdir" cmake --install build
-  
-  # Install license
-  install -Dm644 LICENSE.txt -t "$pkgdir/usr/share/licenses/$pkgname/"
+
+  # Upstream installs the Go c-archive under /usr/lib. The final ktailctl binary
+  # links against it during the build; it is not normally a runtime library users
+  # should link against.
+  #
+  # Keep this removal only after verifying with:
+  #   ldd "$pkgdir/usr/bin/ktailctl"
+  #   readelf -d "$pkgdir/usr/bin/ktailctl"
+  #
+  # If a future upstream release turns the wrapper into a real shared runtime
+  # library, remove this cleanup.
+  rm -f "$pkgdir/usr/lib/libktailctl_wrapper.a"
+
+  # LICENSE.txt is GPL-3.0 text. The appstream metadata and desktop metadata also
+  # carry SPDX identifiers, and the bundled country flags carry their own
+  # CC-BY-4.0 license. Install the extra flag license explicitly so the package
+  # does not hide bundled asset licensing behind the main project license.
+  install -Dm644 LICENSE.txt "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 src/icons/country-flags/LICENSE \
+    "$pkgdir/usr/share/licenses/$pkgname/LICENSE.country-flags"
 }
