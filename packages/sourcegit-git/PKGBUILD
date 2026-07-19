@@ -1,6 +1,6 @@
 pkgname=sourcegit-git
 _pkgname=${pkgname%-git}
-pkgver=2026.12.r0.gd67c995
+pkgver=2026.15.r0.g7149a8d
 pkgrel=1
 pkgdesc="GUI client for GIT users (git version)"
 arch=('x86_64')
