@@ -1,0 +1,145 @@
+pkgname=electron-castlab-git
+pkgver=44.0.0.alpha.1.r0.gbdb006b
+pkgrel=1
+pkgdesc='Latest castLabs Electron for Content Security Git snapshot with Widevine CDM support'
+arch=('x86_64')
+url='https://github.com/castlabs/electron-releases'
+license=('BSD-3-Clause' 'MIT')
+depends=(
+  'brotli'
+  'c-ares'
+  'flac'
+  'fontconfig'
+  'freetype2'
+  'libgcc'
+  'glibc'
+  'gtk3'
+  'harfbuzz'
+  'libdrm'
+  'libevent'
+  'libffi'
+  'libjpeg-turbo'
+  'libpulse'
+  'libxml2'
+  'libxslt'
+  'minizip'
+  'nss'
+  'opus'
+  'zlib'
+)
+makedepends=('curl' 'git' 'jq' 'unzip')
+optdepends=(
+  'gtk4: for --gtk-version=4'
+  'kde-cli-tools: file deletion support via kioclient'
+  'pipewire: WebRTC desktop sharing under Wayland'
+  'trash-cli: file deletion support via trash-put'
+  'xdg-utils: open URLs with the desktop default handler'
+)
+provides=('electron-castlab')
+conflicts=(
+  'electron-castlab'
+  'electron-castlab-bin'
+  'electron40-castlab'
+  'electron40-castlab-bin'
+  'electron40-castlab-git'
+  'electron41-castlab'
+  'electron41-castlab-bin'
+  'electron41-castlab-git'
+  'electron42-castlab'
+  'electron42-castlab-bin'
+  'electron42-castlab-git'
+  'electron43-castlab'
+  'electron43-castlab-bin'
+  'electron43-castlab-git'
+  'electron44-castlab'
+  'electron44-castlab-bin'
+  'electron44-castlab-git'
+)
+options=('!strip' '!debug')
+
+# Track upstream's default development branch. This may move to alpha or beta
+# releases. Set this to a maintenance branch such as 43-x-y to follow only that
+# major series.
+_branch='master'
+
+source=("electron-releases::git+${url}.git#branch=${_branch}")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd "${srcdir}/electron-releases"
+
+  local describe version revision commit
+  if describe=$(git describe --tags --long --abbrev=7 \
+      --match 'v*+wvcus' 2>/dev/null); then
+    sed -E \
+      's/^v//; s/\+wvcus-([0-9]+)-g/.r\1.g/; s/-/./g' \
+      <<< "${describe}"
+  else
+    version=$(jq -er '.version' package.json)
+    revision=$(git rev-list --count HEAD)
+    commit=$(git rev-parse --short=7 HEAD)
+    printf '%s.r%s.g%s\n' "${version/+wvcus/}" "${revision}" "${commit}" |
+      tr '-' '.'
+  fi
+}
+
+prepare() {
+  cd "${srcdir}/electron-releases"
+
+  local version archive checksum encoded_version encoded_archive archive_path
+  version=$(jq -er '.version' package.json)
+  archive="electron-v${version}-linux-x64.zip"
+  checksum=$(jq -er --arg archive "${archive}" '.[$archive]' checksums.json)
+
+  if [[ ! ${checksum} =~ ^[[:xdigit:]]{64}$ ]]; then
+    printf 'Invalid or missing checksum for %s in checksums.json\n' \
+      "${archive}" >&2
+    return 1
+  fi
+
+  encoded_version=${version//+/%2B}
+  encoded_archive=${archive//+/%2B}
+  archive_path="${srcdir}/${archive}"
+
+  if ! printf '%s  %s\n' "${checksum}" "${archive_path}" |
+      sha256sum --check --status 2>/dev/null; then
+    rm -f "${archive_path}" "${archive_path}.part"
+    curl --fail --location --retry 3 --retry-all-errors \
+      --output "${archive_path}.part" \
+      "${url}/releases/download/v${encoded_version}/${encoded_archive}"
+    printf '%s  %s\n' "${checksum}" "${archive_path}.part" |
+      sha256sum --check
+    mv -f "${archive_path}.part" "${archive_path}"
+  fi
+}
+
+package() {
+  local version archive dest
+  version=$(jq -er '.version' "${srcdir}/electron-releases/package.json")
+  archive="electron-v${version}-linux-x64.zip"
+  dest="${pkgdir}/usr/lib/electron-castlab"
+
+  install -dm755 "${dest}"
+  unzip -q "${srcdir}/${archive}" -d "${dest}"
+
+  chmod 755 "${dest}/electron"
+  if [[ -f "${dest}/chrome-sandbox" ]]; then
+    chmod 4755 "${dest}/chrome-sandbox"
+  fi
+
+  install -Dm755 /dev/stdin "${pkgdir}/usr/bin/electron-castlab" <<'LAUNCHER'
+#!/bin/sh
+exec /usr/lib/electron-castlab/electron "$@"
+LAUNCHER
+
+  install -Dm644 "${srcdir}/electron-releases/LICENSE" \
+    "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE.castlabs"
+  if [[ -f "${dest}/LICENSE" ]]; then
+    install -Dm644 "${dest}/LICENSE" \
+      "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE.electron"
+  fi
+  if [[ -f "${dest}/LICENSES.chromium.html" ]]; then
+    install -Dm644 "${dest}/LICENSES.chromium.html" \
+      "${pkgdir}/usr/share/licenses/${pkgname}/LICENSES.chromium.html"
+  fi
+}
