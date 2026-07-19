@@ -13,7 +13,7 @@ REPO_ARCH = "{{ get_env(name='REPO_ARCH', default='x86_64_v3') }}"
 REPO_DIR  = "{{ get_env(name='REPO_DIR', default=env.REPO_BASE ~ '/' ~ env.REPO_NAME ~ '/' ~ env.REPO_ARCH) }}"
 # Keep REPO_ROOT if you want, but it should equal REPO_DIR (or drop it entirely)
 REPO_ROOT = "{{ get_env(name='REPO_ROOT', default=env.REPO_DIR) }}"
-REPO_DB   = "{{ get_env(name='REPO_DB', default=env.REPO_DIR ~ '/' ~ env.REPO_NAME ~ '.db.tar.gz') }}"
+REPO_DB   = "{{ get_env(name='REPO_DB', default=env.REPO_DIR ~ '/' ~ env.REPO_NAME ~ '.db.tar.zst') }}"
 PKGDEST = "{{ get_env(name='PKGDEST', default=env.REPO_DIR) }}"
 
 # Signing
