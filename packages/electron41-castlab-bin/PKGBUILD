@@ -1,0 +1,76 @@
+pkgname=electron41-castlab-bin
+pkgver=41.9.2+wvcus
+pkgrel=1
+pkgdesc='Electron 41 for Content Security by castLabs with Widevine CDM support - binary release'
+arch=('x86_64')
+url='https://github.com/castlabs/electron-releases'
+license=('BSD-3-Clause' 'MIT')
+depends=(
+  'brotli'
+  'c-ares'
+  'flac'
+  'fontconfig'
+  'freetype2'
+  'libgcc'
+  'glibc'
+  'gtk3'
+  'harfbuzz'
+  'libdrm'
+  'libevent'
+  'libffi'
+  'libjpeg-turbo'
+  'libpulse'
+  'libxml2'
+  'libxslt'
+  'minizip'
+  'nss'
+  'opus'
+  'zlib'
+)
+makedepends=('unzip')
+optdepends=(
+  'gtk4: for --gtk-version=4'
+  'kde-cli-tools: file deletion support via kioclient'
+  'pipewire: WebRTC desktop sharing under Wayland'
+  'trash-cli: file deletion support via trash-put'
+  'xdg-utils: open URLs with the desktop default handler'
+)
+provides=(
+  "electron42-castlab=${pkgver}"
+  "electron-castlab=${pkgver}"
+)
+conflicts=('electron-castlab')
+options=('!strip' '!debug')
+
+_tag="${pkgver/+/%2B}"
+_zip="electron-v${pkgver}-linux-x64.zip"
+_asset="${_zip//+/%2B}"
+source_x86_64=("${_zip}::${url}/releases/download/v${_tag}/${_asset}")
+sha256sums_x86_64=('9795ce979a4c7bbd01efd6358c65fe239b7805716cc41579cfdb3d17b88a687f')
+noextract=("${_zip}")
+
+package() {
+  local _dest="${pkgdir}/usr/lib/electron41-castlab"
+
+  install -dm755 "${_dest}"
+  unzip -q "${srcdir}/${_zip}" -d "${_dest}"
+
+  chmod 755 "${_dest}/electron"
+  if [[ -f "${_dest}/chrome-sandbox" ]]; then
+    chmod 4755 "${_dest}/chrome-sandbox"
+  fi
+
+  install -Dm755 /dev/stdin "${pkgdir}/usr/bin/electron41-castlab" <<'LAUNCHER'
+#!/bin/sh
+exec /usr/lib/electron41-castlab/electron "$@"
+LAUNCHER
+
+  ln -s electron41-castlab "${pkgdir}/usr/bin/electron-castlab"
+
+  install -Dm644 "${_dest}/LICENSE" \
+    "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+  if [[ -f "${_dest}/LICENSES.chromium.html" ]]; then
+    install -Dm644 "${_dest}/LICENSES.chromium.html" \
+      "${pkgdir}/usr/share/licenses/${pkgname}/LICENSES.chromium.html"
+  fi
+}
