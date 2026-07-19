@@ -2,3 +2,4 @@
 source = "git"
 git = "https://github.com/ntfsprogs-plus/ntfsprogs-plus.git"
 use_commit = true
+branch = "ntfs-next"
