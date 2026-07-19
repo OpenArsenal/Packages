@@ -1,0 +1,43 @@
+pkgbase = electron41-castlab
+	pkgdesc = Electron 41 for Content Security by castLabs with Widevine CDM support
+	pkgver = 41.9.2+wvcus
+	pkgrel = 1
+	url = https://github.com/castlabs/electron-releases
+	arch = x86_64
+	license = BSD-3-Clause
+	license = MIT
+	makedepends = unzip
+	depends = brotli
+	depends = c-ares
+	depends = flac
+	depends = fontconfig
+	depends = freetype2
+	depends = libgcc
+	depends = glibc
+	depends = gtk3
+	depends = harfbuzz
+	depends = libdrm
+	depends = libevent
+	depends = libffi
+	depends = libjpeg-turbo
+	depends = libpulse
+	depends = libxml2
+	depends = libxslt
+	depends = minizip
+	depends = nss
+	depends = opus
+	depends = zlib
+	optdepends = gtk4: for --gtk-version=4
+	optdepends = kde-cli-tools: file deletion support via kioclient
+	optdepends = pipewire: WebRTC desktop sharing under Wayland
+	optdepends = trash-cli: file deletion support via trash-put
+	optdepends = xdg-utils: open URLs with the desktop default handler
+	provides = electron-castlab=41.9.2+wvcus
+	conflicts = electron-castlab
+	noextract = electron-v41.9.2+wvcus-linux-x64.zip
+	options = !strip
+	options = !debug
+	source_x86_64 = electron-v41.9.2+wvcus-linux-x64.zip::https://github.com/castlabs/electron-releases/releases/download/v41.9.2%2Bwvcus/electron-v41.9.2%2Bwvcus-linux-x64.zip
+	sha256sums_x86_64 = 9795ce979a4c7bbd01efd6358c65fe239b7805716cc41579cfdb3d17b88a687f
+
+pkgname = electron41-castlab
