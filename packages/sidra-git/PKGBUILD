@@ -1,52 +1,43 @@
 pkgname=sidra-git
-pkgver=0.3.2.r54.g8e9889f
+pkgver=0.3.5.r19.gead4931
 pkgrel=1
-pkgdesc='An elegant Apple Music desktop client for Linux - git version'
+pkgdesc='An elegant Apple Music desktop client for Linux - latest Git snapshot using CastLabs Electron 42'
 arch=('x86_64')
 url='https://github.com/wimpysworld/sidra'
 license=('BlueOak-1.0.0')
 depends=(
-  'electron40-castlab-git'
+  'electron42-castlab'
   'hicolor-icon-theme'
 )
 makedepends=(
   'git'
+  'imagemagick'
   'nodejs-lts-krypton'
   'npm'
-  'imagemagick'
 )
 optdepends=(
   'discord: Discord Rich Presence integration'
   'playerctl: command-line MPRIS control/testing'
 )
-provides=('sidra')
+provides=("sidra=${pkgver}")
 conflicts=('sidra' 'sidra-bin')
-source=('sidra::git+https://github.com/wimpysworld/sidra.git')
+source=('sidra::git+https://github.com/wimpysworld/sidra.git#branch=main')
 sha256sums=('SKIP')
-b2sums=('SKIP')
 
 pkgver() {
-  cd sidra
-  git describe --tags --long --abbrev=7 | sed 's/^v//;s/-/.r/;s/-/./g'
-}
+  cd "${srcdir}/sidra"
 
-_patch_browserwindow_icons() {
-  local _file
-  for _file in src/main.ts src/aboutWindow.ts; do
-    [[ -f "${_file}" ]] || continue
-    perl -0pi -e "s/new BrowserWindow\(\{\n/new BrowserWindow({\n    icon: getAssetPath('assets', 'icon.png'),\n/g" "${_file}"
-  done
-
-  local _main_count _about_count
-  _main_count=$(grep -c "icon.png" src/main.ts || true)
-  _about_count=$(grep -c "icon.png" src/aboutWindow.ts || true)
-  if ((_main_count < 2 || _about_count < 1)); then
-    printf 'Sidra BrowserWindow icon patch did not apply as expected.\n' >&2
-    printf 'src/main.ts icon count: %s, src/aboutWindow.ts icon count: %s\n' "${_main_count}" "${_about_count}" >&2
-    grep -n "new BrowserWindow" src/main.ts src/aboutWindow.ts >&2 || true
-    return 1
+  local _describe _version _revision _commit
+  if _describe="$(git describe --tags --long --abbrev=7 --match '[0-9]*' 2>/dev/null)"; then
+    sed -E 's/^v//; s/-([0-9]+)-g/.r\1.g/; s/-/./g' <<< "${_describe}"
+  else
+    _version="$(node -p "require('./package.json').version")"
+    _revision="$(git rev-list --count HEAD)"
+    _commit="$(git rev-parse --short=7 HEAD)"
+    printf '%s.r%s.g%s\n' "${_version}" "${_revision}" "${_commit}"
   fi
 }
+
 _install_hicolor_icons() {
   local _src="$1"
   local _size
@@ -67,65 +58,82 @@ _install_hicolor_icons() {
 }
 
 prepare() {
-  cd sidra
-  _patch_browserwindow_icons
+  cd "${srcdir}/sidra"
 
+  # Sidra pins castLabs Electron through a public GitHub Git dependency.
+  # npm 12 disables Git dependencies by default, so opt in explicitly.
+  export npm_config_allow_git=all
+  export npm_config_cache="${srcdir}/npm-cache"
+  export GIT_TERMINAL_PROMPT=0
+
+  # npm's lockfile resolves the public GitHub dependency to SSH. Rewrite all
+  # common GitHub SSH/Git forms to HTTPS so clean chroots need no SSH key.
+  export GIT_CONFIG_COUNT=4
+  export GIT_CONFIG_KEY_0='url.https://github.com/.insteadOf'
+  export GIT_CONFIG_VALUE_0='git@github.com:'
+  export GIT_CONFIG_KEY_1='url.https://github.com/.insteadOf'
+  export GIT_CONFIG_VALUE_1='ssh://git@github.com/'
+  export GIT_CONFIG_KEY_2='url.https://github.com/.insteadOf'
+  export GIT_CONFIG_VALUE_2='git+ssh://git@github.com/'
+  export GIT_CONFIG_KEY_3='url.https://github.com/.insteadOf'
+  export GIT_CONFIG_VALUE_3='git://github.com/'
+
+  # The system electron42-castlab runtime is used for packaging and execution.
+  # Keep the dependency's install script from downloading another Electron.
   export ELECTRON_SKIP_BINARY_DOWNLOAD=1
+
   npm ci \
-    --cache "${srcdir}/npm-cache" \
-    --prefer-offline \
+    --allow-git=all \
+    --ignore-scripts \
     --no-audit \
-    --fund=false \
-    --ignore-scripts
+    --no-fund
 }
 
 build() {
-  cd sidra
+  cd "${srcdir}/sidra"
+
   npm run build
 
-  local _main_count _about_count
-  _main_count=$(grep -c "icon.png" dist/main.js || true)
-  _about_count=$(grep -c "icon.png" dist/aboutWindow.js || true)
-  if ((_main_count < 2 || _about_count < 1)); then
-    printf 'Compiled Sidra BrowserWindow icon patch is incomplete.\n' >&2
-    printf 'dist/main.js icon count: %s, dist/aboutWindow.js icon count: %s\n' "${_main_count}" "${_about_count}" >&2
-    return 1
-  fi
-}
-
-check() {
-  cd sidra
-  npm test
+  # electron-builder creates the application ASAR using the installed castLabs
+  # Electron 42 distribution instead of downloading or bundling another runtime.
+  npx --no-install electron-builder --linux dir --x64 \
+    --config.electronDist=/usr/lib/electron42-castlab \
+    --config.directories.output=release-arch \
+    --config.npmRebuild=false \
+    --publish never
 }
 
 package() {
-  cd sidra
+  local _resources="${srcdir}/sidra/release-arch/linux-unpacked/resources"
 
-  npm prune \
-    --omit=dev \
-    --cache "${srcdir}/npm-cache" \
-    --no-audit \
-    --fund=false \
-    --ignore-scripts
+  if [[ ! -f "${_resources}/app.asar" ]]; then
+    printf 'Could not find the built Sidra app.asar at %s\n' "${_resources}" >&2
+    return 1
+  fi
 
-  install -dm755 "${pkgdir}/usr/lib/sidra"
-  cp -a dist assets node_modules package.json "${pkgdir}/usr/lib/sidra/"
-  install -Dm644 build/icon.png "${pkgdir}/usr/lib/sidra/assets/icon.png"
+  install -dm755 "${pkgdir}/usr/lib/sidra/resources"
+  install -Dm644 "${_resources}/app.asar" \
+    "${pkgdir}/usr/lib/sidra/resources/app.asar"
+
+  if [[ -d "${_resources}/app.asar.unpacked" ]]; then
+    cp -a "${_resources}/app.asar.unpacked" \
+      "${pkgdir}/usr/lib/sidra/resources/"
+  fi
 
   install -Dm755 /dev/stdin "${pkgdir}/usr/bin/sidra" <<'LAUNCHER'
 #!/bin/sh
 export SIDRA_DISABLE_AUTO_UPDATE=1
-exec electron40-castlab --class=sidra --name=sidra /usr/lib/sidra "$@"
+exec electron42-castlab --class=sidra --name=sidra /usr/lib/sidra/resources/app.asar "$@"
 LAUNCHER
 
-  _install_hicolor_icons build/icon.png
+  _install_hicolor_icons "${srcdir}/sidra/build/icon.png"
 
   install -Dm644 /dev/stdin "${pkgdir}/usr/share/applications/sidra.desktop" <<'DESKTOP'
 [Desktop Entry]
 Name=Sidra
 Comment=An elegant Apple Music desktop client
 Exec=sidra %U
-Icon=/usr/share/icons/hicolor/48x48/apps/sidra.png
+Icon=sidra
 Keywords=Apple;Music;Streaming;Audio;Player;Sidra;
 Terminal=false
 Type=Application
@@ -135,5 +143,6 @@ StartupNotify=true
 StartupWMClass=sidra
 DESKTOP
 
-  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+  install -Dm644 "${srcdir}/sidra/LICENSE" \
+    "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 }
