@@ -1,0 +1,43 @@
+pkgbase = electron44-castlab
+	pkgdesc = Electron 44 for Content Security by castLabs with Widevine CDM support
+	pkgver = 44.0.0_alpha.1+wvcus
+	pkgrel = 1
+	url = https://github.com/castlabs/electron-releases
+	arch = x86_64
+	license = BSD-3-Clause
+	license = MIT
+	makedepends = unzip
+	depends = brotli
+	depends = c-ares
+	depends = flac
+	depends = fontconfig
+	depends = freetype2
+	depends = libgcc
+	depends = glibc
+	depends = gtk3
+	depends = harfbuzz
+	depends = libdrm
+	depends = libevent
+	depends = libffi
+	depends = libjpeg-turbo
+	depends = libpulse
+	depends = libxml2
+	depends = libxslt
+	depends = minizip
+	depends = nss
+	depends = opus
+	depends = zlib
+	optdepends = gtk4: for --gtk-version=4
+	optdepends = kde-cli-tools: file deletion support via kioclient
+	optdepends = pipewire: WebRTC desktop sharing under Wayland
+	optdepends = trash-cli: file deletion support via trash-put
+	optdepends = xdg-utils: open URLs with the desktop default handler
+	provides = electron-castlab=44.0.0_alpha.1+wvcus
+	conflicts = electron-castlab
+	noextract = electron-v44.0.0-alpha.1+wvcus-linux-x64.zip
+	options = !strip
+	options = !debug
+	source_x86_64 = electron-v44.0.0-alpha.1+wvcus-linux-x64.zip::https://github.com/castlabs/electron-releases/releases/download/v44.0.0-alpha.1%2Bwvcus/electron-v44.0.0-alpha.1%2Bwvcus-linux-x64.zip
+	sha256sums_x86_64 = c5e9f5a0a52f4bfce26d08f50db54e5c7388ea946ab10cd626559a6d520a7a70
+
+pkgname = electron44-castlab
