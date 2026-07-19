@@ -1,17 +1,18 @@
 pkgname=sidra
-pkgver=0.3.4
+pkgver=0.3.5
 pkgrel=1
 pkgdesc='An elegant Apple Music desktop client for Linux'
 arch=('x86_64')
 url='https://github.com/wimpysworld/sidra'
 license=('BlueOak-1.0.0')
 depends=(
-  'electron40-castlab'
+  'electron42-castlab'
   'hicolor-icon-theme'
 )
 makedepends=(
   'nodejs-lts-krypton'
   'npm'
+  'git'
   'imagemagick'
 )
 optdepends=(
@@ -20,8 +21,8 @@ optdepends=(
 )
 conflicts=('sidra-bin' 'sidra-git')
 source=("sidra-${pkgver}.tar.gz::${url}/archive/refs/tags/${pkgver}.tar.gz")
-sha256sums=('3bfbc0a5f9a03ba532658ea98fa01360438689e25677d3e2a0e11479c4b5cc82')
-b2sums=('10e97ca3b0c367b9f4b19cdb2db8f41bbbf8f03fe000ed9def960573425d02f23e53440d34c22e0570ffed500083bb82d11f1b7e8b26a10941a35803d81c82cf')
+sha256sums=('8adbd8617be25fe06ad8c7c8048b2783ccf835978e08fdcd74d7a7ad53ecd93f')
+b2sums=('c62a58868eb730f622088a2dcb5fe0d18270074033b58462127837b17fc7c155e8fc0946282c62727d20b3937c47023316cd53c500f923fcc84fbdb887377469')
 
 _patch_browserwindow_icons() {
   local _file
@@ -67,8 +68,24 @@ prepare() {
   # icon from the splash window and keep it for the task-manager entry.
   _patch_browserwindow_icons
 
+  # npm 12 blocks Git dependencies unless explicitly allowed. Sidra's
+  # lockfile pins castLabs Electron from GitHub, so convert its SSH URL to
+  # HTTPS for clean chroots and permit the pinned Git dependency.
+  sed -i \
+    -e 's#git+ssh://git@github.com/#git+https://github.com/#g' \
+    -e 's#ssh://git@github.com/#git+https://github.com/#g' \
+    package.json package-lock.json
+
+  if grep -RqsE 'git\+ssh://git@github\.com/|ssh://git@github\.com/' \
+      package.json package-lock.json; then
+    printf 'Failed to rewrite GitHub SSH dependency URLs.\n' >&2
+    return 1
+  fi
+
   export ELECTRON_SKIP_BINARY_DOWNLOAD=1
+  export npm_config_allow_git=all
   npm ci \
+    --allow-git=all \
     --cache "${srcdir}/npm-cache" \
     --prefer-offline \
     --no-audit \
@@ -98,7 +115,8 @@ check() {
 package() {
   cd "${pkgname}-${pkgver}"
 
-  npm prune \
+  npm_config_allow_git=all npm prune \
+    --allow-git=all \
     --omit=dev \
     --cache "${srcdir}/npm-cache" \
     --no-audit \
@@ -112,7 +130,7 @@ package() {
   install -Dm755 /dev/stdin "${pkgdir}/usr/bin/sidra" <<'LAUNCHER'
 #!/bin/sh
 export SIDRA_DISABLE_AUTO_UPDATE=1
-exec electron40-castlab --class=sidra --name=sidra /usr/lib/sidra "$@"
+exec electron42-castlab --class=sidra --name=sidra /usr/lib/sidra "$@"
 LAUNCHER
 
   _install_hicolor_icons build/icon.png
