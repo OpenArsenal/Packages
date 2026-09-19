@@ -141,9 +141,29 @@ if [[ "${usage_json:-false}" == "true" ]]; then
 fi
 
 if [[ "${usage_list_outdated:-false}" == "true" ]]; then
-  pkgctl "${args[@]}" --json "${package_dirs[@]}" |
-    jq -r '.[] | select(.out_of_date == true) | .pkgbase'
-  exit "${PIPESTATUS[0]}"
+  status_log="$(mktemp)"
+  trap 'rm -f "$status_log"' EXIT
+
+  if pkgctl "${args[@]}" "${package_dirs[@]}" 2>&1 >/dev/null |
+    tee "$status_log" >&2; then
+    rc=0
+  else
+    rc="${PIPESTATUS[0]}"
+  fi
+
+  sed -E 
+if pkgctl "${args[@]}" "${package_dirs[@]}"; then
+  exit 0
+else
+  rc=$?
+  [[ "$rc" -eq 2 ]] && exit 0
+  exit "$rc"
+fi
+s/\\x1B\\[[0-9;?]*[ -\\/]*[@-~]//g' "$status_log" |
+    sed -nE 's/^[[:space:]]*![[:space:]]+([^:]+): upgrade from version .*/\\1/p'
+
+  [[ "$rc" -eq 2 ]] && exit 0
+  exit "$rc"
 fi
 
 if pkgctl "${args[@]}" "${package_dirs[@]}"; then
