@@ -24,7 +24,7 @@ done
 if ! command -v aur >/dev/null 2>&1; then
   echo "Missing: aur (aurutils)"
   echo "  aurutils is a local package. Build and install it first:"
-  echo "    cd pkgs/aurutils && mise run package:build"
+  echo "    cd packages/aurutils && mise run pkg:build"
   echo "    sudo pacman -U <built .pkg.tar.zst>"
   missing=1
 fi

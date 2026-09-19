@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+#MISE description="Initialize repo-local GPG homedir"
+
+source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
+task::bootstrap
+task::require_env GNUPGHOME
+
+mkdir -p "$GNUPGHOME"
+gpg --homedir "$GNUPGHOME" --list-keys >/dev/null
