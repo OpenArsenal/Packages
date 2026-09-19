@@ -1,5 +1,0 @@
-[talosctl-bin]
-source = "github"
-github = "siderolabs/talos"
-prefix = "v"
-use_max_tag = true
