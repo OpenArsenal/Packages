@@ -1,5 +1,0 @@
-[ayugram-desktop]
-source = "github"
-github = "AyuGram/AyuGramDesktop"
-use_max_tag = true
-prefix = "v"
