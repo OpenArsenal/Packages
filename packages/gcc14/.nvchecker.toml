@@ -1,3 +1,0 @@
-[gcc14]
-source = "git"
-git = "https://sourceware.org/git/gcc.git"
