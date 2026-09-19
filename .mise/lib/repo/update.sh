@@ -150,7 +150,7 @@ repo::refresh_sync_db() {
   db_path="$(pacman-conf DBPath)"
   sync_dir="${db_path%/}/sync"
 
-  run0 rm -f     "${sync_dir}/${repo_name}.db"*     "${sync_dir}/${repo_name}.files"*
+  task::run_root rm -f     "${sync_dir}/${repo_name}.db"*     "${sync_dir}/${repo_name}.files"*
 
-  run0 pacman -Sy
+  task::run_root pacman -Sy
 }
