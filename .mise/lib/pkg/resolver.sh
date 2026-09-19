@@ -91,6 +91,10 @@ pkg::plan_deps() {
 
     provider_dir="${PKG_PROVIDER_DIR[$dep]-}"
     if [[ -n "$provider_dir" ]]; then
+      if [[ "$provider_dir" == "$pkg_dir" ]]; then
+        continue
+      fi
+
       pkg::plan_dir "$provider_dir"
       continue
     fi
