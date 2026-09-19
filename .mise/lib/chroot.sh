@@ -37,15 +37,29 @@ chroot::create() {
     return 1
   fi
 
-  mkdir -p "$CHROOT_DIR"
+  task::run_root mkdir -p "$CHROOT_DIR"
 
-  local -a args=()
+  local mount_opts
+  mount_opts="$(findmnt --noheadings --output OPTIONS --target "$CHROOT_DIR" 2>/dev/null || true)"
+  if [[ ",$mount_opts," == *,nosuid,* ]]; then
+    echo "error: chroot filesystem is mounted nosuid: $CHROOT_DIR" >&2
+    echo "       set CHROOT_BASE to a filesystem that permits setuid binaries" >&2
+    return 1
+  fi
+
+  local resolved_conf
+  resolved_conf="$(mktemp)"
+  trap 'rm -f "$resolved_conf"' RETURN
+
   if [[ -n "${CHROOT_PACMAN_CONF:-}" ]]; then
     [[ -f "$CHROOT_PACMAN_CONF" ]] || {
       echo "error: pacman config not found: $CHROOT_PACMAN_CONF" >&2
       return 1
     }
-    args+=(-C "$CHROOT_PACMAN_CONF")
+
+    pacman-conf --config "$CHROOT_PACMAN_CONF" >"$resolved_conf"
+  else
+    pacman-conf >"$resolved_conf"
   fi
 
   local -a packages=(base-devel git archlinux-keyring)
@@ -53,7 +67,8 @@ chroot::create() {
     packages+=(cachyos-keyring)
   fi
 
-  task::run_root mkarchroot "${args[@]}" "$root" "${packages[@]}"
+  task::run_root mkarchroot -C "$resolved_conf" "$root" "${packages[@]}"
+  task::run_root install -m 0644 "$resolved_conf" "$root/etc/pacman.conf"
 }
 
 chroot::update() {

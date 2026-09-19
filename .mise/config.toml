@@ -15,7 +15,7 @@ PKGDEST = "{{ get_env(name='PKGDEST', default=env.REPO_DIR) }}"
 
 
 CHROOT_NAME = "{{ get_env(name='CHROOT_NAME', default=env.REPO_NAME ~ '-' ~ env.REPO_ARCH) }}"
-CHROOT_BASE = "{{ get_env(name='CHROOT_BASE', default=env.PKGBUILDS_ROOT ~ '/.cache/chroots') }}"
+CHROOT_BASE = "{{ get_env(name='CHROOT_BASE', default='/var/lib/archbuild') }}"
 CHROOT_DIR = "{{ get_env(name='CHROOT_DIR', default=env.CHROOT_BASE ~ '/' ~ env.CHROOT_NAME) }}"
 CHROOT_PACMAN_CONF = "{{ get_env(name='CHROOT_PACMAN_CONF', default='') }}"
 
