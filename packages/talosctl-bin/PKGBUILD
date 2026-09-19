@@ -13,7 +13,7 @@ options=('!lto')
 source=("talos::git+https://github.com/siderolabs/talos.git#tag=v${pkgver}?signed")
 sha256sums=('26a4b5d93c548456206287f4700b86d3c84c6c13cb2b48e6b8d2e0e0082caaf3')
 
-Sidero Labs/Talos release signing keys, matching Arch Linux packaging policy.
+# Sidero Labs/Talos release signing keys, matching Arch Linux packaging policy.
 
 validpgpkeys=(
 'DB997306E3102F11C4E8F5527B26396447AB6DFD'
