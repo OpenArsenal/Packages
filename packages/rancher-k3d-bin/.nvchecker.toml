@@ -1,0 +1,5 @@
+[rancher-k3d-bin]
+source = "github"
+github = "k3d-io/k3d"
+prefix = "v"
+use_max_tag = true
