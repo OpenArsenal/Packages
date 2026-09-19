@@ -77,8 +77,7 @@ repo::index_build() {
       fi
     done < <(awk -F ' = ' '$1=="provides" {print $2}' <<<"$meta")
   done < <(
-    find "$repo_dir" -maxdepth 1 -type f \
-      -name '*.pkg.tar.*' ! -name '*.sig' -print0 2>/dev/null
+    find "$repo_dir" -maxdepth 1 -type f       -name '*.pkg.tar.*' ! -name '*.sig' -print0 2>/dev/null
   )
 
   REPO_INDEX_DIR="$repo_dir"
@@ -97,8 +96,7 @@ repo::is_dep_satisfied() {
 
   repo::ensure_index "$repo_dir"
 
-  if [[ -n "${REPO_PACKAGE_VERSION[$dep]+x}" ]] \
-    && repo::version_satisfies "${REPO_PACKAGE_VERSION[$dep]}" "$op" "$ver"; then
+  if [[ -n "${REPO_PACKAGE_VERSION[$dep]+x}" ]]     && repo::version_satisfies "${REPO_PACKAGE_VERSION[$dep]}" "$op" "$ver"; then
     return 0
   fi
 
@@ -108,10 +106,23 @@ repo::is_dep_satisfied() {
     return 0
   fi
 
-  [[ -n "${REPO_PROVIDE_VERSION[$dep]+x}" ]] \
-    && repo::version_satisfies "${REPO_PROVIDE_VERSION[$dep]}" "$op" "$ver"
+  [[ -n "${REPO_PROVIDE_VERSION[$dep]+x}" ]]     && repo::version_satisfies "${REPO_PROVIDE_VERSION[$dep]}" "$op" "$ver"
 }
 
 repo::has_built_pkg() {
   repo::is_dep_satisfied "$1" "$2" "" ""
+}
+
+repo::db_packages() {
+  local repo_db="$1"
+  local entry
+
+  [[ -e "$repo_db" ]] || return 0
+
+  while IFS= read -r entry; do
+    [[ "$entry" == */desc ]] || continue
+
+    bsdtar -xOf "$repo_db" "$entry" 2>/dev/null |
+      awk '$0=="%NAME%" { getline; print; exit }'
+  done < <(bsdtar -tf "$repo_db" 2>/dev/null)
 }
