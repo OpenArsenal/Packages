@@ -39,15 +39,23 @@ pkg::metadata_outputs() {
 }
 
 pkg::metadata_provides() {
-  pkg::metadata_values "$1" provides | awk 'NF' | sort -u
+  local pkg_dir="$1"
+  local arch="${CARCH:-$(uname -m)}"
+
+  {
+    pkg::metadata_values "$pkg_dir" provides
+    pkg::metadata_values "$pkg_dir" "provides_$arch"
+  } | awk 'NF' | sort -u
 }
 
 pkg::metadata_deps() {
   local pkg_dir="$1"
+  local arch="${CARCH:-$(uname -m)}"
   local key
 
   for key in depends makedepends checkdepends; do
     pkg::metadata_values "$pkg_dir" "$key"
+    pkg::metadata_values "$pkg_dir" "${key}_$arch"
   done | awk 'NF' | sort -u
 }
 
@@ -66,29 +74,4 @@ pkg::metadata_version() {
   else
     printf '%s-%s\n' "$pkgver" "$pkgrel"
   fi
-}
-
-pkg::spec_parse() {
-  local raw="$1"
-  local out_name="$2"
-  local out_op="$3"
-  local out_ver="$4"
-  local spec name op ver
-
-  spec="${raw//$'\r'/}"
-  spec="${spec//[[:space:]]/}"
-
-  if [[ "$spec" =~ ^([^\<\>\=]+)(\<\=|\>\=|\=|\<|\>)(.+)$ ]]; then
-    name="${BASH_REMATCH[1]}"
-    op="${BASH_REMATCH[2]}"
-    ver="${BASH_REMATCH[3]}"
-  else
-    name="$spec"
-    op=""
-    ver=""
-  fi
-
-  printf -v "$out_name" '%s' "$name"
-  printf -v "$out_op" '%s' "$op"
-  printf -v "$out_ver" '%s' "$ver"
 }
