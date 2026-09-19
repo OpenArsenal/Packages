@@ -19,8 +19,11 @@ tools=(
   paccache
   pacman
   pacman-conf
+  pkgctl
   python3
   repo-add
+  nvchecker
+  updpkgsums
   vercmp
 )
 
