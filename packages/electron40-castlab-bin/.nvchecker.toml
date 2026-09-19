@@ -1,4 +1,4 @@
-[electron40-castlab-bin]
+[electron40-castlab]
 source = "github"
 github = "castlabs/electron-releases"
 use_max_tag = true
