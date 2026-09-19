@@ -559,14 +559,9 @@
       "channel": "stable"
     },
     {
+      "_comment": "Composite FFmpeg + Chromium pkgver; update both inputs together.",
       "name": "chromium-ffmpeg",
-      "type": "github-tags-filtered",
-      "repo": "FFmpeg/FFmpeg",
-      "channel": "stable",
-      "tagPrefix": "n8.0.",
-      "tagRegex": "^n8\\.0(\\.[0-9]+)?$",
-      "versionRegex": "^n(8\\.0(\\.[0-9]+)?)$",
-      "versionFormat": "$1"
+      "type": "manual"
     },
     {
       "name": "chromium-ffmpeg-git",
