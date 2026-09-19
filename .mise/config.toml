@@ -39,8 +39,3 @@ depends_post = ["repo:prune"]
 alias = "import"
 description = "Import a package from AUR or Arch packaging"
 run = 'bash "{{ env.SCRIPTS }}/aur-imports.sh"'
-
-[tasks."pkg:update"]
-alias = "update"
-description = "Check or update package versions from feeds.json"
-run = 'bash "{{ env.SCRIPTS }}/update-pkg.sh"'
