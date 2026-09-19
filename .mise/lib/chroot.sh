@@ -49,7 +49,6 @@ chroot::create() {
 
   local resolved_conf
   resolved_conf="$(mktemp)"
-  trap 'rm -f "$resolved_conf"' RETURN
 
   if [[ -n "${CHROOT_PACMAN_CONF:-}" ]]; then
     [[ -f "$CHROOT_PACMAN_CONF" ]] || {
@@ -67,8 +66,17 @@ chroot::create() {
     packages+=(cachyos-keyring)
   fi
 
-  task::run_root mkarchroot -C "$resolved_conf" "$root" "${packages[@]}"
-  task::run_root install -m 0644 "$resolved_conf" "$root/etc/pacman.conf"
+  if ! task::run_root mkarchroot -C "$resolved_conf" "$root" "${packages[@]}"; then
+    rm -f "$resolved_conf"
+    return 1
+  fi
+
+  if ! task::run_root install -m 0644 "$resolved_conf" "$root/etc/pacman.conf"; then
+    rm -f "$resolved_conf"
+    return 1
+  fi
+
+  rm -f "$resolved_conf"
 }
 
 chroot::update() {
