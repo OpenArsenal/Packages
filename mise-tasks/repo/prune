@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+#MISE description="Prune old package archives from the repo directory with paccache"
+#USAGE flag "-u --uninstalled" help="Apply uninstalled-package retention rules"
+#USAGE flag "-q --quiet" help="Do not print removed file names"
+#USAGE flag "-d --dry-run" help="Show what would be removed without deleting anything"
+#USAGE arg "-k --keep <count>" help="Number of versions to keep per package" default="2"
+#USAGE arg "-a --min-atime <age>" help="Only remove files unused for at least this long (for example: '30 days')" required=#false
+
+set -euo pipefail
+
+: "${REPO_DIR:?REPO_DIR not set}"
+
+keep="${usage_keep:-2}"
+
+args=(
+  -c "$REPO_DIR"
+  -k "$keep"
+)
+
+# paccache requires an operation.
+if [[ "${usage_dry_run:-false}" == "true" ]]; then
+  args+=( -d )
+else
+  args+=( -r )
+fi
+
+if [[ "${usage_uninstalled:-false}" == "true" ]]; then
+  args+=( -u )
+fi
+
+if [[ "${usage_quiet:-false}" == "true" ]]; then
+  args+=( -q )
+fi
+
+if [[ -n "${usage_min_atime:-}" ]]; then
+  args+=( --min-atime "${usage_min_atime}" )
+fi
+
+# Prune old package archives from the repo/package cache directory.
+# This stays separate from repo:update so repo DB updates remain simple.
+paccache "${args[@]}"
