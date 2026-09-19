@@ -1,0 +1,19 @@
+[electron44-castlab-bin]
+source = "github"
+github = "castlabs/electron-releases"
+use_max_tag = true
+
+# Follow only Castlabs releases for this Electron major.
+include_regex = '^v44\.[0-9]+\.[0-9]+(?:-(?:alpha|beta|rc)\.[0-9]+)?\+wvcus$'
+
+# Convert:
+#
+#   v44.0.0-alpha.1+wvcus
+#
+# to an Arch-compatible pkgver:
+#
+#   44.0.0_alpha.1+wvcus
+#
+prefix = "v"
+from_pattern = '-(alpha|beta|rc)\.'
+to_pattern = '_\1.'
