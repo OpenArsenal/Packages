@@ -56,6 +56,20 @@ chroot::create() {
   run0 mkarchroot "${args[@]}" "$root" "${packages[@]}"
 }
 
+chroot::update() {
+  task::require_env CHROOT_DIR
+
+  local root
+  root="$(chroot::root)"
+
+  [[ -f "$root/etc/pacman.conf" ]] || {
+    echo "error: chroot is not provisioned: $root" >&2
+    return 1
+  }
+
+  run0 arch-nspawn "$root" pacman -Syuu --noconfirm
+}
+
 chroot::destroy() {
   task::require_env CHROOT_DIR
 

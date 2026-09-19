@@ -4,6 +4,7 @@
 set -euo pipefail
 
 tools=(
+  arch-nspawn
   bash
   bsdtar
   curl

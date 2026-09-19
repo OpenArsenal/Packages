@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+#MISE description="Update the pristine package-build chroot"
+
+source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/chroot.sh"
+
+task::bootstrap
+chroot::update
