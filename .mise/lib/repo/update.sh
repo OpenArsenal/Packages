@@ -25,22 +25,15 @@ repo::match_package_archives() {
     shopt -s nullglob
 
     local -a pkgs=()
-    local pkg
+    local pkg pkg_meta pkg_name
+    local exact_name=false
 
     if [[ -n "$pkg_filter" ]]; then
-      if [[ "$pkg_filter" == *".pkg.tar."* ]] \
-        || [[ "$pkg_filter" == ./* ]] \
-        || [[ "$pkg_filter" == */* ]] \
-        || [[ "$pkg_filter" == *"*"* ]] \
-        || [[ "$pkg_filter" == *"?"* ]] \
-        || [[ "$pkg_filter" == *"["* ]]; then
+      if [[ "$pkg_filter" == *".pkg.tar."* ]]         || [[ "$pkg_filter" == ./* ]]         || [[ "$pkg_filter" == */* ]]         || [[ "$pkg_filter" == *"*"* ]]         || [[ "$pkg_filter" == *"?"* ]]         || [[ "$pkg_filter" == *"["* ]]; then
         mapfile -t pkgs < <(compgen -G "$pkg_filter" || true)
       else
-        pkgs=(
-          ./"$pkg_filter"-*.pkg.tar.*
-          ./"$pkg_filter".pkg.tar.*
-          ./"$pkg_filter"*.pkg.tar.*
-        )
+        pkgs=( ./*.pkg.tar.* )
+        exact_name=true
       fi
     else
       pkgs=( ./*.pkg.tar.* )
@@ -52,10 +45,18 @@ repo::match_package_archives() {
       [[ "$pkg" == *.sig ]] && continue
       [[ -f "$pkg" ]] || continue
 
+      if [[ "$exact_name" == "true" ]]; then
+        pkg_meta="$(pacman -Qp -- "$pkg" 2>/dev/null)" || continue
+        pkg_name="${pkg_meta%% *}"
+        [[ "$pkg_name" == "$pkg_filter" ]] || continue
+      fi
+
       if [[ "$pkg" = /* ]]; then
-        printf '%s\n' "$pkg"
+        printf '%s
+' "$pkg"
       else
-        printf '%s/%s\n' "$repo_dir_abs" "${pkg#./}"
+        printf '%s/%s
+' "$repo_dir_abs" "${pkg#./}"
       fi
     done | sort -uV
   )
@@ -80,8 +81,7 @@ repo::select_newest_archives() {
     pkg_name="${pkg_meta%% *}"
     pkg_ver="${pkg_meta#* }"
 
-    if [[ -z "${newest_ver[$pkg_name]+x}" ]] \
-      || (( $(vercmp "$pkg_ver" "${newest_ver[$pkg_name]}") > 0 )); then
+    if [[ -z "${newest_ver[$pkg_name]+x}" ]]       || (( $(vercmp "$pkg_ver" "${newest_ver[$pkg_name]}") > 0 )); then
       newest_ver["$pkg_name"]="$pkg_ver"
       newest_file["$pkg_name"]="$pkg"
     fi
@@ -93,7 +93,8 @@ repo::select_newest_archives() {
   }
 
   local -a pkg_names=()
-  mapfile -t pkg_names < <(printf '%s\n' "${!newest_file[@]}" | sort)
+  mapfile -t pkg_names < <(printf '%s
+' "${!newest_file[@]}" | sort)
 
   outvar=()
   for pkg_name in "${pkg_names[@]}"; do
@@ -111,8 +112,7 @@ repo::update_db() {
   local dry_run="${7:-false}"
 
   local -a candidates=()
-  if ! mapfile -t candidates < <(repo::match_package_archives "$repo_dir" "$pkg_filter") \
-    || [[ "${#candidates[@]}" -eq 0 ]]; then
+  if ! mapfile -t candidates < <(repo::match_package_archives "$repo_dir" "$pkg_filter")     || [[ "${#candidates[@]}" -eq 0 ]]; then
     echo "No matching package archives found in $repo_dir for: ${pkg_filter:-<all>}" >&2
     return 1
   fi
@@ -124,16 +124,13 @@ repo::update_db() {
   fi
 
   if [[ "$dry_run" == "true" ]]; then
-    printf '%s\n' "${selected[@]}"
+    printf '%s
+' "${selected[@]}"
     return 0
   fi
 
   local -a args=()
-  repo::update_add_args \
-    "$include_new" \
-    "$prevent_downgrade" \
-    "$include_sigs" \
-    args
+  repo::update_add_args     "$include_new"     "$prevent_downgrade"     "$include_sigs"     args
 
   repo-add "${args[@]}" "$repo_db" "${selected[@]}"
 
