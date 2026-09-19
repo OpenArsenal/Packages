@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 #MISE description="Check tools used by the package workflows"
 
-set -euo pipefail
+source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
+
+task::bootstrap
 
 tools=(
   arch-nspawn
@@ -19,17 +21,23 @@ tools=(
   pacman-conf
   python3
   repo-add
-  run0
   vercmp
 )
 
 missing=0
+
 for tool in "${tools[@]}"; do
   if ! command -v "$tool" >/dev/null 2>&1; then
-    printf 'Missing: %s\n' "$tool"
+    printf 'Missing: %s
+' "$tool"
     missing=1
   fi
 done
+
+if ! task::has_root_runner; then
+  echo "Missing: run0 or sudo (needed for chroot and host pacman operations)"
+  missing=1
+fi
 
 (( missing == 0 )) || exit 1
 echo "OK"
