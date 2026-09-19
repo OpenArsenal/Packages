@@ -1,6 +1,0 @@
-[github-cli]
-source = "github"
-github = "cli/cli"
-prefix = "v"
-exclude_regex = ".*(pre).*"
-use_max_tag = true
