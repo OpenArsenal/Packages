@@ -12,17 +12,17 @@ tools=(
   curl
   git
   gpg
-  jq
   makechrootpkg
   makepkg
   mkarchroot
+  nvchecker
   paccache
   pacman
   pacman-conf
   pkgctl
   python3
-  nvchecker
   repo-add
+  repo-remove
   updpkgsums
   vercmp
 )
@@ -31,7 +31,7 @@ missing=0
 
 for tool in "${tools[@]}"; do
   if ! command -v "$tool" >/dev/null 2>&1; then
-    printf 'Missing: %s\\n' "$tool"
+    printf 'Missing: %s\n' "$tool"
     missing=1
   fi
 done
