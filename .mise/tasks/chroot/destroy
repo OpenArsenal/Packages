@@ -1,13 +1,16 @@
 #!/usr/bin/env bash
-#MISE description="Destroys chroot environment"
+#MISE description="Destroy the clean package-build chroot"
+#MISE hide=true
 
-[[ -n "${CHROOT_DIR:-}" ]] || { echo "error: CHROOT_DIR not set" >&2; exit 1; }
+set -euo pipefail
+
+: "${CHROOT_DIR:?CHROOT_DIR not set}"
 
 case "$CHROOT_DIR" in
-  "/" | "" | ".")
+  "/" | "." | "")
     echo "error: refusing to delete CHROOT_DIR=$CHROOT_DIR" >&2
     exit 1
     ;;
 esac
 
-run0 rm -rf "$CHROOT_DIR"
+run0 rm -rf -- "$CHROOT_DIR"
