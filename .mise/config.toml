@@ -13,7 +13,7 @@ REPO_DB = "{{ get_env(name='REPO_DB', default=env.REPO_DIR ~ '/' ~ env.REPO_NAME
 REPO_SIG_LEVEL = "{{ get_env(name='REPO_SIG_LEVEL', default='Optional TrustAll') }}"
 PKGDEST = "{{ get_env(name='PKGDEST', default=env.REPO_DIR) }}"
 
-GNUPGHOME = "{{ get_env(name='PACKAGE_GNUPGHOME', default=env.PKGBUILDS_ROOT ~ '/.gnupg') }}"
+GNUPGHOME = "{{ get_env(name='GNUPGHOME', default=env.PKGBUILDS_ROOT ~ '/.gnupg') }}"
 
 CHROOT_NAME = "{{ get_env(name='CHROOT_NAME', default=env.REPO_NAME ~ '-' ~ env.REPO_ARCH) }}"
 CHROOT_BASE = "{{ get_env(name='CHROOT_BASE', default=env.PKGBUILDS_ROOT ~ '/.cache/chroots') }}"
