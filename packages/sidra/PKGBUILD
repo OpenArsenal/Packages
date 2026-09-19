@@ -1,12 +1,13 @@
 pkgname=sidra
-pkgver=0.3.5
+pkgver=1.1.1
+_electron='electron44-castlab'
 pkgrel=1
 pkgdesc='An elegant Apple Music desktop client for Linux'
 arch=('x86_64')
 url='https://github.com/wimpysworld/sidra'
 license=('BlueOak-1.0.0')
 depends=(
-  'electron42-castlab'
+  "${_electron}"
   'hicolor-icon-theme'
 )
 makedepends=(
@@ -21,8 +22,8 @@ optdepends=(
 )
 conflicts=('sidra-bin' 'sidra-git')
 source=("sidra-${pkgver}.tar.gz::${url}/archive/refs/tags/${pkgver}.tar.gz")
-sha256sums=('8adbd8617be25fe06ad8c7c8048b2783ccf835978e08fdcd74d7a7ad53ecd93f')
-b2sums=('c62a58868eb730f622088a2dcb5fe0d18270074033b58462127837b17fc7c155e8fc0946282c62727d20b3937c47023316cd53c500f923fcc84fbdb887377469')
+sha256sums=('59771952b382ca888aa492d385dbae2a933f5f7983d2ae3ef1a439f5a2eeb4a5')
+b2sums=('2aa24406e4aa4b79e3b1af3917ce443b17ce1e354d90fbdabc0671aa644ea91184d63b4de2fc4adfb4b1b06680a3166b5ecbc5d662d391b98e62f331b15dd8a4')
 
 _patch_browserwindow_icons() {
   local _file
@@ -123,15 +124,24 @@ package() {
     --fund=false \
     --ignore-scripts
 
+  # This npm package bundles native modules for multiple platforms and CPUs.
+  # Arch x86_64 uses the Linux x64 glibc variant.
+  local _extract_zip='node_modules/@electron-internal/extract-zip'
+  if [[ -d "${_extract_zip}" ]]; then
+    find "${_extract_zip}" -maxdepth 1 -type f -name 'index.*.node' \
+      ! -name 'index.linux-x64-gnu.node' -delete
+  fi
+
   install -dm755 "${pkgdir}/usr/lib/sidra"
-  cp -a dist assets node_modules package.json "${pkgdir}/usr/lib/sidra/"
+  cp -a dist assets node_modules package.json \
+    "${pkgdir}/usr/lib/sidra/"
+
   install -Dm644 build/icon.png "${pkgdir}/usr/lib/sidra/assets/icon.png"
 
-  install -Dm755 /dev/stdin "${pkgdir}/usr/bin/sidra" <<'LAUNCHER'
+  install -Dm755 /dev/stdin "${pkgdir}/usr/bin/sidra" <<EOF
 #!/bin/sh
-export SIDRA_DISABLE_AUTO_UPDATE=1
-exec electron42-castlab --class=sidra --name=sidra /usr/lib/sidra "$@"
-LAUNCHER
+exec ${_electron} --class=sidra --name=sidra /usr/lib/sidra "\$@"
+EOF
 
   _install_hicolor_icons build/icon.png
 
