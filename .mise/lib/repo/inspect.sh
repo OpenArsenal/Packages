@@ -43,20 +43,45 @@ repo::remember_max_version() {
   fi
 }
 
+repo::desc_values() {
+  local key="$1"
+
+  awk -v marker="%${key}%" '
+    $0 == marker {
+      section = 1
+      next
+    }
+    section && NF == 0 {
+      exit
+    }
+    section {
+      print
+    }
+  '
+}
+
 repo::index_build() {
   local repo_dir="$1"
-  local archive meta pkg_name pkg_ver raw provide_name provide_op provide_ver
+  local repo_db="${REPO_DB:-}"
+  local entry desc pkg_name pkg_ver raw provide_name provide_op provide_ver
 
   repo::index_reset
 
-  while IFS= read -r -d '' archive; do
-    meta="$(bsdtar -xOf "$archive" .PKGINFO 2>/dev/null)" || {
-      echo "warning: unable to inspect package archive: $archive" >&2
+  if [[ -z "$repo_db" || ! -e "$repo_db" ]]; then
+    REPO_INDEX_DIR="$repo_dir"
+    return 0
+  fi
+
+  while IFS= read -r entry; do
+    [[ "$entry" == */desc ]] || continue
+
+    desc="$(bsdtar -xOf "$repo_db" "$entry" 2>/dev/null)" || {
+      echo "warning: unable to inspect repository entry: $entry" >&2
       continue
     }
 
-    pkg_name="$(awk -F ' = ' '$1=="pkgname" {print $2; exit}' <<<"$meta")"
-    pkg_ver="$(awk -F ' = ' '$1=="pkgver" {print $2; exit}' <<<"$meta")"
+    pkg_name="$(repo::desc_values NAME <<<"$desc" | head -n1)"
+    pkg_ver="$(repo::desc_values VERSION <<<"$desc" | head -n1)"
 
     if [[ -n "$pkg_name" && -n "$pkg_ver" ]]; then
       repo::remember_max_version REPO_PACKAGE_VERSION "$pkg_name" "$pkg_ver"
@@ -75,10 +100,8 @@ repo::index_build() {
       if [[ -n "$provide_ver" ]]; then
         repo::remember_max_version REPO_PROVIDE_VERSION "$provide_name" "$provide_ver"
       fi
-    done < <(awk -F ' = ' '$1=="provides" {print $2}' <<<"$meta")
-  done < <(
-    find "$repo_dir" -maxdepth 1 -type f       -name '*.pkg.tar.*' ! -name '*.sig' -print0 2>/dev/null
-  )
+    done < <(repo::desc_values PROVIDES <<<"$desc")
+  done < <(bsdtar -tf "$repo_db" 2>/dev/null)
 
   REPO_INDEX_DIR="$repo_dir"
 }
@@ -115,14 +138,14 @@ repo::has_built_pkg() {
 
 repo::db_packages() {
   local repo_db="$1"
-  local entry
+  local entry desc
 
   [[ -e "$repo_db" ]] || return 0
 
   while IFS= read -r entry; do
     [[ "$entry" == */desc ]] || continue
 
-    bsdtar -xOf "$repo_db" "$entry" 2>/dev/null |
-      awk '$0=="%NAME%" { getline; print; exit }'
+    desc="$(bsdtar -xOf "$repo_db" "$entry" 2>/dev/null)" || continue
+    repo::desc_values NAME <<<"$desc"
   done < <(bsdtar -tf "$repo_db" 2>/dev/null)
 }
