@@ -222,6 +222,11 @@ _affine_prepare() {
   fi
 
   yarn install --immutable --inline-builds
+
+  # Upstream's @affine/templates postinstall generates the built-in edgeless
+  # template JSON and static assets from edgeless-snapshot/*.zip. We suppress
+  # workspace postinstalls above, so run this required generation explicitly.
+  yarn workspace @affine/templates build
 }
 
 _affine_build() {
