@@ -1,12 +1,13 @@
 pkgname=sidra-bin
-pkgver=0.3.5
+pkgver=1.1.1
+_electron='electron44-castlab'
 pkgrel=1
-pkgdesc='An elegant Apple Music desktop client for Linux - binary app package using CastLabs Electron 42'
+pkgdesc='An elegant Apple Music desktop client for Linux - binary app package using CastLabs Electron'
 arch=('x86_64')
 url='https://github.com/wimpysworld/sidra'
 license=('BlueOak-1.0.0')
 depends=(
-  'electron42-castlab'
+  "${_electron}"
   'hicolor-icon-theme'
 )
 makedepends=(
@@ -21,10 +22,10 @@ provides=("sidra=${pkgver}")
 conflicts=('sidra' 'sidra-git')
 source=("sidra-${pkgver}.tar.gz::${url}/archive/refs/tags/${pkgver}.tar.gz")
 source_x86_64=("Sidra-${pkgver}-linux-x86_64.rpm::${url}/releases/download/${pkgver}/Sidra-${pkgver}-linux-x86_64.rpm")
-sha256sums=('8adbd8617be25fe06ad8c7c8048b2783ccf835978e08fdcd74d7a7ad53ecd93f')
-sha256sums_x86_64=('6bc9a260291583b0050525d18c50d82c49a85972d9265359a2c4f4e1ea9432bb')
-b2sums=('c62a58868eb730f622088a2dcb5fe0d18270074033b58462127837b17fc7c155e8fc0946282c62727d20b3937c47023316cd53c500f923fcc84fbdb887377469')
-b2sums_x86_64=('96c9b9409ecaba287a597296d3a374c8f2d601c60a1f9d707b9ccd844469edc1fdcb80b65ea429cfe3e9092f09cbacdf179b1bed087059cc85d78d8f2aba6b42')
+sha256sums=('59771952b382ca888aa492d385dbae2a933f5f7983d2ae3ef1a439f5a2eeb4a5')
+sha256sums_x86_64=('6ca4ec8a13f1247e2f014cb6256aeece9bb2a505c7e1a486ebc0218ef0c08655')
+b2sums=('2aa24406e4aa4b79e3b1af3917ce443b17ce1e354d90fbdabc0671aa644ea91184d63b4de2fc4adfb4b1b06680a3166b5ecbc5d662d391b98e62f331b15dd8a4')
+b2sums_x86_64=('4091f2b77db6b5eb84071d131ef43becdb1e8219bcc69effa8d2e3697c4fc41d0f799953e3085ed9b770463f90ce1f296a713d399d9816b9f9dc8bdb81d51578')
 noextract=("Sidra-${pkgver}-linux-x86_64.rpm")
 
 _install_hicolor_icons() {
@@ -74,11 +75,11 @@ package() {
     cp -a "${_resources_dir}/app.asar.unpacked" "${pkgdir}/usr/lib/sidra/resources/"
   fi
 
-  install -Dm755 /dev/stdin "${pkgdir}/usr/bin/sidra" <<'LAUNCHER'
+  install -Dm755 /dev/stdin "${pkgdir}/usr/bin/sidra" <<EOF
 #!/bin/sh
 export SIDRA_DISABLE_AUTO_UPDATE=1
-exec electron42-castlab --class=sidra --name=sidra /usr/lib/sidra/resources/app.asar "$@"
-LAUNCHER
+exec ${_electron} --class=sidra --name=sidra /usr/lib/sidra/resources/app.asar "\$@"
+EOF
 
   _install_hicolor_icons "${srcdir}/sidra-${pkgver}/build/icon.png"
 
