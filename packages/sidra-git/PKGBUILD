@@ -1,12 +1,13 @@
 pkgname=sidra-git
-pkgver=0.3.5.r19.gead4931
+pkgver=1.1.1.r6.gc28396c
+_electron='electron44-castlab'
 pkgrel=1
-pkgdesc='An elegant Apple Music desktop client for Linux - latest Git snapshot using CastLabs Electron 42'
+pkgdesc='An elegant Apple Music desktop client for Linux - latest Git snapshot using CastLabs Electron'
 arch=('x86_64')
 url='https://github.com/wimpysworld/sidra'
 license=('BlueOak-1.0.0')
 depends=(
-  'electron42-castlab'
+  "${_electron}"
   'hicolor-icon-theme'
 )
 makedepends=(
@@ -78,7 +79,7 @@ prepare() {
   export GIT_CONFIG_KEY_3='url.https://github.com/.insteadOf'
   export GIT_CONFIG_VALUE_3='git://github.com/'
 
-  # The system electron42-castlab runtime is used for packaging and execution.
+  # The system CastLabs Electron runtime is used for packaging and execution.
   # Keep the dependency's install script from downloading another Electron.
   export ELECTRON_SKIP_BINARY_DOWNLOAD=1
 
@@ -95,9 +96,9 @@ build() {
   npm run build
 
   # electron-builder creates the application ASAR using the installed castLabs
-  # Electron 42 distribution instead of downloading or bundling another runtime.
+  # Electron distribution instead of downloading or bundling another runtime.
   npx --no-install electron-builder --linux dir --x64 \
-    --config.electronDist=/usr/lib/electron42-castlab \
+    --config.electronDist="/usr/lib/${_electron}" \
     --config.directories.output=release-arch \
     --config.npmRebuild=false \
     --publish never
@@ -120,11 +121,11 @@ package() {
       "${pkgdir}/usr/lib/sidra/resources/"
   fi
 
-  install -Dm755 /dev/stdin "${pkgdir}/usr/bin/sidra" <<'LAUNCHER'
+  install -Dm755 /dev/stdin "${pkgdir}/usr/bin/sidra" <<EOF
 #!/bin/sh
 export SIDRA_DISABLE_AUTO_UPDATE=1
-exec electron42-castlab --class=sidra --name=sidra /usr/lib/sidra/resources/app.asar "$@"
-LAUNCHER
+exec ${_electron} --class=sidra --name=sidra /usr/lib/sidra/resources/app.asar "\$@"
+EOF
 
   _install_hicolor_icons "${srcdir}/sidra/build/icon.png"
 

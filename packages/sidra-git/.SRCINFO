@@ -1,7 +1,7 @@
 pkgbase = sidra-git
-	pkgdesc = An elegant Apple Music desktop client for Linux - latest Git snapshot using CastLabs Electron 42
-	pkgver = 0.3.5.r0.g0000000
-	pkgrel = 2
+	pkgdesc = An elegant Apple Music desktop client for Linux - latest Git snapshot using CastLabs Electron
+	pkgver = 1.1.1.r6.gc28396c
+	pkgrel = 1
 	url = https://github.com/wimpysworld/sidra
 	arch = x86_64
 	license = BlueOak-1.0.0
@@ -9,11 +9,11 @@ pkgbase = sidra-git
 	makedepends = imagemagick
 	makedepends = nodejs-lts-krypton
 	makedepends = npm
-	depends = electron42-castlab
+	depends = electron44-castlab
 	depends = hicolor-icon-theme
 	optdepends = discord: Discord Rich Presence integration
 	optdepends = playerctl: command-line MPRIS control/testing
-	provides = sidra=0.3.5.r0.g0000000
+	provides = sidra=1.1.1.r6.gc28396c
 	conflicts = sidra
 	conflicts = sidra-bin
 	source = sidra::git+https://github.com/wimpysworld/sidra.git#branch=main
