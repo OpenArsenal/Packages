@@ -1,5 +1,6 @@
 [ollama-bin]
 source = "github"
 github = "ollama/ollama"
-use_max_tag = true
-prefix = "v"
+use_latest_release = true
+from_pattern = "^[vV]"
+to_pattern = ""
