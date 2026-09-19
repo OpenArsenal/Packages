@@ -1,0 +1,167 @@
+# Based on the Arch AUR google-chrome package, with a Chromium-compatible
+# expanded FFmpeg library built into Chrome's package image.
+
+pkgname=google-chrome-ffmpeg
+pkgver=152.0.7977.64
+pkgrel=1
+pkgdesc="Google Chrome Stable with an expanded Chromium-compatible FFmpeg library"
+arch=('x86_64')
+url="https://www.google.com/chrome"
+license=('custom:chrome' 'LGPL-2.1-or-later')
+
+provides=("google-chrome=${pkgver}")
+conflicts=('google-chrome')
+
+# Keep Chrome and its FFmpeg ABI pinned together.
+# Chromium 152.0.7977.64 third_party/ffmpeg revision.
+_chromium_ffmpeg_ref=2b68d2babae73714846961fb0ee47e3b3d2e39a9
+_chromium_ffmpeg_url=https://chromium.googlesource.com/chromium/third_party/ffmpeg
+_ffmpeg_archive="ffmpeg-${_chromium_ffmpeg_ref}.tar.gz"
+_channel=stable
+
+install=$pkgname.install
+
+depends=(
+  'alsa-lib'
+  'gtk3'
+  'libcups'
+  'libxss'
+  'libxtst'
+  'nss'
+  'ttf-liberation'
+  'xdg-utils'
+)
+optdepends=(
+  'pipewire: WebRTC desktop sharing under Wayland'
+  'kdialog: for file dialogs in KDE'
+  'gnome-keyring: for storing passwords in GNOME keyring'
+  'kwallet: for storing passwords in KWallet'
+)
+makedepends=('nasm')
+options=('!emptydirs' '!strip' '!lto')
+
+source=(
+  'eula_text.html::https://raw.githubusercontent.com/archlinux/aur/google-chrome/eula_text.html'
+  "google-chrome-${_channel}.sh"
+  "${_ffmpeg_archive}::${_chromium_ffmpeg_url}/+archive/${_chromium_ffmpeg_ref}.tar.gz"
+)
+source_x86_64=(
+  "https://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-${_channel}/google-chrome-${_channel}_${pkgver}-1_amd64.deb"
+)
+noextract=("${_ffmpeg_archive}")
+
+# Chrome/EULA/launcher hashes track the current AUR google-chrome recipe.
+# The FFmpeg URL is pinned to an immutable Chromium git commit. Run updpkgsums
+# after update-chrome-ref.sh to replace SKIP with the fetched archive checksum.
+sha512sums=('a225555c06b7c32f9f2657004558e3f996c981481dbb0d3cd79b1d59fa3f05d591af88399422d3ab29d9446c103e98d567aeafe061d9550817ab6e7eb0498396'
+            'de02b498a4b5b93e21622c8dba57befe795d733a04656be911cc38e28bfef0e20470450f44be523bbde8d4de28f79c10434846ca01fc2a2f4e67707b79332f94'
+            '1f5c9f62ddc690aa519532e17cf3a4af707742c5153f78293a5b047e6f24d6dd994988693d3dc19952a9f3b5d681d6d35f901b559e229abfc9ff4fcf88d14e75')
+sha512sums_x86_64=('8401cc4a4f11714bcef72c6139d53dc2ff68f97257339f34bc8c117f55c72bdacb47b8c2feb38ef79c4d5747f76fecd1a3dfe154e8d67fa247f842e9a2718eeb')
+
+prepare() {
+  rm -rf ffmpeg-src ffmpeg-install sigs.txt export.map
+  mkdir -p ffmpeg-src ffmpeg-install
+  bsdtar -xf "${_ffmpeg_archive}" -C ffmpeg-src
+
+  # Export only the C API symbols this exact Chromium/Chrome revision expects.
+  grep -oP '\bav[a-z0-9_]*(?=\s*\()' ffmpeg-src/chromium/ffmpeg.sigs |
+    sort -u >sigs.txt
+
+  {
+    printf '{\nglobal:\n'
+    sed 's/$/;/' sigs.txt
+    printf 'local:\n*;\n};\n'
+  } >export.map
+
+  cd ffmpeg-src
+
+  # Same native-Opus behavior used by the original chromium-ffmpeg package.
+  if [[ -f libavcodec/opus/dec.c ]]; then
+    sed -i.bak 's/^ *\.p\.name *=.*/.p.name="libopus",/' libavcodec/opus/dec.c
+  fi
+}
+
+build() {
+  cd ffmpeg-src
+
+  ./configure \
+    --disable-debug \
+    --disable-all \
+    --disable-autodetect \
+    --disable-doc \
+    --disable-iconv \
+    --disable-network \
+    --disable-symver \
+    --enable-static \
+    --disable-shared \
+    --enable-avformat \
+    --enable-avcodec \
+    --enable-avutil \
+    --enable-swresample \
+    --enable-demuxers \
+    --enable-decoders \
+    --enable-parsers \
+    --enable-pic \
+    --enable-asm \
+    --enable-hardcoded-tables \
+    --extra-cflags="-fno-math-errno -fno-signed-zeros -fno-semantic-interposition -fomit-frame-pointer" \
+    --libdir=/
+
+  make
+  make DESTDIR="${srcdir}/ffmpeg-install" install
+
+  cd "${srcdir}"
+  _symbols=$(sed 's/^/-Wl,-u,/' sigs.txt | paste -sd ' ' -)
+
+  gcc -shared ${LDFLAGS} \
+    -Wl,--start-group \
+      ffmpeg-install/libavcodec.a \
+      ffmpeg-install/libavformat.a \
+      ffmpeg-install/libavutil.a \
+      ffmpeg-install/libswresample.a \
+    -Wl,--end-group \
+    ${_symbols} \
+    -Wl,--version-script=export.map \
+    -Wl,-Bsymbolic \
+    -lm -lpthread \
+    -o libffmpeg.so
+}
+
+package() {
+  # Normal AUR google-chrome packaging.
+  bsdtar -xf data.tar.xz -C "$pkgdir/"
+
+  # Launcher
+  install -m755 "google-chrome-${_channel}.sh" \
+    "$pkgdir/usr/bin/google-chrome-${_channel}"
+
+  # Icons
+  for i in 16x16 24x24 32x32 48x48 64x64 128x128 256x256; do
+    install -Dm644 "$pkgdir/opt/google/chrome/product_logo_${i/x*/}.png" \
+      "$pkgdir/usr/share/icons/hicolor/$i/apps/google-chrome.png"
+  done
+
+  # Licenses
+  install -Dm644 eula_text.html \
+    "$pkgdir/usr/share/licenses/google-chrome/eula_text.html"
+  install -Dm644 "$pkgdir/opt/google/chrome/WidevineCdm/LICENSE" \
+    "$pkgdir/usr/share/licenses/google-chrome-${_channel}/WidevineCdm-LICENSE.txt"
+
+  # Fix the Chrome desktop entry
+  sed -i \
+    -e '/Exec=/i\StartupWMClass=Google-chrome' \
+    -e 's/x-scheme-handler\/ftp;\?//g' \
+    "$pkgdir/usr/share/applications/google-chrome.desktop"
+
+  # Remove the Debian Cron job, duplicate product logos and menu directory
+  rm -r \
+    "$pkgdir/etc/cron.daily/" \
+    "$pkgdir/opt/google/chrome/cron/" \
+    "$pkgdir/opt/google/chrome/product_logo_"*.png
+
+  # The only functional change from the normal Chrome package:
+  # put the custom ABI-matched FFmpeg library into Chrome before pacman
+  # creates/installs the package. No apply/restore scripts are needed.
+  install -Dm755 "${srcdir}/libffmpeg.so" \
+    "$pkgdir/opt/google/chrome/libffmpeg.so"
+}
