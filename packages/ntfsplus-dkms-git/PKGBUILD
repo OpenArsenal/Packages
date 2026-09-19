@@ -1,7 +1,7 @@
 pkgname=ntfsplus-dkms-git
 _pkgname=ntfsplus
-pkgver=2026.06.22+640b7dd
-pkgrel=1
+pkgver=2026.07.20+ca149db
+pkgrel=2
 pkgdesc="Backport DKMS module for the new Linux ntfs read-write filesystem driver"
 arch=('any')
 url="https://github.com/namjaejeon/linux-ntfs"
@@ -12,8 +12,16 @@ optdepends=(
   'ntfsplus-udev: optional udev rule for ntfsplus'
   'ntfsprogs-plus: optional NTFS userspace utilities'
 )
-provides=('ntfsplus-dkms' 'ntfsplus' 'NTFSPLUS-MODULE' 'NTFS-MODULE')
-conflicts=('ntfsplus-dkms' 'ntfsplus')
+provides=(
+  'ntfsplus-dkms'
+  'ntfsplus'
+  'NTFSPLUS-MODULE'
+  'NTFS-MODULE'
+)
+conflicts=(
+  'ntfsplus-dkms'
+  'ntfsplus'
+)
 options=('!strip' '!emptydirs')
 
 source=(
@@ -22,14 +30,48 @@ source=(
   'dkms.conf'
   '00-ntfsplus.conf'
 )
-sha256sums=('SKIP'
-            '2d6f1b348a1f1f4f5603d4354a80c821f0c65a428dc4d6e6eb7d7ed2b286b07e'
-            '870fe93d4dd09daa673b408c03c73a070ec6df8f43defc7dc909f2c674124832'
-            'f8e9258a06bdb1551492de7d4f8450ed210371522e3d1511392860d8c79bd377')
+sha256sums=(
+  'SKIP'
+  '2d6f1b348a1f1f4f5603d4354a80c821f0c65a428dc4d6e6eb7d7ed2b286b07e'
+  '870fe93d4dd09daa673b408c03c73a070ec6df8f43defc7dc909f2c674124832'
+  'f8e9258a06bdb1551492de7d4f8450ed210371522e3d1511392860d8c79bd377'
+)
 
 pkgver() {
   cd "$srcdir/$pkgname"
   git log --format='%cd+%h' -n1 --date=format:'%Y.%m.%d'
+}
+
+prepare() {
+  cd "$srcdir"
+
+  # Upstream currently references quota.o without shipping quota.c.
+  # Remove it conditionally so the workaround disappears automatically
+  # if upstream restores quota.c later.
+  if [[ ! -f "$pkgname/quota.c" ]]; then
+    sed -Ei \
+      's/(^|[[:space:]])quota\.o([[:space:]]|$)/\1\2/g' \
+      Makefile
+  fi
+
+  # Refuse to package another inconsistent object list.
+  local object source_file
+
+  while IFS= read -r object; do
+    # ntfs.o is the composite module target, not a source object.
+    [[ "$object" == 'ntfs.o' ]] && continue
+
+    source_file="$pkgname/${object%.o}.c"
+
+    if [[ ! -f "$source_file" ]]; then
+      printf 'ERROR: Makefile references %s, but %s is missing\n' \
+        "$object" "$source_file" >&2
+      return 1
+    fi
+  done < <(
+    grep -oE '[[:alnum:]_-]+\.o' Makefile |
+      sort -u
+  )
 }
 
 package() {
@@ -38,11 +80,17 @@ package() {
   local dest="$pkgdir/usr/src/ntfsplus-${pkgver}"
   install -dm755 "$dest"
 
-  cp -rpt "$dest" "$srcdir/$pkgname/"*.{h,c} "$srcdir/$pkgname/Kconfig"
+  cp -rpt "$dest" \
+    "$srcdir/$pkgname/"*.{h,c} \
+    "$srcdir/$pkgname/Kconfig"
 
-  sed "s/@PKGVER@/${pkgver}/g" dkms.conf >"$dest/dkms.conf"
+  sed "s/@PKGVER@/${pkgver}/g" \
+    dkms.conf > "$dest/dkms.conf"
+
   install -Dm644 Makefile "$dest/Makefile"
 
   # Package-owned modprobe defaults belong under /usr/lib, not /etc.
-  install -Dm644 00-ntfsplus.conf "$pkgdir/usr/lib/modprobe.d/00-ntfsplus.conf"
+  install -Dm644 \
+    00-ntfsplus.conf \
+    "$pkgdir/usr/lib/modprobe.d/00-ntfsplus.conf"
 }
