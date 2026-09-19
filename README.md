@@ -1,366 +1,220 @@
-Multi-package Arch Linux repository with automated builds and GitHub Pages distribution.
+# OpenArsenal Packages
 
-This repo provides:
+Arch/CachyOS package sources and local repository tooling for OpenArsenal.
 
-* Reproducible package builds
-* Repo-local build + cache isolation
-* Automated CI builds + hosting
-* Upstream signature verification
+The package source tree lives under `packages/`. Built packages are published to a system repository outside the Git checkout.
 
----
+## Repository layout
 
-# Development
+The default production layout is:
+
+```text
+/srv/pacman/repos/openarsenal/
+└── x86_64_v3/
+    ├── openarsenal.db
+    ├── openarsenal.db.tar.zst
+    ├── openarsenal.files
+    ├── openarsenal.files.tar.zst
+    └── *.pkg.tar.zst
+```
+
+There is intentionally no `repo/` directory inside this Git repository.
+
+## Environment
+
+Copy the example file once per checkout:
+
+```sh
+cp .env.example .env
+```
+
+`.env` is ignored by Git and loaded by mise. The defaults in `.mise/config.toml` already match the production layout, so only machine-specific overrides need to be added.
+
+Important variables:
+
+```text
+REPO_NAME=openarsenal
+REPO_BASE=/srv/pacman/repos/openarsenal
+REPO_ARCH=x86_64_v3
+REPO_DIR=$REPO_BASE/$REPO_ARCH
+REPO_DB=$REPO_DIR/openarsenal.db.tar.zst
+PKGDEST=$REPO_DIR
+CHROOT_BASE=/var/lib/archbuild
+CHROOT_DIR=$CHROOT_BASE/openarsenal-x86_64_v3
+```
 
 ## Prerequisites
 
-```bash
-sudo pacman -S --needed base-devel git curl gnupg pacman-contrib direnv
-```
+The workflow expects Arch packaging/devtools commands, including `makepkg`, `pkgctl`, `mkarchroot`, `makechrootpkg`, `repo-add`, `repo-remove`, `paccache`, and `nvchecker`.
 
-Enable direnv in your shell if not already:
-
-```bash
-direnv allow
-```
-
----
-
-# Repository Environment
-
-This repo uses a **repo-local makepkg environment** loaded via `direnv`.
-
-Key exported paths:
-
-* `PKGDEST` → built packages
-* `SRCDEST` → downloaded sources
-* `BUILDDIR` → working build dirs
-* `LOGDEST` → build logs
-* `SRCPKGDEST` → source packages
-* `GNUPGHOME` → repo-local GPG keyring
-
-Confirm:
-
-```bash
-echo $GNUPGHOME
-```
-
----
-
-# Creating Chroots
+Check the host before building:
 
 ```sh
-sudo install -d -m 0755 /etc/devtools
-sudo cp /etc/pacman.conf /etc/devtools/pacman-cachyos-chroot.conf
+mise run doctor
 ```
 
+## Pacman repository configuration
+
+Print the stanza for the configured repository:
 
 ```sh
-sudo rm -rf "$CHROOT_BASE"
-sudo mkdir -p "$CHROOT_BASE"
-  
-sudo mkarchroot \
-  -C /etc/pacman.conf \
-  "$CHROOT_BASE/root" \
-  base-devel git \
-  archlinux-keyring cachyos-keyring \
-  cachyos-mirrorlist cachyos-v3-mirrorlist 
+mise run repo:config
 ```
 
-
-## If you also want your chroot to see *your* local repo
-
-The Arch-standard way is still the same: **edit the chroot pacman config** (the one you made above) and add your repo stanza at the bottom:
+With the default environment it resolves to:
 
 ```ini
 [openarsenal]
 SigLevel = Optional TrustAll
-Server = file:///home/okiki/Projects/Packages/repo/$arch
+Server = file:///srv/pacman/repos/openarsenal/x86_64_v3
 ```
 
-Build packages inside the chroot:
+The same path is made visible to clean build chroots when local repository dependencies are needed.
+
+## Clean chroot
+
+Provision or update the clean package-build chroot:
 
 ```sh
-sudo --preserve-env=PKGDEST,SRCPKGDEST,SRCDEST,BUILDDIR,LOGDEST,GNUPGHOME,PACKAGER,SOURCE_DATE_EPOCH \
-  makechrootpkg -r "$CHROOT_BASE" \
-  -D $PKGBUILDS_ROOT/repo -c -u -- \
-  --syncdeps --noconfirm --log --holdver --skipinteg
-
+mise run chroot:create
+mise run chroot:update
 ```
 
----
-
-# Repo-Local GPG Keyring
-
-## Why this exists
-
-We isolate GPG operations so builds are:
-
-* Reproducible
-* Independent of maintainer keyrings
-* CI-compatible
-* Auditable via `validpgpkeys`
-
-Because of this, the repo keyring is **git-ignored**:
-
-```
-.gnupg/
-```
-
-Every contributor must bootstrap it locally.
-
----
-
-## Initializing the keyring
-
-Run once per clone:
-
-```bash
-mkdir -p "$GNUPGHOME"
-chmod 700 "$GNUPGHOME"
-
-gpg --homedir "$GNUPGHOME" --list-keys >/dev/null
-```
-
----
-
-# Upstream Signature Verification
-
-Some PKGBUILDs verify upstream artifacts in `check()`.
-
-If a key is missing, builds fail with:
-
-```
-gpg: Can't check signature: No public key
-==> ERROR: A failure occurred in check().
-```
-
-This means the signing key is not in the repo keyring.
-
----
-
-## Importing Signing Keys
-
-### Example — 1Password CLI
-
-Fingerprint:
-
-```
-3FEF 9748 469A DBE1 5DA7  CA80 AC2D 6274 2012 EA22
-```
-
-### Import via keyserver
-
-**Bash/zsh**
-
-```bash
-KEY=3FEF9748469ADBE15DA7CA80AC2D62742012EA22
-gpg --homedir "$GNUPGHOME" --keyserver keyserver.ubuntu.com --recv-keys "$KEY"
-```
-
-**Fish**
-
-```fish
-set KEY 3FEF9748469ADBE15DA7CA80AC2D62742012EA22
-gpg --homedir "$GNUPGHOME" --keyserver keyserver.ubuntu.com --recv-keys $KEY
-```
-
----
-
-## Trusting Keys (optional)
-
-Without trust you may see:
-
-```
-WARNING: This key is not certified with a trusted signature!
-```
-
-The signature is still valid — this is only a Web-of-Trust warning.
-
-To suppress it:
-
-```bash
-gpg --homedir "$GNUPGHOME" --edit-key 3FEF9748469ADBE15DA7CA80AC2D62742012EA22
-trust
-# choose 4 or 5
-quit
-```
-
-Rebuild trustdb:
-
-```bash
-gpg --homedir "$GNUPGHOME" --check-trustdb
-```
-
----
-
-## Verify key presence
-
-```bash
-gpg --homedir "$GNUPGHOME" --list-keys
-```
-
----
-
-# Building Packages
-
-```bash
-makepkg -Cfsri
-```
-
-Artifacts output to:
-
-```
-repo/x86_64/
-```
-
-## Local repo permissions (pacman `DownloadUser`)
-
-When you add this repo to `pacman.conf` using a `file://...` URL, **pacman does not necessarily read the DB as root**.
-On modern Arch/pacman setups, downloads are performed by an unprivileged user (commonly `alpm`) via `DownloadUser`.
-If your repository lives under `/home/<you>/...` and your home directory is `0700` (common default),
-`alpm` cannot traverse the path, and you’ll see errors like:
-
-```
-
-openarsenal.db failed to download
-error: failed retrieving file 'openarsenal.db' from disk : Could not open file /home/<you>/.../openarsenal.db
-
-```
-
-### Fix (ACL) — allow `alpm` to traverse + read the repo
-
-Run once (adjust the path if your repo lives elsewhere):
-
-```bash
-# Allow alpm to traverse the path (execute bit on directories)
-sudo setfacl -m u:alpm:--x /home/$USER
-sudo setfacl -m u:alpm:--x /home/$USER/Projects
-sudo setfacl -m u:alpm:--x /home/$USER/Projects/Packages
-sudo setfacl -m u:alpm:--x /home/$USER/Projects/Packages/repo
-sudo setfacl -m u:alpm:--x /home/$USER/Projects/Packages/repo/x86_64
-
-# Allow alpm to read repo contents (DB + packages)
-sudo setfacl -m u:alpm:r-- /home/$USER/Projects/Packages/repo/x86_64/openarsenal.db*
-sudo setfacl -m u:alpm:r-- /home/$USER/Projects/Packages/repo/x86_64/*.pkg.tar.*
-```
-
-To ensure **future** DB/package files are readable without re-running ACLs every time:
-
-```bash
-sudo setfacl -m d:u:alpm:rx /home/$USER/Projects/Packages/repo/x86_64
-```
-
-Verify:
-
-```bash
-sudo -u alpm ls -l /home/$USER/Projects/Packages/repo/x86_64/
-sudo pacman -Sy
-```
-
-### Building Package
+Destroying the chroot is safe because it is disposable build state:
 
 ```sh
-paru -B ./pkgs/{folder-name}
-
-# e.g. for 1Password CLI:
-paru -B ./pkgs/1password-cli-bin
+mise run chroot:destroy
 ```
 
-### Adding Package to Repo
+The published package repository is persistent state and deliberately has no corresponding `repo:destroy` task.
 
-After building, add the package to the repo:
+## Building packages
+
+Show the local dependency/build order:
 
 ```sh
-repo-add --remove --prevent-downgrade \
-        "$PKGDEST/openarsenal.db.tar.zst" \
-        "$PKGDEST"/*.pkg.tar.*
+mise run pkg:plan <package>
 ```
 
----
+Build one package plus any local dependencies that are not already satisfied:
 
-# Automation
-
-## GitHub Actions
-
-Features:
-
-* Auto-build on changes
-* Parallel package builds
-* GitHub Pages repo hosting
-* Manual workflow triggers
-* Weekly rebuilds
-* Signature verification
-* Artifact uploads
-
----
-
-## Manual CI Trigger
-
-1. Actions → **Build All Packages**
-2. Run workflow
-3. Select packages or `all`
-
----
-
-# Repository Structure
-
-```
-.
-├── 1password/
-│   ├── PKGBUILD
-│   └── 1password.install
-├── another-package/
-│   └── PKGBUILD
-└── yet-another/
-    └── PKGBUILD
+```sh
+mise run pkg:build <package>
 ```
 
----
+Build the packages listed in `.packages`:
 
-# Packaging Guidelines
+```sh
+mise run pkg:build-selected
+```
 
-* Runtime deps → `depends=()`
-* Build deps → `makedepends=()`
-* Optional → `optdepends=()`
-* AUR deps allowed
-* Add `validpgpkeys=()` for signed sources
-* Bump `pkgrel` for packaging-only changes
+Builds use `PKGDEST=$REPO_DIR`. Successful outputs are added to `openarsenal.db.tar.zst` immediately.
 
----
+## Package updates
 
-# Update Workflow
+Package-local `.nvchecker.toml` files are the source of truth for version checks. There is no separate feed registry or generator.
 
-1. Detect upstream release
-2. Update locally
-3. Test build
-4. Commit + push
-5. CI builds + deploys
+Check all nvchecker-enabled packages:
 
----
+```sh
+mise run pkg:update
+```
 
-# Troubleshooting
+Check one package:
 
-## Build failures
+```sh
+mise run pkg:update <package>
+```
 
-* Check CI logs
-* Rebuild locally
-* Verify sources + sums
+Apply detected updates and refresh `.SRCINFO`:
 
-## GPG failures
+```sh
+mise run pkg:update --apply <package>
+```
 
-* Import missing keys
-* Verify fingerprints
-* Ensure `$GNUPGHOME` is initialized
+## Repository database maintenance
 
-## Repo access issues
+### Add/update package archives
 
-* Confirm Pages enabled
-* Check pacman.conf URL
-* Adjust SigLevel if needed
+`repo:update` selects the newest archive for each package and updates the repository database:
 
----
+```sh
+mise run repo:update
+```
 
-# License
+It can also target one package/archive/glob:
 
-Repo structure: MIT
-Packages retain upstream licenses.
+```sh
+mise run repo:update <package>
+```
+
+### Remove stale database entries
+
+Deleting a package directory from Git does not automatically remove its old entry from a pacman repository database.
+
+Preview entries present in the DB but no longer produced by any `packages/*/PKGBUILD`:
+
+```sh
+mise run repo:clean --dry-run
+```
+
+Remove those stale entries:
+
+```sh
+mise run repo:clean
+```
+
+Remove them and refresh the host pacman sync DB:
+
+```sh
+mise run repo:clean --refresh-sync
+```
+
+This uses `repo-remove`; it does not rebuild the database from scratch.
+
+### Prune archives
+
+Preview package archives that are no longer indexed plus old retained versions:
+
+```sh
+mise run repo:prune --dry-run
+```
+
+Prune them, keeping two indexed versions per package by default:
+
+```sh
+mise run repo:prune
+```
+
+Change the retained version count when needed:
+
+```sh
+mise run repo:prune --keep 1
+```
+
+### Full maintenance
+
+Run update, DB reconciliation, then archive pruning:
+
+```sh
+mise run repo:maintain
+```
+
+## Package selection
+
+Populate `.packages` from packages currently installed from the configured OpenArsenal repository:
+
+```sh
+mise run pkg:select-installed
+```
+
+Use `pkg:plan` before a larger build to inspect the dependency order without changing the chroot or repository.
+
+## Design rules
+
+- `packages/` is the only package-source root.
+- `/srv/pacman/repos/openarsenal/x86_64_v3` is the default published repository.
+- `/var/lib/archbuild/openarsenal-x86_64_v3` is disposable clean-chroot state.
+- `.env` contains machine-local overrides; `.env.example` documents supported defaults.
+- Package-local `.nvchecker.toml` files are authoritative for update checks.
+- The repository is maintained locally; there is no GitHub Actions package publisher.
