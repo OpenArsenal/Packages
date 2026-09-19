@@ -1,0 +1,4 @@
+[sidra-git]
+source = "git"
+git = "https://github.com/wimpysworld/sidra.git"
+use_commit = true
