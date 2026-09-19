@@ -1,5 +1,5 @@
 pkgname=electron42-castlab
-pkgver=42.5.2+wvcus
+pkgver=42.11.0+wvcus
 pkgrel=1
 pkgdesc='Electron 42 for Content Security by castLabs with Widevine CDM support'
 arch=('x86_64')
@@ -43,7 +43,7 @@ _tag="${pkgver/+/%2B}"
 _zip="electron-v${pkgver}-linux-x64.zip"
 _asset="${_zip//+/%2B}"
 source_x86_64=("${_zip}::${url}/releases/download/v${_tag}/${_asset}")
-sha256sums_x86_64=('2b35ce51e2bcaa9659a46ad795cd8f1cdd7c0f868e6521001e0f5f604b8ff9f6')
+sha256sums_x86_64=('bd298c0813104472ea01205e25baa04bea4e190d86e8e8fee74a90d0c95f6c53')
 noextract=("${_zip}")
 
 package() {
