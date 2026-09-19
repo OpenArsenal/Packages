@@ -1,7 +1,16 @@
 # shellcheck shell=bash
 
-pkg::pacman_has() {
-  pacman -Si "$1" >/dev/null 2>&1
+pkg::pacman_can_resolve() {
+  local spec="$1"
+
+  pacman \
+    --sync \
+    --print \
+    --print-format '%n' \
+    --noconfirm \
+    --nodeps \
+    --nodeps \
+    "$spec" >/dev/null 2>&1
 }
 
 pkg::resolve_dir() {

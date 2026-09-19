@@ -95,11 +95,7 @@ pkg::plan_deps() {
       continue
     fi
 
-    if pkg::pacman_has "$dep"; then
-      continue
-    fi
-
-    if [[ "$dep" == "udev" ]] && pkg::pacman_has systemd; then
+    if pkg::pacman_can_resolve "$raw"; then
       continue
     fi
 
