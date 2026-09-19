@@ -1,0 +1,24 @@
+pkgbase = talosctl-source
+	pkgdesc = CLI for Talos Linux, built from official Sidero Labs source
+	pkgver = 1.14.0
+	pkgrel = 1
+	url = https://github.com/siderolabs/talos
+	arch = x86_64
+	license = MPL-2.0
+	makedepends = git
+	makedepends = go
+	depends = ca-certificates
+	provides = talosctl=1.14.0
+	conflicts = talosctl
+	conflicts = talosctl-bin
+	options = !lto
+	source = talos::git+https://github.com/siderolabs/talos.git#tag=v1.14.0?signed
+	validpgpkeys = DB997306E3102F11C4E8F5527B26396447AB6DFD
+	validpgpkeys = CC51116A94490FA6FB3C18EB2401FCAE863A06CA
+	validpgpkeys = 15D5721F5F5BAF121495363EFE042E3D4085A811
+	validpgpkeys = 4F8E31286D7997C9625C6F7B322C6F63F594CE7C
+	validpgpkeys = F2DCEFD8F9F4E29B16C8ABE4F16F84591E26D77F
+	validpgpkeys = 8D5378C17C004BA4C1EDEB7E86EC2A4776B60B45
+	sha256sums = 26a4b5d93c548456206287f4700b86d3c84c6c13cb2b48e6b8d2e0e0082caaf3
+
+pkgname = talosctl-source
