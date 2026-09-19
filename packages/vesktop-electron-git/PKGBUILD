@@ -1,8 +1,8 @@
 _nodeversion=22
-_electron_version=41
+_electron_version=43
 
 pkgname=vesktop-electron-git
-pkgver=1.6.5.r542.g61ecf66
+pkgver=1.6.7.r570.gcb9c55f
 pkgrel=1
 pkgdesc="A standalone Electron-based Discord app with Vencord & improved Linux support (git version; system Electron)"
 arch=('x86_64' 'aarch64')
@@ -64,22 +64,16 @@ source=(
   'vesktop.desktop'
   'vesktop-flags-wrapper.sh'
   'electron-builder-config.cjs'
-  '1242.patch'
-  '1251.patch'
 )
 
 sha256sums=('SKIP'
             'c7734c79b1329161d57aabe851f8f346b24d02824a6081d8cfb8355945e61b1d'
             'da7da0f44d63580654b895742d912614f7e36174a49f3fcabd67633517a150b4'
-            '9a9e442ce6f535eb32424b588fbdd78dfd2d1ada761496b603bbb32e37f51785'
-            'd9eea2a454b173d16350ecf0bbf5a5f7da1364c882f6da33cf2015e2879783c1'
-            '8f8e347aed6531762a049f40268e91bb9f6bc3ff6eef871a8cfe20ad4a233c2f')
+            '9a9e442ce6f535eb32424b588fbdd78dfd2d1ada761496b603bbb32e37f51785')
 b2sums=('SKIP'
         '18f00fecda0f4293d6c4429f3590fadef1f212fe161327dffb5c3fbc436845f6b8a96d1557a5b120bca2e0c06e459849b0a2966f69c22000b90e7d087ceb1606'
         'd58c396483f8430ae41fa7c04fa6d9edd9456aabb6768257ebf4fbd12b263e644d2f1cbd525c62b3be2117366dbd454e9cac2e86c2b70ddc269fd7c8ccd86cfe'
-        '86b8de677fb2ecfdcbdf52e750277ff5d13a5ddcc0a5fc9798b222aab8c7a1d9eab1fdee015823b9ebbd818f3c3bd57be9a753eff7055c1b184aabc31ef747e5'
-        'cffb560fa76d9260c139a274eb668c30baf71724bd9778d272f3c9e5d8b6c14cd843debe19f9aa38ab3ff1edd782839e129a8ef116050bde1e2797e290e2f73c'
-        '7f92af8ebf3a5e649da451078957a3125f4cc6e7c0756546d876dbfaa05958f35f60f0578a00a8553582422d7488276cf3c53ef4e0c641be6dbe6d1eb538b86d')
+        '86b8de677fb2ecfdcbdf52e750277ff5d13a5ddcc0a5fc9798b222aab8c7a1d9eab1fdee015823b9ebbd818f3c3bd57be9a753eff7055c1b184aabc31ef747e5')
 
 pkgver() {
   cd "${srcdir}/${_pkgsrc}"
@@ -142,13 +136,10 @@ _build_libvesktop() {
   )
 }
 
-
 prepare() {
   _nvm_env
 
   cd "${srcdir}/${_pkgsrc}"
-  patch -Np1 -i "${srcdir}/1242.patch"
-  patch -Np1 -i "${srcdir}/1251.patch"
   _pnpm_env
 }
 
