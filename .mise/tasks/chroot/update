@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Update the pristine package-build chroot"
+#MISE depends=["chroot:create"]
 
 source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
 source "${PKGBUILDS_ROOT}/.mise/lib/chroot.sh"
