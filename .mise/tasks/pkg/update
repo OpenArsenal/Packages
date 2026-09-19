@@ -57,6 +57,8 @@ fi
 }
 
 if [[ "${usage_apply:-false}" == "true" ]]; then
+  task::require_env FEEDS_JSON
+
   [[ "${usage_json:-false}" != "true" ]] || {
     echo "error: --json cannot be combined with --apply" >&2
     exit 2
@@ -71,18 +73,48 @@ if [[ "${usage_apply:-false}" == "true" ]]; then
   [[ "${usage_verbose:-false}" == "true" ]] && args+=("--verbose")
   [[ "${usage_no_update_checksums:-false}" == "true" ]] && args+=("--no-update-checksums")
 
-  declare -A before=()
+  declare -a apply_dirs=()
   for dir in "${package_dirs[@]}"; do
+    package="${dir##*/}"
+    auto_apply="$(
+      jq -r \
+        --arg package "$package" \
+        '.packages[]? | select(.name == $package) | (.autoApply // true)' \
+        "$FEEDS_JSON" |
+        head -n1
+    )"
+
+    if [[ "$auto_apply" == "false" ]]; then
+      if [[ "${#requested[@]}" -gt 0 ]]; then
+        echo "error: automatic apply is disabled for: $package" >&2
+        echo "       check the package-specific update helper/notes instead" >&2
+        exit 2
+      fi
+
+      echo "Skipping manual-apply package: $package" >&2
+      continue
+    fi
+
+    apply_dirs+=("$dir")
+  done
+
+  [[ "${#apply_dirs[@]}" -gt 0 ]] || {
+    echo "No auto-applicable package updates selected." >&2
+    exit 0
+  }
+
+  declare -A before=()
+  for dir in "${apply_dirs[@]}"; do
     before["$dir"]="$(sha256sum "$dir/PKGBUILD" | cut -d' ' -f1)"
   done
 
-  if pkgctl "${args[@]}" "${package_dirs[@]}"; then
+  if pkgctl "${args[@]}" "${apply_dirs[@]}"; then
     rc=0
   else
     rc=$?
   fi
 
-  for dir in "${package_dirs[@]}"; do
+  for dir in "${apply_dirs[@]}"; do
     after="$(sha256sum "$dir/PKGBUILD" | cut -d' ' -f1)"
     [[ "$after" != "${before[$dir]}" ]] || continue
 
