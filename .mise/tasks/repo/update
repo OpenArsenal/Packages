@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Update the repository database"
+#MISE depends=["repo:create"]
 #USAGE flag "--new" help="Only add packages not already present"
 #USAGE flag "--prevent-downgrade" help="Skip if a newer version already exists"
 #USAGE flag "--include-sigs" help="Include package signatures"
@@ -13,14 +14,7 @@ source "${PKGBUILDS_ROOT}/.mise/lib/repo.sh"
 task::bootstrap
 task::require_env REPO_DIR REPO_DB
 
-repo::update_db \
-  "$REPO_DIR" \
-  "$REPO_DB" \
-  "${usage_package:-}" \
-  "${usage_new:-false}" \
-  "${usage_prevent_downgrade:-false}" \
-  "${usage_include_sigs:-false}" \
-  "${usage_dry_run:-false}"
+repo::update_db   "$REPO_DIR"   "$REPO_DB"   "${usage_package:-}"   "${usage_new:-false}"   "${usage_prevent_downgrade:-false}"   "${usage_include_sigs:-false}"   "${usage_dry_run:-false}"
 
 if [[ "${usage_refresh_sync:-false}" == "true" && "${usage_dry_run:-false}" != "true" ]]; then
   task::require_env REPO_NAME
