@@ -9,7 +9,6 @@ url='https://kubernetes.io'
 license=(custom)
 depends=()
 optdepends=(
-  'talosctl: for Talos local cluster workflows'
   'kubeadm: for Kubernetes cluster bootstrapping'
   'k3s: lightweight Kubernetes distribution'
 )

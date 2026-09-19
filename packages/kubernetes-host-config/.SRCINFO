@@ -5,7 +5,6 @@ pkgbase = kubernetes-host-config
 	url = https://kubernetes.io
 	arch = any
 	license = custom
-	optdepends = talosctl: for Talos local cluster workflows
 	optdepends = kubeadm: for Kubernetes cluster bootstrapping
 	optdepends = k3s: lightweight Kubernetes distribution
 	source = br_netfilter.conf
