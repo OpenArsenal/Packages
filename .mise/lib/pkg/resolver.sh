@@ -62,6 +62,18 @@ pkg::index_packages() {
   shopt -u nullglob
 }
 
+pkg::dir_outputs_name() {
+  local pkg_dir="$1"
+  local wanted="$2"
+  local output
+
+  while IFS= read -r output; do
+    [[ "$output" == "$wanted" ]] && return 0
+  done < <(pkg::metadata_outputs "$pkg_dir")
+
+  return 1
+}
+
 pkg::all_outputs_in_repo() {
   local pkg_dir="$1"
   local version output
@@ -91,6 +103,10 @@ pkg::plan_deps() {
     ver=""
     spec::parse "$raw" dep op ver
     [[ -n "$dep" ]] || continue
+
+    if pkg::dir_outputs_name "$pkg_dir" "$dep"; then
+      continue
+    fi
 
     if repo::is_dep_satisfied "$REPO_DIR" "$dep" "$op" "$ver"; then
       continue
