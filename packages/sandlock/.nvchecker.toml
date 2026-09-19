@@ -1,0 +1,5 @@
+[sandlock]
+source = "github"
+github = "multikernel/sandlock"
+prefix = "v"
+use_max_tag = true

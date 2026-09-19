@@ -1,4 +1,0 @@
-[alpaca-git]
-source = "git"
-git = "https://github.com/jeffser/alpaca.git"
-use_commit = true
