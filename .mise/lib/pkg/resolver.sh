@@ -84,7 +84,7 @@ pkg::all_outputs_in_repo() {
   while IFS= read -r output; do
     [[ -n "$output" ]] || continue
     found=true
-    repo::is_dep_satisfied "$REPO_DIR" "$output" "=" "$version" || return 1
+    repo::is_dep_satisfied "$REPO_DIR" "$output" ">=" "$version" || return 1
   done < <(pkg::metadata_outputs "$pkg_dir")
 
   [[ "$found" == true ]]
