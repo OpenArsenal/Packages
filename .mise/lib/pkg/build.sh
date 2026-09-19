@@ -70,13 +70,11 @@ pkg::build_dir() {
     export LOGDEST="$PWD/logs"
     mkdir -p "$LOGDEST"
 
-    if makechrootpkg "${chroot_args[@]}" -- "${makepkg_args[@]}"; then
-      return 0
-    fi
-
-    rc=$?
-    echo "error: makechrootpkg failed for: ${pkg_dir##*/} (exit $rc)" >&2
-    return "$rc"
+    makechrootpkg "${chroot_args[@]}" -- "${makepkg_args[@]}" || {
+      rc=$?
+      echo "error: makechrootpkg failed for: ${pkg_dir##*/} (exit $rc)" >&2
+      return "$rc"
+    }
   )
 }
 
