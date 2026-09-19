@@ -1,6 +1,0 @@
-[vesktop-bin]
-source = "github"
-github = "Vencord/Vesktop"
-use_latest_release = true
-from_pattern = "^[vV]"
-to_pattern = ""

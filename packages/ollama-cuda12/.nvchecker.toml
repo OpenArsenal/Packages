@@ -1,6 +1,5 @@
-[ollama]
+[ollama-cuda12]
 source = "github"
 github = "ollama/ollama"
-use_latest_release = true
-from_pattern = "^[vV]"
-to_pattern = ""
+use_max_tag = true
+prefix = "v"

@@ -1,6 +1,0 @@
-[ollama]
-source = "github"
-github = "ollama/ollama"
-use_latest_release = true
-from_pattern = "^[vV]"
-to_pattern = ""
