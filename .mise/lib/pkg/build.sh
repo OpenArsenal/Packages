@@ -5,23 +5,44 @@ pkg::pacman_has() {
   pacman -Si "$dep" >/dev/null 2>&1
 }
 
-pkg::build_pkgdir() {
+pkg::validate_dir() {
   local pkg_dir="$1"
-  echo "Building: $pkg_dir" >&2
-  pushd "$pkg_dir" >/dev/null || return
-  mise run pkg:build
-  popd >/dev/null || return
+
+  [[ -d "$pkg_dir" ]] || {
+    echo "error: package directory not found: $pkg_dir" >&2
+    return 1
+  }
+
+  [[ -f "$pkg_dir/PKGBUILD" ]] || {
+    echo "error: PKGBUILD not found: $pkg_dir/PKGBUILD" >&2
+    return 1
+  }
 }
 
-pkg::validate_pkg_dir() {
+pkg::build_dir() {
   local pkg_dir="$1"
-  if [[ ! -d "$pkg_dir" ]]; then
-    echo "warning: package directory not found; skipping: $pkg_dir" >&2
-    return 1
-  fi
-  if [[ ! -f "$pkg_dir/PKGBUILD" ]]; then
-    echo "warning: missing PKGBUILD; skipping: $pkg_dir" >&2
-    return 1
-  fi
-  return 0
+
+  pkg::validate_dir "$pkg_dir" || return
+
+  echo "==> Building: $pkg_dir" >&2
+
+  (
+    cd "$pkg_dir" || exit 1
+    export PKGDEST="${REPO_DIR:?REPO_DIR not set}"
+    export LOGDEST="$PWD/logs"
+    mkdir -p "$LOGDEST"
+
+    makechrootpkg -r "${CHROOT_DIR:?CHROOT_DIR not set}" -c -u -x failure \
+      -- --syncdeps --cleanbuild --noconfirm --log
+  )
+}
+
+pkg::publish_outputs() {
+  local pkg_dir="$1"
+  local output
+
+  while IFS= read -r output; do
+    [[ -n "$output" ]] || continue
+    repo::update_db "$REPO_DIR" "$REPO_DB" "$output" false false false
+  done < <(pkg::metadata_outputs "$pkg_dir")
 }

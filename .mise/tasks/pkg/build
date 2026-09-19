@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
-#MISE description="Build a package in a clean chroot"
+#MISE description="Build the package in the current directory in a clean chroot"
 #MISE depends=["repo:create", "chroot:create"]
+#MISE depends_post=["repo:update"]
 #MISE dir="{{cwd}}"
 
-export PKGDEST="${REPO_DIR}"
-export LOGDEST="$PWD/logs"
-mkdir -p "$LOGDEST"
+source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/repo.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/pkg.sh"
 
-makechrootpkg -r "$CHROOT_DIR" -c -u -x failure \
-  -- --syncdeps --cleanbuild --noconfirm --log
+task::bootstrap
+task::require_env REPO_DIR REPO_DB CHROOT_DIR
+
+pkg::build_dir "$PWD"
