@@ -128,7 +128,8 @@ _assert_built_templates() {
       return 1
     fi
   done < <(
-    sed -n "s@^import .* from '\\(./edgeless/.*\\.json\\)';$@\\1@p" "${_manifest}"
+    grep -oE "'\\./edgeless/[^']+\\.json'" "${_manifest}" |
+      tr -d "'"
   )
 
   if [[ "${_found}" != true ]]; then
