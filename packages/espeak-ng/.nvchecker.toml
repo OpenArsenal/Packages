@@ -1,4 +1,6 @@
 [espeak-ng]
 source = "github"
 github = "espeak-ng/espeak-ng"
-use_max_tag = true
+use_latest_release = true
+from_pattern = "^[vV]"
+to_pattern = ""
