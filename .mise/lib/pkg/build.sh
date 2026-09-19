@@ -38,7 +38,7 @@ pkg::build_dir() {
 
   pkg::validate_dir "$pkg_dir" || return
 
-  local -a args=(
+  local -a chroot_args=(
     -r "${CHROOT_DIR:?CHROOT_DIR not set}"
     -c
     -u
@@ -46,8 +46,15 @@ pkg::build_dir() {
   )
 
   if [[ -d "${REPO_BASE:-}" ]]; then
-    args+=(-D "$REPO_BASE")
+    chroot_args+=(-D "$REPO_BASE")
   fi
+
+  local -a makepkg_args=(
+    --syncdeps
+    --cleanbuild
+    --noconfirm
+    --log
+  )
 
   echo "==> Building: $pkg_dir" >&2
 
@@ -57,7 +64,7 @@ pkg::build_dir() {
     export LOGDEST="$PWD/logs"
     mkdir -p "$LOGDEST"
 
-    makechrootpkg "${args[@]}" --       --syncdeps       --cleanbuild       --noconfirm       --log
+    makechrootpkg "${chroot_args[@]}" -- "${makepkg_args[@]}"
   )
 }
 
@@ -67,6 +74,7 @@ pkg::publish_outputs() {
 
   while IFS= read -r output; do
     [[ -n "$output" ]] || continue
+
     repo::update_db       "$REPO_DIR"       "$REPO_DB"       "$output"       false       false       false       false
   done < <(pkg::metadata_outputs "$pkg_dir")
 }
