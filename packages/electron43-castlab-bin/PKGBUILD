@@ -1,5 +1,5 @@
 pkgname=electron43-castlab-bin
-pkgver=43.0.0+wvcus
+pkgver=43.5.0+wvcus
 pkgrel=1
 pkgdesc='Electron 43 for Content Security by castLabs with Widevine CDM support - binary release'
 arch=('x86_64')
