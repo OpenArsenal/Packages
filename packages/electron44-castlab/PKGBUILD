@@ -1,5 +1,5 @@
 pkgname=electron44-castlab
-pkgver=44.0.0_alpha.1+wvcus
+pkgver=44.1.0+wvcus
 pkgrel=1
 pkgdesc='Electron 44 for Content Security by castLabs with Widevine CDM support'
 arch=('x86_64')
