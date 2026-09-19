@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#MISE description="Remove ignored and untracked repository artifacts"
+#MISE confirm={ message = "Delete all ignored and untracked files?", default = "no" }
+
+set -euo pipefail
+git clean -fdx
