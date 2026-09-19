@@ -1,0 +1,4 @@
+[google-chrome-ffmpeg]
+source = "jq"
+url = "https://versionhistory.googleapis.com/v1/chrome/platforms/linux/channels/stable/versions/all/releases?filter=endtime%3Dnone%2Cfraction%3E%3D0.5&order_by=version%20desc"
+filter = ".releases[0].version"

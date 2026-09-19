@@ -675,14 +675,18 @@
       "channel": "stable"
     },
     {
-      "_comment": "Chrome Stable + matching Chromium FFmpeg revision; update together with update-chrome-ref.sh.",
+      "_comment": "Track Chrome Stable with nvchecker; apply remains manual because the matching Chromium FFmpeg ref must move with Chrome.",
       "name": "google-chrome-ffmpeg",
-      "type": "manual"
+      "type": "chrome",
+      "channel": "stable",
+      "autoApply": false
     },
     {
-      "_comment": "Chrome Canary + matching Chromium FFmpeg revision; update together with update-chrome-ref.sh.",
+      "_comment": "Track Chrome Canary with nvchecker; apply remains manual because the matching Chromium FFmpeg ref must move with Chrome.",
       "name": "google-chrome-canary-ffmpeg",
-      "type": "manual"
+      "type": "chrome",
+      "channel": "canary",
+      "autoApply": false
     },
     {
       "_comment": "Repository-local static udev/udisks rules; no upstream version source.",
