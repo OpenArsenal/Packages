@@ -70,8 +70,37 @@ pkg::build_dir() {
     export LOGDEST="$PWD/logs"
     mkdir -p "$LOGDEST"
 
-    makechrootpkg "${chroot_args[@]}" -- "${makepkg_args[@]}"
+    if makechrootpkg "${chroot_args[@]}" -- "${makepkg_args[@]}"; then
+      return 0
+    fi
+
+    rc=$?
+    echo "error: makechrootpkg failed for: ${pkg_dir##*/} (exit $rc)" >&2
+    return "$rc"
   )
+}
+
+pkg::verify_outputs() {
+  local pkg_dir="$1"
+  local output
+  local found_any=false
+
+  while IFS= read -r output; do
+    [[ -n "$output" ]] || continue
+
+    if repo::match_package_archives "$REPO_DIR" "$output" | grep -q .; then
+      found_any=true
+      continue
+    fi
+
+    echo "error: build completed but no package archive found for: $output" >&2
+    return 1
+  done < <(pkg::metadata_outputs "$pkg_dir")
+
+  [[ "$found_any" == "true" ]] || {
+    echo "error: no package outputs declared for: ${pkg_dir##*/}" >&2
+    return 1
+  }
 }
 
 pkg::publish_outputs() {
