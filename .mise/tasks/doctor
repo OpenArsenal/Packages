@@ -26,10 +26,5 @@ for bin in "${need_bins[@]}"; do
   fi
 done
 
-if ! command -v aur >/dev/null 2>&1; then
-  echo "Missing: aur (aurutils)"
-  echo "  Build packages/aurutils first if AUR import/update tasks are needed."
-fi
-
 (( missing == 0 )) || exit 1
 echo "OK"
