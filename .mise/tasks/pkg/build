@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+#MISE description="Build a package in a clean chroot"
+#MISE depends=["repo:create", "chroot:create"]
+#MISE dir="{{cwd}}"
+
+export PKGDEST="${REPO_DIR}"
+export LOGDEST="$PWD/logs"
+mkdir -p "$LOGDEST"
+
+makechrootpkg -r "$CHROOT_DIR" -c -u -x failure \
+  -- --syncdeps --cleanbuild --noconfirm --log
