@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Build packages from PACKAGES_FILE and their local dependencies"
-#MISE depends=["repo:create", "chroot:create", "gpg:init"]
+#MISE depends=["repo:create", "chroot:create"]
 
 source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
 source "${PKGBUILDS_ROOT}/.mise/lib/repo.sh"
