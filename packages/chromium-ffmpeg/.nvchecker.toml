@@ -1,0 +1,17 @@
+[chromium-ffmpeg:ffmpeg]
+source = "github"
+github = "FFmpeg/FFmpeg"
+use_max_tag = true
+include_regex = '^n[0-9]+\.[0-9]+(?:\.[0-9]+)?$'
+sort_version_key = "vercmp"
+prefix = "n"
+
+[chromium-ffmpeg:chromium]
+source = "jq"
+url = "https://versionhistory.googleapis.com/v1/chrome/platforms/linux/channels/stable/versions/all/releases?filter=endtime%3Dnone%2Cfraction%3E%3D0.5&order_by=version%20desc"
+filter = ".releases[0].version"
+
+[chromium-ffmpeg]
+source = "combiner"
+from = ["chromium-ffmpeg:ffmpeg", "chromium-ffmpeg:chromium"]
+format = "$1_$2"

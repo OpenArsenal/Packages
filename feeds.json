@@ -559,9 +559,10 @@
       "channel": "stable"
     },
     {
-      "_comment": "Composite FFmpeg + Chromium pkgver; update both inputs together.",
+      "_comment": "Track FFmpeg + Chromium Stable as the composite pkgver; apply remains manual because internal source pins must be updated together.",
       "name": "chromium-ffmpeg",
-      "type": "manual"
+      "type": "chromium-ffmpeg",
+      "autoApply": false
     },
     {
       "name": "chromium-ffmpeg-git",
@@ -689,14 +690,18 @@
       "autoApply": false
     },
     {
-      "_comment": "Repository-local static udev/udisks rules; no upstream version source.",
+      "_comment": "Repository-local static udev/udisks rules with no upstream release version.",
       "name": "ntfsplus-udev",
-      "type": "manual"
+      "type": "manual",
+      "nvchecker": false,
+      "nvcheckerReason": "no upstream version source"
     },
     {
-      "_comment": "Composite FFmpeg + Chromium/Vivaldi pkgver; update both inputs together.",
+      "_comment": "Embedded Chromium version is published in Vivaldi release notes but not through a stable machine-readable version endpoint usable by pkgctl.",
       "name": "vivaldi-ffmpeg",
-      "type": "manual"
+      "type": "manual",
+      "nvchecker": false,
+      "nvcheckerReason": "requires coordinated Vivaldi Chromium/FFmpeg ref update via update-ffmpeg-ref.sh"
     }
   ]
 }
