@@ -1,62 +1,10 @@
 #!/usr/bin/env bash
-#MISE description="Provision the package repository directory"
+#MISE description="Create the configured repository directory"
 #MISE hide=true
-#USAGE flag "--dir <dir>" help="Repository directory" env="REPO_DIR"
-#USAGE flag "--db <file>" help="Repository database path" env="REPO_DB"
-#USAGE flag "--group <grp>" help="Repository group" env="REPO_GROUP"
-#USAGE flag "--name <name>" help="Fallback repository/group name" env="REPO_NAME"
-#USAGE flag "--user <user>" help="User to add to the repository group" env="REPO_USER"
 
 source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
-source "${PKGBUILDS_ROOT}/.mise/lib/repo.sh"
 
 task::bootstrap
+task::require_env REPO_DIR
 
-REPO_DIR="${usage_dir:-${REPO_DIR:-}}"
-REPO_DB="${usage_db:-${REPO_DB:-}}"
-REPO_NAME="${usage_name:-${REPO_NAME:-}}"
-REPO_GROUP="${usage_group:-${REPO_GROUP:-${REPO_NAME:-}}}"
-REPO_USER="${usage_user:-${REPO_USER:-${USER:-}}}"
-
-task::require_env REPO_DIR REPO_DB REPO_GROUP REPO_USER
-
-case "$REPO_DIR" in
-  "/" | "." | "")
-    echo "error: refusing to provision REPO_DIR=$REPO_DIR" >&2
-    exit 1
-    ;;
-esac
-
-if [[ -d "$REPO_DIR" && -f "$REPO_DB" && -w "$REPO_DIR" ]]; then
-  echo "Repo already provisioned; skipping: $REPO_DIR"
-  exit 0
-fi
-
-repo::ensure_group "$REPO_GROUP"
-repo::add_user_to_group "$REPO_USER" "$REPO_GROUP"
-
-run0 bash -lc '
-set -euo pipefail
-dir="$1"
-group="$2"
-db="$3"
-
-install -d -m 2775 -o root -g "$group" "$dir"
-install -d -m 2775 -o root -g "$group" "$(dirname "$db")"
-find "$dir" -type d -exec chmod g+s {} +
-
-if [[ ! -f "$db" ]]; then
-  touch "$db"
-fi
-
-chown root:"$group" "$db"
-chmod 664 "$db"
-' -- "$REPO_DIR" "$REPO_GROUP" "$REPO_DB"
-
-if [[ ! -w "$REPO_DIR" ]]; then
-  echo "error: repo directory is not writable: $REPO_DIR" >&2
-  echo "       re-login (or use newgrp '$REPO_GROUP') after group membership changes" >&2
-  exit 1
-fi
-
-echo "OK"
+mkdir -p "$REPO_DIR"

@@ -1,13 +1,10 @@
 #!/usr/bin/env bash
 #MISE description="Print the pacman.conf stanza for this repository"
 
-set -euo pipefail
+source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/repo.sh"
 
-: "${REPO_NAME:?REPO_NAME not set}"
-: "${REPO_DIR:?REPO_DIR not set}"
+task::bootstrap
+task::require_env REPO_NAME REPO_DIR
 
-cat <<EOF
-[${REPO_NAME}]
-SigLevel = Optional TrustAll
-Server = file://${REPO_DIR}
-EOF
+repo::pacman_stanza "$REPO_NAME" "$REPO_DIR"

@@ -1,90 +1,17 @@
 #!/usr/bin/env bash
-#MISE description="Deprovision the package repository"
-#USAGE flag "--dir <dir>" help="Repository directory" env="REPO_DIR"
-#USAGE flag "--db <file>" help="Repository database path" env="REPO_DB"
-#USAGE flag "--group <grp>" help="Repository group" env="REPO_GROUP"
-#USAGE flag "--name <name>" help="Fallback repository/group name" env="REPO_NAME"
-#USAGE flag "--remove-db <0|1>" help="Remove repository DB and sidecars" default="1" {
-#USAGE   choices "0" "1"
-#USAGE }
-#USAGE flag "--remove-dir <0|1>" help="Remove repository directory if empty" default="1" {
-#USAGE   choices "0" "1"
-#USAGE }
-#USAGE flag "--force-remove-dir <0|1>" help="Recursively remove repository directory" default="0" {
-#USAGE   choices "0" "1"
-#USAGE }
-#USAGE flag "--remove-group <0|1>" help="Delete repository group if unused" default="1" {
-#USAGE   choices "0" "1"
-#USAGE }
-#USAGE flag "--force-remove-group-members <0|1>" help="Remove supplementary group members first" default="0" {
-#USAGE   choices "0" "1"
-#USAGE }
-#USAGE flag "--force-reassign-primary-users <0|1>" help="Reassign primary-group users first" default="0" {
-#USAGE   choices "0" "1"
-#USAGE }
+#MISE description="Remove the configured repository directory"
+#MISE confirm={ message = "Delete the configured repository directory?", default = "no" }
 
 source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
-source "${PKGBUILDS_ROOT}/.mise/lib/repo.sh"
 
 task::bootstrap
-
-REPO_DIR="${usage_dir:-${REPO_DIR:-}}"
-REPO_DB="${usage_db:-${REPO_DB:-}}"
-REPO_NAME="${usage_name:-${REPO_NAME:-}}"
-REPO_GROUP="${usage_group:-${REPO_GROUP:-${REPO_NAME:-}}}"
-
-REMOVE_DB="${usage_remove_db:-1}"
-REMOVE_DIR="${usage_remove_dir:-1}"
-FORCE_REMOVE_DIR="${usage_force_remove_dir:-0}"
-REMOVE_GROUP="${usage_remove_group:-1}"
-FORCE_REMOVE_GROUP_MEMBERS="${usage_force_remove_group_members:-0}"
-FORCE_REASSIGN_PRIMARY_USERS="${usage_force_reassign_primary_users:-0}"
-
-task::require_env REPO_DIR REPO_DB REPO_GROUP
+task::require_env REPO_DIR PKGBUILDS_ROOT
 
 case "$REPO_DIR" in
-  "/" | "." | "")
-    echo "error: refusing to deprovision REPO_DIR=$REPO_DIR" >&2
+  "" | "/" | "." | "$PKGBUILDS_ROOT")
+    echo "error: refusing to delete REPO_DIR=$REPO_DIR" >&2
     exit 1
     ;;
 esac
 
-repo::db_sidecars() {
-  local db="$1"
-  printf '%s\n' "${db}.old"
-
-  case "$db" in
-    *.db)
-      printf '%s\n' "${db}.tar.gz" "${db}.tar.gz.old" "${db}.tar.zst" "${db}.tar.zst.old"
-      ;;
-    *.db.tar.gz)
-      printf '%s\n' "${db%.tar.gz}"
-      ;;
-    *.db.tar.zst)
-      printf '%s\n' "${db%.tar.zst}"
-      ;;
-  esac
-}
-
-if [[ "$REMOVE_DB" == "1" ]]; then
-  run0 rm -f -- "$REPO_DB"
-
-  while IFS= read -r sidecar; do
-    [[ -n "$sidecar" ]] || continue
-    run0 rm -f -- "$sidecar"
-  done < <(repo::db_sidecars "$REPO_DB")
-fi
-
-if [[ "$REMOVE_DIR" == "1" && -d "$REPO_DIR" ]]; then
-  if [[ "$FORCE_REMOVE_DIR" == "1" ]]; then
-    run0 rm -rf --one-file-system "$REPO_DIR"
-  elif ! rmdir "$REPO_DIR" 2>/dev/null; then
-    echo "Repo directory not empty; keeping: $REPO_DIR"
-  fi
-fi
-
-if [[ "$REMOVE_GROUP" == "1" ]]; then
-  repo::delete_group_if_unused     "$REPO_GROUP"     "$FORCE_REMOVE_GROUP_MEMBERS"     "$FORCE_REASSIGN_PRIMARY_USERS"
-fi
-
-echo "OK"
+rm -rf -- "$REPO_DIR"

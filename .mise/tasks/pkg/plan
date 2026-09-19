@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+#MISE description="Show the local package build order without building"
+#MISE dir="{{cwd}}"
+#USAGE arg "[package]" help="Package name or directory; omit to use PACKAGES_FILE"
+
+source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/repo.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/pkg.sh"
+
+task::bootstrap
+task::require_env PACKAGES_DIR PACKAGES_FILE REPO_DIR
+
+declare -a requested=()
+
+if [[ -n "${usage_package:-}" ]]; then
+  requested=("${usage_package}")
+else
+  pkg::load_requested "$PACKAGES_FILE" requested
+fi
+
+[[ "${#requested[@]}" -gt 0 ]] || {
+  echo "No packages requested." >&2
+  exit 1
+}
+
+pkg::plan_selected "$PACKAGES_DIR" "${requested[@]}"
+pkg::print_plan

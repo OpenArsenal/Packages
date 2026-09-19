@@ -32,28 +32,6 @@ repo::version_satisfies() {
   esac
 }
 
-repo::spec_parse() {
-  local raw="$1"
-  local out_name="$2"
-  local out_op="$3"
-  local out_ver="$4"
-  local name op ver
-
-  if [[ "$raw" =~ ^([^\<\>\=]+)(\<\=|\>\=|\=|\<|\>)(.+)$ ]]; then
-    name="${BASH_REMATCH[1]}"
-    op="${BASH_REMATCH[2]}"
-    ver="${BASH_REMATCH[3]}"
-  else
-    name="$raw"
-    op=""
-    ver=""
-  fi
-
-  printf -v "$out_name" '%s' "$name"
-  printf -v "$out_op" '%s' "$op"
-  printf -v "$out_ver" '%s' "$ver"
-}
-
 repo::remember_max_version() {
   local map_name="$1"
   local key="$2"
@@ -86,10 +64,11 @@ repo::index_build() {
 
     while IFS= read -r raw; do
       [[ -n "$raw" ]] || continue
+
       provide_name=""
       provide_op=""
       provide_ver=""
-      repo::spec_parse "$raw" provide_name provide_op provide_ver
+      spec::parse "$raw" provide_name provide_op provide_ver
       [[ -n "$provide_name" ]] || continue
 
       REPO_PROVIDE_PRESENT["$provide_name"]=1

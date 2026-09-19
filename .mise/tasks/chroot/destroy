@@ -1,16 +1,10 @@
 #!/usr/bin/env bash
 #MISE description="Destroy the clean package-build chroot"
 #MISE hide=true
+#MISE confirm={ message = "Delete the configured build chroot?", default = "no" }
 
-set -euo pipefail
+source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/chroot.sh"
 
-: "${CHROOT_DIR:?CHROOT_DIR not set}"
-
-case "$CHROOT_DIR" in
-  "/" | "." | "")
-    echo "error: refusing to delete CHROOT_DIR=$CHROOT_DIR" >&2
-    exit 1
-    ;;
-esac
-
-run0 rm -rf -- "$CHROOT_DIR"
+task::bootstrap
+chroot::destroy

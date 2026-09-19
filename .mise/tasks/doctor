@@ -1,27 +1,31 @@
 #!/usr/bin/env bash
-#MISE description="Check required package-build tools"
+#MISE description="Check tools used by the package workflows"
 
 set -euo pipefail
 
-need_bins=(
-  arch-nspawn
+tools=(
   bash
   bsdtar
+  curl
   git
+  gpg
+  jq
   makechrootpkg
   makepkg
   mkarchroot
   paccache
   pacman
+  pacman-conf
+  python3
   repo-add
   run0
   vercmp
 )
 
 missing=0
-for bin in "${need_bins[@]}"; do
-  if ! command -v "$bin" >/dev/null 2>&1; then
-    echo "Missing: $bin"
+for tool in "${tools[@]}"; do
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    printf 'Missing: %s\n' "$tool"
     missing=1
   fi
 done

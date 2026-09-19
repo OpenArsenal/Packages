@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
-#MISE description="Build the package in the current directory in a clean chroot"
-#MISE depends=["repo:create", "chroot:create"]
-#MISE depends_post=["repo:update"]
+#MISE description="Build one package and its local dependencies"
+#MISE depends=["repo:create", "chroot:create", "gpg:init"]
 #MISE dir="{{cwd}}"
+#USAGE arg "[package]" help="Package name or directory; defaults to the invocation directory"
 
 source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
 source "${PKGBUILDS_ROOT}/.mise/lib/repo.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/chroot.sh"
 source "${PKGBUILDS_ROOT}/.mise/lib/pkg.sh"
 
 task::bootstrap
-task::require_env REPO_DIR REPO_DB CHROOT_DIR
+task::require_env PACKAGES_DIR REPO_DIR REPO_DB CHROOT_DIR
 
-pkg::build_dir "$PWD"
+target="${usage_package:-${MISE_ORIGINAL_CWD:-$PWD}}"
+pkg::build_selected "$PACKAGES_DIR" "$target"
