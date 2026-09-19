@@ -1,7 +1,7 @@
 # Maintainer: Okiki <okiki@thunderstrike.co>
 pkgname=positron-bin
 _pkgname=positron
-pkgver='2026.04.1.10'
+pkgver=2026.04.1.10
 _upstream_ver="${pkgver%.*}-${pkgver##*.}"
 pkgrel=4
 pkgdesc="A next-generation data science IDE from Posit (official bundled-runtime binary repack)"

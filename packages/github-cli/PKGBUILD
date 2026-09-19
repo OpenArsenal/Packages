@@ -1,7 +1,7 @@
 # Maintainer: Okiki <okiki@thunderstrike.co>
 
 pkgname=github-cli
-pkgver='2.89.0'
+pkgver=2.89.0
 pkgrel=1
 pkgdesc="The GitHub CLI"
 arch=("x86_64")

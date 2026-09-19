@@ -1,6 +1,6 @@
 pkgbase=ollama
 pkgname=(ollama ollama-cuda12 ollama-docs)
-pkgver='0.30.4'
+pkgver=0.30.4
 pkgrel=1
 pkgdesc='Create, run and share large language models (LLMs)'
 arch=(x86_64)
