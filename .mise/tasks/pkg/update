@@ -7,16 +7,24 @@
 #USAGE flag "-v --verbose" help="Show up-to-date packages too"
 #USAGE flag "--json" help="Print pkgctl JSON output"
 #USAGE flag "--list-outdated" help="Print only out-of-date package names"
-#USAGE arg "[package]" var=#true help="Package names to check; defaults to every package with .nvchecker.toml"
+#USAGE arg "[package]" var=#true help="Package names to check; defaults to PACKAGES_FILE, then all nvchecker-enabled packages"
 
 source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/pkg.sh"
 
 task::bootstrap
-task::require_env PACKAGES_DIR
+task::require_env PACKAGES_DIR PACKAGES_FILE
 
 declare -a requested=()
+explicit_selection=false
+file_selection=false
+
 if [[ -n "${usage_package:-}" ]]; then
   read -r -a requested <<< "${usage_package}"
+  explicit_selection=true
+else
+  pkg::load_requested "$PACKAGES_FILE" requested
+  [[ "${#requested[@]}" -gt 0 ]] && file_selection=true
 fi
 
 declare -a package_dirs=()
@@ -25,15 +33,25 @@ if [[ "${#requested[@]}" -gt 0 ]]; then
   for package in "${requested[@]}"; do
     dir="$PACKAGES_DIR/$package"
 
-    [[ -f "$dir/PKGBUILD" ]] || {
-      echo "error: package not found: $package" >&2
-      exit 1
-    }
+    if [[ ! -f "$dir/PKGBUILD" ]]; then
+      if [[ "$explicit_selection" == "true" ]]; then
+        echo "error: package not found: $package" >&2
+        exit 1
+      fi
 
-    [[ -f "$dir/.nvchecker.toml" ]] || {
-      echo "error: no nvchecker config for: $package" >&2
-      exit 1
-    }
+      echo "Skipping selected package not found in repository: $package" >&2
+      continue
+    fi
+
+    if [[ ! -f "$dir/.nvchecker.toml" ]]; then
+      if [[ "$explicit_selection" == "true" ]]; then
+        echo "error: no nvchecker config for: $package" >&2
+        exit 1
+      fi
+
+      echo "Skipping selected package without nvchecker config: $package" >&2
+      continue
+    fi
 
     package_dirs+=("$dir")
   done
@@ -51,10 +69,15 @@ else
   )
 fi
 
-[[ "${#package_dirs[@]}" -gt 0 ]] || {
+if [[ "${#package_dirs[@]}" -eq 0 ]]; then
+  if [[ "$file_selection" == "true" ]]; then
+    echo "No nvchecker-enabled packages are selected in $PACKAGES_FILE." >&2
+    exit 0
+  fi
+
   echo "error: no nvchecker-enabled packages found" >&2
   exit 1
-}
+fi
 
 if [[ "${usage_apply:-false}" == "true" ]]; then
   task::require_env FEEDS_JSON
@@ -85,7 +108,7 @@ if [[ "${usage_apply:-false}" == "true" ]]; then
     )"
 
     if [[ "$auto_apply" == "false" ]]; then
-      if [[ "${#requested[@]}" -gt 0 ]]; then
+      if [[ "$explicit_selection" == "true" ]]; then
         echo "error: automatic apply is disabled for: $package" >&2
         echo "       check the package-specific update helper/notes instead" >&2
         exit 2
