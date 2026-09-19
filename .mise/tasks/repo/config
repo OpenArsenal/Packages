@@ -5,6 +5,6 @@ source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
 source "${PKGBUILDS_ROOT}/.mise/lib/repo.sh"
 
 task::bootstrap
-task::require_env REPO_NAME REPO_DIR
+task::require_env REPO_NAME REPO_DIR REPO_SIG_LEVEL
 
-repo::pacman_stanza "$REPO_NAME" "$REPO_DIR"
+repo::pacman_stanza "$REPO_NAME" "$REPO_DIR" "$REPO_SIG_LEVEL"

@@ -51,11 +51,16 @@ pkg::build_dir() {
     export LOGDEST="$PWD/logs"
     mkdir -p "$LOGDEST"
 
-    makechrootpkg "${args[@]}" -- \
-      --syncdeps --cleanbuild --noconfirm --log
+    makechrootpkg "${args[@]}" --       --syncdeps --cleanbuild --noconfirm --log
   )
 }
 
 pkg::publish_outputs() {
-  repo::update_db "$REPO_DIR" "$REPO_DB" "" false false false false
+  local pkg_dir="$1"
+  local output
+
+  while IFS= read -r output; do
+    [[ -n "$output" ]] || continue
+    repo::update_db "$REPO_DIR" "$REPO_DB" "$output" false false false false
+  done < <(pkg::metadata_outputs "$pkg_dir")
 }

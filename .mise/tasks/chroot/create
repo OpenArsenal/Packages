@@ -3,7 +3,6 @@
 #MISE hide=true
 
 source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
-source "${PKGBUILDS_ROOT}/.mise/lib/repo.sh"
 source "${PKGBUILDS_ROOT}/.mise/lib/chroot.sh"
 
 task::bootstrap
