@@ -53,12 +53,17 @@ chroot::create() {
   if [[ -n "${CHROOT_PACMAN_CONF:-}" ]]; then
     [[ -f "$CHROOT_PACMAN_CONF" ]] || {
       echo "error: pacman config not found: $CHROOT_PACMAN_CONF" >&2
+      rm -f "$resolved_conf"
       return 1
     }
 
-    pacman-conf --config "$CHROOT_PACMAN_CONF" >"$resolved_conf"
-  else
-    pacman-conf >"$resolved_conf"
+    if ! pacman-conf --config "$CHROOT_PACMAN_CONF" >"$resolved_conf"; then
+      rm -f "$resolved_conf"
+      return 1
+    fi
+  elif ! pacman-conf >"$resolved_conf"; then
+    rm -f "$resolved_conf"
+    return 1
   fi
 
   local -a packages=(base-devel git archlinux-keyring)
