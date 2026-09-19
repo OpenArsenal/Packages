@@ -1,0 +1,10 @@
+*.pkg.tar.*
+*.deb
+*.tar.gz
+src/
+pkg/
+ffmpeg-src/
+ffmpeg-install/
+libffmpeg.so
+sigs.txt
+export.map

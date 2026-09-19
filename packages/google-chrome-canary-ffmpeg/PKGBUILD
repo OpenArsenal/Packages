@@ -1,0 +1,170 @@
+# Based on the Arch AUR google-chrome-canary package, with a Chromium-compatible
+# expanded FFmpeg library built into Chrome Canary's package image.
+
+pkgname=google-chrome-canary-ffmpeg
+pkgver=154.0.8024.0
+pkgrel=1
+pkgdesc="Google Chrome Canary with an expanded Chromium-compatible FFmpeg library"
+arch=('x86_64')
+url="https://www.google.com/chrome"
+license=('custom:chrome' 'LGPL-2.1-or-later')
+
+# Replace only the normal Canary package. Stable/Beta/Dev can remain installed
+# side-by-side because Canary uses /opt/google/chrome-canary.
+provides=("google-chrome-canary=${pkgver}" 'google-chrome')
+conflicts=('google-chrome-canary')
+
+# Keep Canary and its FFmpeg ABI pinned together.
+# Chromium 154.0.8024.0 third_party/ffmpeg revision.
+_chromium_ffmpeg_ref=53fa34a23be9054d25ac2500dbdae9a0e570bb5c
+_chromium_ffmpeg_url=https://chromium.googlesource.com/chromium/third_party/ffmpeg
+_ffmpeg_archive="ffmpeg-${_chromium_ffmpeg_ref}.tar.gz"
+_channel=canary
+
+install=$pkgname.install
+
+depends=(
+  'alsa-lib'
+  'gtk3'
+  'libcups'
+  'libxss'
+  'libxtst'
+  'nss'
+  'ttf-liberation'
+  'xdg-utils'
+)
+optdepends=(
+  'pipewire: WebRTC desktop sharing under Wayland'
+  'kdialog: for file dialogs in KDE'
+  'gnome-keyring: for storing passwords in GNOME keyring'
+  'kwallet5: for storing passwords in KWallet'
+)
+makedepends=('nasm')
+options=('!emptydirs' '!strip' '!lto')
+
+source=(
+  'eula_text.html::https://raw.githubusercontent.com/archlinux/aur/google-chrome/eula_text.html'
+  "google-chrome-${_channel}.sh"
+  "${_ffmpeg_archive}::${_chromium_ffmpeg_url}/+archive/${_chromium_ffmpeg_ref}.tar.gz"
+)
+source_x86_64=(
+  "https://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-${_channel}/google-chrome-${_channel}_${pkgver}-1_amd64.deb"
+)
+noextract=("${_ffmpeg_archive}")
+
+# EULA and launcher are pinned. The two Google/Chromium binary/source downloads
+# are version/commit pinned but change very frequently on Canary; run updpkgsums
+# after update-chrome-ref.sh if you want fixed hashes for a local release.
+sha512sums=(
+  'a225555c06b7c32f9f2657004558e3f996c981481dbb0d3cd79b1d59fa3f05d591af88399422d3ab29d9446c103e98d567aeafe061d9550817ab6e7eb0498396'
+  '9579a42fbcbc8c592a6f1c625735768287a74d5081d5e2486a5ea11ee41b1d9f91bf60c7c816a9f433e9bf92724262a4c986408a04bf7f13fec8fca4600c6b3a'
+  'SKIP'
+)
+sha512sums_x86_64=('SKIP')
+
+prepare() {
+  rm -rf ffmpeg-src ffmpeg-install sigs.txt export.map
+  mkdir -p ffmpeg-src ffmpeg-install
+  bsdtar -xf "${_ffmpeg_archive}" -C ffmpeg-src
+
+  # Export only the C API symbols this exact Chromium/Canary revision expects.
+  grep -oP '\bav[a-z0-9_]*(?=\s*\()' ffmpeg-src/chromium/ffmpeg.sigs |
+    sort -u >sigs.txt
+
+  {
+    printf '{\nglobal:\n'
+    sed 's/$/;/' sigs.txt
+    printf 'local:\n*;\n};\n'
+  } >export.map
+
+  cd ffmpeg-src
+
+  # Same native-Opus behavior used by the original chromium-ffmpeg package.
+  if [[ -f libavcodec/opus/dec.c ]]; then
+    sed -i.bak 's/^ *\.p\.name *=.*/.p.name="libopus",/' libavcodec/opus/dec.c
+  fi
+}
+
+build() {
+  cd ffmpeg-src
+
+  ./configure \
+    --disable-debug \
+    --disable-all \
+    --disable-autodetect \
+    --disable-doc \
+    --disable-iconv \
+    --disable-network \
+    --disable-symver \
+    --enable-static \
+    --disable-shared \
+    --enable-avformat \
+    --enable-avcodec \
+    --enable-avutil \
+    --enable-swresample \
+    --enable-demuxers \
+    --enable-decoders \
+    --enable-parsers \
+    --enable-pic \
+    --enable-asm \
+    --enable-hardcoded-tables \
+    --extra-cflags="-fno-math-errno -fno-signed-zeros -fno-semantic-interposition -fomit-frame-pointer" \
+    --libdir=/
+
+  make
+  make DESTDIR="${srcdir}/ffmpeg-install" install
+
+  cd "${srcdir}"
+  _symbols=$(sed 's/^/-Wl,-u,/' sigs.txt | paste -sd ' ' -)
+
+  gcc -shared ${LDFLAGS} \
+    -Wl,--start-group \
+      ffmpeg-install/libavcodec.a \
+      ffmpeg-install/libavformat.a \
+      ffmpeg-install/libavutil.a \
+      ffmpeg-install/libswresample.a \
+    -Wl,--end-group \
+    ${_symbols} \
+    -Wl,--version-script=export.map \
+    -Wl,-Bsymbolic \
+    -lm -lpthread \
+    -o libffmpeg.so
+}
+
+package() {
+  # Normal AUR google-chrome-canary packaging.
+  bsdtar -xf data.tar.xz -C "$pkgdir/"
+
+  # Launcher
+  install -m755 "google-chrome-${_channel}.sh" \
+    "$pkgdir/usr/bin/google-chrome-${_channel}"
+
+  # Icons
+  for i in 16x16 24x24 32x32 48x48 64x64 128x128 256x256; do
+    install -Dm644 "$pkgdir/opt/google/chrome-${_channel}/product_logo_${i/x*/}_${_channel}.png" \
+      "$pkgdir/usr/share/icons/hicolor/$i/apps/google-chrome-${_channel}.png"
+  done
+
+  # Licenses
+  install -Dm644 eula_text.html \
+    "$pkgdir/usr/share/licenses/google-chrome-${_channel}/eula_text.html"
+  install -Dm644 "$pkgdir/opt/google/chrome-${_channel}/WidevineCdm/LICENSE" \
+    "$pkgdir/usr/share/licenses/google-chrome-${_channel}/WidevineCdm-LICENSE.txt"
+
+  # Fix the Canary desktop entry
+  sed -i \
+    -e "/Exec=/i\StartupWMClass=Google-chrome-${_channel}" \
+    -e 's/x-scheme-handler\/ftp;\?//g' \
+    "$pkgdir/usr/share/applications/google-chrome-${_channel}.desktop"
+
+  # Remove the Debian Cron job, duplicate product logos and menu directory
+  rm -r \
+    "$pkgdir/etc/cron.daily/" \
+    "$pkgdir/opt/google/chrome-${_channel}/cron/" \
+    "$pkgdir/opt/google/chrome-${_channel}/product_logo_"*.png
+
+  # The only functional change from the normal Canary package:
+  # replace Canary's bundled FFmpeg before pacman creates/installs the package.
+  install -Dm755 "${srcdir}/libffmpeg.so" \
+    "$pkgdir/opt/google/chrome-${_channel}/libffmpeg.so"
+}
