@@ -29,17 +29,24 @@ pkg::index_packages() {
   pkg::resolver_reset
   shopt -s nullglob
 
+  # Repository directory names are explicit identities and always win.
+  for pkg_dir in "$packages_dir"/*; do
+    [[ -f "$pkg_dir/PKGBUILD" ]] || continue
+    pkg::index_register "${pkg_dir##*/}" "$pkg_dir" true
+  done
+
+  # pkgbase/pkgname aliases fill only names that do not identify a directory.
   for pkg_dir in "$packages_dir"/*; do
     [[ -f "$pkg_dir/PKGBUILD" ]] || continue
 
-    pkg::index_register "${pkg_dir##*/}" "$pkg_dir" true
-    pkg::index_register "$(pkg::metadata_pkgbase "$pkg_dir")" "$pkg_dir" true
+    pkg::index_register "$(pkg::metadata_pkgbase "$pkg_dir")" "$pkg_dir"
 
     while IFS= read -r name; do
-      pkg::index_register "$name" "$pkg_dir" true
+      pkg::index_register "$name" "$pkg_dir"
     done < <(pkg::metadata_outputs "$pkg_dir")
   done
 
+  # provides= entries are lowest-priority aliases.
   for pkg_dir in "$packages_dir"/*; do
     [[ -f "$pkg_dir/PKGBUILD" ]] || continue
 
@@ -110,17 +117,16 @@ pkg::plan_deps() {
 
 pkg::plan_dir() {
   local pkg_dir="$1"
-  local pkgbase key
+  local key
 
   pkg::validate_dir "$pkg_dir" || return
 
-  pkgbase="$(pkg::metadata_pkgbase "$pkg_dir")"
-  key="${pkgbase:-${pkg_dir##*/}}"
+  key="$pkg_dir"
 
   case "${PKG_STATE[$key]-}" in
     done) return 0 ;;
     visiting)
-      echo "error: dependency cycle detected at package: $key" >&2
+      echo "error: dependency cycle detected at package: ${pkg_dir##*/}" >&2
       return 1
       ;;
   esac
@@ -145,7 +151,7 @@ pkg::plan_selected() {
   pkg::index_packages "$packages_dir"
 
   for entry in "$@"; do
-    if [[ -d "$entry" ]]; then
+    if [[ -d "$entry" || ( "$entry" != */* && -d "$packages_dir/$entry" ) ]]; then
       pkg_dir="$(pkg::resolve_dir "$entry" "$packages_dir")"
     else
       pkg_dir="${PKG_PROVIDER_DIR[$entry]-}"
@@ -160,12 +166,10 @@ pkg::plan_selected() {
 }
 
 pkg::print_plan() {
-  local pkg_dir pkgbase
+  local pkg_dir
 
   for pkg_dir in "${PKG_PLAN[@]}"; do
-    pkgbase="$(pkg::metadata_pkgbase "$pkg_dir")"
-    printf '%s	%s
-' "${pkgbase:-${pkg_dir##*/}}" "$pkg_dir"
+    printf '%s\t%s\n' "${pkg_dir##*/}" "$pkg_dir"
   done
 }
 
