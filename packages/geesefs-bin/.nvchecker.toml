@@ -1,0 +1,5 @@
+[geesefs-bin]
+source = "github"
+github = "yandex-cloud/geesefs"
+prefix = "v"
+use_max_tag = true

@@ -1,4 +1,0 @@
-[affine-git]
-source = "git"
-git = "https://github.com/toeverything/AFFiNE.git"
-use_commit = true

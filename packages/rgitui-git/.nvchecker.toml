@@ -1,4 +1,0 @@
-[rgitui-git]
-source = "git"
-git = "https://github.com/noahbclarkson/rgitui.git"
-use_commit = true

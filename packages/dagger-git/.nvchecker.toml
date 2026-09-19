@@ -1,4 +1,0 @@
-[dagger-git]
-source = "git"
-git = "https://github.com/dagger/dagger.git"
-use_commit = true
