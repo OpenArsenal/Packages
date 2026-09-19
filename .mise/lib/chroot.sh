@@ -67,7 +67,7 @@ chroot::update() {
     return 1
   }
 
-  run0 arch-nspawn "$root" pacman -Syuu --noconfirm
+  run0 arch-nspawn "$root" pacman -Syu --noconfirm
 }
 
 chroot::destroy() {
