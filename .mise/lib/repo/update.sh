@@ -130,6 +130,10 @@ repo::update_db() {
   fi
 
   repo-add "${args[@]}" "$repo_db" "${selected[@]}"
+
+  if declare -F repo::index_reset >/dev/null 2>&1; then
+    repo::index_reset
+  fi
 }
 
 repo::refresh_sync_db() {
