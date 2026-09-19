@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+#MISE description="Check or apply package updates with pkgctl and nvchecker"
+#MISE alias="update"
+#USAGE flag "-a --apply" help="Update PKGBUILDs to the latest upstream versions"
+#USAGE flag "--no-update-checksums" help="Do not update checksums when applying"
+#USAGE flag "-v --verbose" help="Show up-to-date packages too"
+#USAGE flag "--json" help="Print pkgctl JSON output"
+#USAGE flag "--list-outdated" help="Print only out-of-date package names"
+#USAGE flag "-n --dry-run" help="Check only; this is already the default"
+#USAGE arg "[package]" var=#true help="Package names to check; defaults to every package with .nvchecker.toml"
+
+source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
+
+task::bootstrap
+task::require_env PACKAGES_DIR
+
+declare -a requested=()
+if [[ -n "${usage_package:-}" ]]; then
+  eval "requested=(${usage_package})"
+fi
+
+declare -a package_dirs=()
+
+if [[ "${#requested[@]}" -gt 0 ]]; then
+  for package in "${requested[@]}"; do
+    dir="$PACKAGES_DIR/$package"
+
+    [[ -f "$dir/PKGBUILD" ]] || {
+      echo "error: package not found: $package" >&2
+      exit 1
+    }
+
+    [[ -f "$dir/.nvchecker.toml" ]] || {
+      echo "error: no nvchecker config for: $package" >&2
+      exit 1
+    }
+
+    package_dirs+=("$dir")
+  done
+else
+  while IFS= read -r -d '' config; do
+    package_dirs+=("${config%/.nvchecker.toml}")
+  done < <(
+    find "$PACKAGES_DIR"       -mindepth 2       -maxdepth 2       -type f       -name .nvchecker.toml       -print0 |
+      sort -z
+  )
+fi
+
+[[ "${#package_dirs[@]}" -gt 0 ]] || {
+  echo "error: no nvchecker-enabled packages found" >&2
+  exit 1
+}
+
+if [[ "${usage_apply:-false}" == "true" ]]; then
+  [[ "${usage_json:-false}" != "true" ]] || {
+    echo "error: --json cannot be combined with --apply" >&2
+    exit 2
+  }
+
+  [[ "${usage_list_outdated:-false}" != "true" ]] || {
+    echo "error: --list-outdated cannot be combined with --apply" >&2
+    exit 2
+  }
+
+  args=(version upgrade)
+  [[ "${usage_verbose:-false}" == "true" ]] && args+=("--verbose")
+  [[ "${usage_no_update_checksums:-false}" == "true" ]] && args+=("--no-update-checksums")
+
+  declare -A before=()
+  for dir in "${package_dirs[@]}"; do
+    before["$dir"]="$(sha256sum "$dir/PKGBUILD" | cut -d' ' -f1)"
+  done
+
+  if pkgctl "${args[@]}" "${package_dirs[@]}"; then
+    rc=0
+  else
+    rc=$?
+  fi
+
+  for dir in "${package_dirs[@]}"; do
+    after="$(sha256sum "$dir/PKGBUILD" | cut -d' ' -f1)"
+    [[ "$after" != "${before[$dir]}" ]] || continue
+
+    (
+      cd "$dir"
+      makepkg --printsrcinfo > .SRCINFO.tmp
+      mv .SRCINFO.tmp .SRCINFO
+    )
+  done
+
+  exit "$rc"
+fi
+
+[[ "${usage_no_update_checksums:-false}" != "true" ]] || {
+  echo "error: --no-update-checksums requires --apply" >&2
+  exit 2
+}
+
+args=(version check)
+[[ "${usage_verbose:-false}" == "true" ]] && args+=("--verbose")
+
+if [[ "${usage_json:-false}" == "true" ]]; then
+  exec pkgctl "${args[@]}" --json "${package_dirs[@]}"
+fi
+
+if [[ "${usage_list_outdated:-false}" == "true" ]]; then
+  pkgctl "${args[@]}" --json "${package_dirs[@]}" |
+    jq -r '.[] | select(.out_of_date == true) | .pkgbase'
+  exit "${PIPESTATUS[0]}"
+fi
+
+if pkgctl "${args[@]}" "${package_dirs[@]}"; then
+  exit 0
+else
+  rc=$?
+  [[ "$rc" -eq 2 ]] && exit 0
+  exit "$rc"
+fi
