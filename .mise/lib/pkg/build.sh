@@ -108,6 +108,17 @@ pkg::publish_outputs() {
   while IFS= read -r output; do
     [[ -n "$output" ]] || continue
 
-    repo::update_db       "$REPO_DIR"       "$REPO_DB"       "$output"       false       false       false       false
+    echo "==> Publishing: $output" >&2
+    if ! repo::update_db \
+      "$REPO_DIR" \
+      "$REPO_DB" \
+      "$output" \
+      false \
+      false \
+      false \
+      false; then
+      echo "error: failed to publish package output: $output" >&2
+      return 1
+    fi
   done < <(pkg::metadata_outputs "$pkg_dir")
 }
