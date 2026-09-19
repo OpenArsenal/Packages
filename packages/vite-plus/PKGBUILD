@@ -1,6 +1,6 @@
 pkgname=vite-plus
-pkgver=0.2.1
-pkgrel=2
+pkgver=0.2.4
+pkgrel=1
 pkgdesc='Unified toolchain and entry point for web development'
 arch=('x86_64' 'aarch64')
 url='https://github.com/voidzero-dev/vite-plus'
@@ -43,7 +43,7 @@ source_aarch64=(
 # vite-task hashes are preserved from the previous package draft; the updated
 # Rolldown, Vite, and native binding inputs are intentionally marked SKIP here
 # because their checksums must be regenerated against the downloaded sources.
-sha256sums=('30f116d1a8703d36008ef9b3ff19e26ad05b6478468ef3cb4ad37ec013fc7cae'
+sha256sums=('a7ecb52e83feb0f181f068df41196d48fd30fd363d2faf550d280ca4abfe5185'
             '89f7a2bf40a2d8aaf88ea12c86c89231ea78fc81c5655cf31d444c3ef24ecef5'
             '1c76e2b0a2c958c9819e06b120be291112fd1a0a60296ca49b402bae48a574d8'
             '7c618838e3297371f11a24fecf945a9009ff1bee1875b3129d27c44521a8caab')
