@@ -673,6 +673,26 @@
       "type": "github-release",
       "repo": "toeverything/AFFiNE",
       "channel": "stable"
+    },
+    {
+      "_comment": "Chrome Stable + matching Chromium FFmpeg revision; update together with update-chrome-ref.sh.",
+      "name": "google-chrome-ffmpeg",
+      "type": "manual"
+    },
+    {
+      "_comment": "Chrome Canary + matching Chromium FFmpeg revision; update together with update-chrome-ref.sh.",
+      "name": "google-chrome-canary-ffmpeg",
+      "type": "manual"
+    },
+    {
+      "_comment": "Repository-local static udev/udisks rules; no upstream version source.",
+      "name": "ntfsplus-udev",
+      "type": "manual"
+    },
+    {
+      "_comment": "Composite FFmpeg + Chromium/Vivaldi pkgver; update both inputs together.",
+      "name": "vivaldi-ffmpeg",
+      "type": "manual"
     }
   ]
 }
