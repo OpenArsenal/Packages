@@ -1,4 +1,4 @@
-[ollama]
+[ollama-cuda12]
 source = "github"
 github = "ollama/ollama"
 use_max_tag = true
