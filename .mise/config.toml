@@ -29,7 +29,7 @@ PKG_DIR = "{{ env.PKGBUILDS_ROOT }}/packages"
 AURDEST = "{{ env.PKGBUILDS_ROOT }}"
 
 PACKAGER = "{{ get_env(name='PACKAGER', default='OpenArsenal Contributors <cachyos(at)openarsenal(dot)com>') }}"
-SOURCE_DATE_EPOCH = "{{ exec(command='sh -lc "(git -C \"' ~ env.PKGBUILDS_ROOT ~ '\" log -1 --format=%ct 2>/dev/null || date -u +%s) | tr -cd 0-9"') | trim }}"
+SOURCE_DATE_EPOCH = "{{ exec(command='git log -1 --format=%ct 2>/dev/null || date -u +%s') | trim }}"
 
 [tasks.default]
 description = "List available tasks"
