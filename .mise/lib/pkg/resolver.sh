@@ -34,6 +34,7 @@ pkg::index_packages() {
   # Repository directory names are explicit identities and always win.
   for pkg_dir in "$packages_dir"/*; do
     [[ -f "$pkg_dir/PKGBUILD" ]] || continue
+    pkg::cache_srcinfo "$pkg_dir" || return
     pkg::index_register "${pkg_dir##*/}" "$pkg_dir" true
   done
 
