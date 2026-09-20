@@ -166,9 +166,21 @@ pkg::plan_selected() {
   local force_selected="$2"
   shift 2
   local entry pkg_dir
+  local -a selected_dirs=()
+
+  case "$force_selected" in
+    true|false) ;;
+    *)
+      echo "error: invalid force flag: $force_selected" >&2
+      return 2
+      ;;
+  esac
 
   pkg::index_packages "$packages_dir"
 
+  # Resolve and mark every explicit selection before traversing dependencies.
+  # This guarantees --force applies even when one selected package is visited
+  # first as another selected package's dependency.
   for entry in "$@"; do
     if [[ -d "$entry" || ( "$entry" != */* && -d "$packages_dir/$entry" ) ]]; then
       pkg_dir="$(pkg::resolve_dir "$entry" "$packages_dir")"
@@ -180,10 +192,14 @@ pkg::plan_selected() {
       }
     fi
 
+    selected_dirs+=("$pkg_dir")
+
     if [[ "$force_selected" == "true" ]]; then
       PKG_FORCE_DIR["$pkg_dir"]="true"
     fi
+  done
 
+  for pkg_dir in "${selected_dirs[@]}"; do
     pkg::plan_dir "$pkg_dir"
   done
 }

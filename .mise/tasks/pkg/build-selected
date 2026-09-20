@@ -18,4 +18,4 @@ pkg::load_requested "$PACKAGES_FILE" requested
   exit 1
 }
 
-pkg::build_selected "$PACKAGES_DIR" "${requested[@]}"
+pkg::build_selected "$PACKAGES_DIR" false "${requested[@]}"

@@ -23,5 +23,5 @@ fi
   exit 1
 }
 
-pkg::plan_selected "$PACKAGES_DIR" "${requested[@]}"
+pkg::plan_selected "$PACKAGES_DIR" false "${requested[@]}"
 pkg::print_plan
