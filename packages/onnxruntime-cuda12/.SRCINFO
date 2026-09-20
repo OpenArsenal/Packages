@@ -53,7 +53,7 @@ pkgbase = onnxruntime
 	b2sums = b0b58e2eb42a38956ef9e86b853d413c2fd002737d37721962dd9e1fc5c39c1ef4594325c6f6081f2b4cdce39a14907dbebc156645fa25ff3f2bbbce6417cd14
 
 pkgname = onnxruntime-cuda12
-	pkgdesc = Cross-platform, high performance scoring engine for ML models (with CUDA)
+	pkgdesc = Cross-platform, high performance scoring engine for ML models (CUDA 12 broad compatibility)
 	depends = abseil-cpp
 	depends = boost-libs
 	depends = protobuf
@@ -66,7 +66,7 @@ pkgname = onnxruntime-cuda12
 	replaces = onnxruntime
 
 pkgname = onnxruntime-opt-cuda12
-	pkgdesc = Cross-platform, high performance scoring engine for ML models (with CUDA and AVX2 CPU optimizations)
+	pkgdesc = Cross-platform, high performance scoring engine for ML models (CUDA 12, AVX2 CPU, SM 6.1 Pascal only)
 	depends = abseil-cpp
 	depends = boost-libs
 	depends = protobuf
