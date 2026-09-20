@@ -23,20 +23,24 @@ pkg::pacman_info_value() {
   local mode="$1"
   local target="$2"
   local field="$3"
+  local info
 
-  LC_ALL=C pacman "-${mode}i" "$target" 2>/dev/null |
-    awk -F ':' -v field="$field" '
-      {
-        key=$1
-        gsub(/^[[:space:]]+|[[:space:]]+$/, "", key)
+  if ! info="$(LC_ALL=C pacman "-${mode}i" "$target" 2>/dev/null)"; then
+    return 0
+  fi
 
-        if (key == field) {
-          sub(/^[^:]*:[[:space:]]*/, "", $0)
-          print
-          exit
-        }
+  awk -F ':' -v field="$field" '
+    {
+      key=$1
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", key)
+
+      if (key == field) {
+        sub(/^[^:]*:[[:space:]]*/, "", $0)
+        print
+        exit
       }
-    '
+    }
+  ' <<<"$info"
 }
 
 pkg::installed_selected() {
