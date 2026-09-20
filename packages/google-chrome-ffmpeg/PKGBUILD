@@ -2,7 +2,7 @@
 # expanded FFmpeg library built into Chrome's package image.
 
 pkgname=google-chrome-ffmpeg
-pkgver=152.0.7977.64
+pkgver=153.0.8010.52
 pkgrel=1
 pkgdesc="Google Chrome Stable with an expanded Chromium-compatible FFmpeg library"
 arch=('x86_64')
@@ -56,7 +56,7 @@ noextract=("${_ffmpeg_archive}")
 sha512sums=('a225555c06b7c32f9f2657004558e3f996c981481dbb0d3cd79b1d59fa3f05d591af88399422d3ab29d9446c103e98d567aeafe061d9550817ab6e7eb0498396'
             'de02b498a4b5b93e21622c8dba57befe795d733a04656be911cc38e28bfef0e20470450f44be523bbde8d4de28f79c10434846ca01fc2a2f4e67707b79332f94'
             '1f5c9f62ddc690aa519532e17cf3a4af707742c5153f78293a5b047e6f24d6dd994988693d3dc19952a9f3b5d681d6d35f901b559e229abfc9ff4fcf88d14e75')
-sha512sums_x86_64=('8401cc4a4f11714bcef72c6139d53dc2ff68f97257339f34bc8c117f55c72bdacb47b8c2feb38ef79c4d5747f76fecd1a3dfe154e8d67fa247f842e9a2718eeb')
+sha512sums_x86_64=('3be99341f606e62aed2ccdecef6a9741b23e77ad1c192385a336820604392fe8317c66f5e25f1053b4af94df8fdc785b03c25b6f43151b1651ce1e677828e3d7')
 
 prepare() {
   rm -rf ffmpeg-src ffmpeg-install sigs.txt export.map
