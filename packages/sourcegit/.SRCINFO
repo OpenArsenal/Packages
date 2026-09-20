@@ -1,6 +1,6 @@
 pkgbase = sourcegit
 	pkgdesc = GUI client for GIT users
-	pkgver = 2026.14
+	pkgver = 2026.20
 	pkgrel = 1
 	url = https://github.com/sourcegit-scm/sourcegit
 	arch = x86_64
@@ -14,11 +14,11 @@ pkgbase = sourcegit
 	optdepends = git-credential-manager: third-party authentication support
 	conflicts = sourcegit-bin
 	conflicts = sourcegit-git
-	source = sourcegit-2026.14.tar.gz::https://github.com/sourcegit-scm/sourcegit/archive/refs/tags/v2026.14.tar.gz
+	source = sourcegit-2026.20.tar.gz::https://github.com/sourcegit-scm/sourcegit/archive/refs/tags/v2026.20.tar.gz
 	source = AvaloniaEdit-1e6f595ff0da0dc20637322cbab9531892c12cbc.tar.gz::https://github.com/love-linger/AvaloniaEdit/archive/1e6f595ff0da0dc20637322cbab9531892c12cbc.tar.gz
-	sha256sums = 0d51a028390e0b492b769c565555f6edfd149cf88fa01f5d9607172b3f2022ce
+	sha256sums = f710b2da88c6363dab5118e832416dc795bdc80629b8ce329adf3b08daeb57af
 	sha256sums = 971b4a1a40310f10b197fe42456c24a776f26d0b0edd89efb7d993ab29160f7b
-	b2sums = 5ff47d4194d97634d76ad90729b89691151230a6ffa120ca4df4eb045424d817da5f1cf185c14404cc5d57ff9f3a2b4a8d04ef29310a9904be8624c72dea9142
+	b2sums = 16c45d29c9a38383ada6a2bc45377afae362f5fde8696e0bc3f3c561928429bdc8cf0c0a343c5e5cb3a0666982729eabb2a18b3e6e2dbae79a270bf5401a4a9d
 	b2sums = 2d7336c8b3c1cc93b4d8cb8bab57bd450f52f8b31088cf1f427d1b912ed820f4493b64d3da33c4809130af63d5d0d69eb80d8c67e1b404ebdd81c40df047d95f
 
 pkgname = sourcegit
