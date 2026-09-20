@@ -1,8 +1,48 @@
 # shellcheck shell=bash
 
 chroot::root() {
-  printf '%s/root
-' "${CHROOT_DIR:?CHROOT_DIR not set}"
+  printf '%s/root\n' "${CHROOT_DIR:?CHROOT_DIR not set}"
+}
+
+chroot::repo_matches() {
+  local pacman_conf="$1"
+  local repo_name="$2"
+  local repo_dir="$3"
+  local sig_level="$4"
+
+  awk     -v section="[$repo_name]"     -v expected_sig="SigLevel = $sig_level"     -v expected_server="Server = file://$repo_dir" '
+      function finish_section() {
+        if (in_section && sig_ok && server_ok) {
+          matched = 1
+        }
+      }
+
+      $0 == section {
+        finish_section()
+        in_section = 1
+        sig_ok = 0
+        server_ok = 0
+        next
+      }
+
+      in_section && /^\[[^]]+\][[:space:]]*$/ {
+        finish_section()
+        in_section = 0
+      }
+
+      in_section && $0 == expected_sig {
+        sig_ok = 1
+      }
+
+      in_section && $0 == expected_server {
+        server_ok = 1
+      }
+
+      END {
+        finish_section()
+        exit !matched
+      }
+    ' "$pacman_conf"
 }
 
 chroot::enable_repo() {
@@ -10,15 +50,45 @@ chroot::enable_repo() {
 
   [[ -e "$REPO_DB" ]] || return 0
 
-  local root pacman_conf
+  local root pacman_conf tmp
   root="$(chroot::root)"
   pacman_conf="$root/etc/pacman.conf"
 
   [[ -f "$pacman_conf" ]] || return 0
-  grep -qxF "[$REPO_NAME]" "$pacman_conf" && return 0
 
-  repo::pacman_stanza "$REPO_NAME" "$REPO_DIR" "$REPO_SIG_LEVEL" |
-    task::run_root tee -a "$pacman_conf" >/dev/null
+  if chroot::repo_matches "$pacman_conf" "$REPO_NAME" "$REPO_DIR" "$REPO_SIG_LEVEL"; then
+    return 0
+  fi
+
+  tmp="$(mktemp)"
+
+  if ! awk -v section="[$REPO_NAME]" '
+    $0 == section {
+      skip = 1
+      next
+    }
+
+    skip && /^\[[^]]+\][[:space:]]*$/ {
+      skip = 0
+    }
+
+    !skip {
+      print
+    }
+  ' "$pacman_conf" >"$tmp"; then
+    rm -f "$tmp"
+    return 1
+  fi
+
+  printf '\n' >>"$tmp"
+  repo::pacman_stanza "$REPO_NAME" "$REPO_DIR" "$REPO_SIG_LEVEL" >>"$tmp"
+
+  if ! task::run_root install -m 0644 "$tmp" "$pacman_conf"; then
+    rm -f "$tmp"
+    return 1
+  fi
+
+  rm -f "$tmp"
 }
 
 chroot::create() {
