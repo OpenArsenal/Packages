@@ -1,7 +1,7 @@
 pkgbase = ollama-cuda12
 	pkgdesc = CUDA 12 backend for Ollama (Pascal-compatible)
 	pkgver = 0.34.2
-	pkgrel = 1
+	pkgrel = 2
 	url = https://github.com/ollama/ollama
 	arch = x86_64
 	license = MIT
@@ -9,6 +9,7 @@ pkgbase = ollama-cuda12
 	makedepends = ninja
 	makedepends = git
 	makedepends = gcc14
+	makedepends = patchelf
 	depends = ollama=0.34.2
 	depends = cuda12
 	depends = glibc
