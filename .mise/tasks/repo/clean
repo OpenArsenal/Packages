@@ -20,6 +20,7 @@ shopt -s nullglob
 
 for pkg_dir in "$PACKAGES_DIR"/*; do
   [[ -f "$pkg_dir/PKGBUILD" ]] || continue
+  pkg::cache_srcinfo "$pkg_dir" || exit
 
   while IFS= read -r output; do
     [[ -n "$output" ]] && desired["$output"]=1
