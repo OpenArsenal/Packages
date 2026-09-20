@@ -59,10 +59,6 @@ _compatible_sm() {
   echo "50;52;53;60;61;62;70;72"
 }
 
-_pascal_sm() {
-  echo "61"
-}
-
 prepare() {
   cd "${pkgbase}"
 
@@ -226,7 +222,7 @@ build() {
 
   ##### onnxruntime-opt-cuda
 
-  echo "Build onnxruntime with AVX2 CPU optimizations and SM 6.1-only Pascal CUDA"
+  echo "Build onnxruntime with CUDA and AVX2 CPU optimizations"
   cd "${srcdir}/${pkgbase}-opt-cuda"
   echo 'string(APPEND CMAKE_C_FLAGS " -march=skylake")' >> cmake/adjust_global_compile_flags.cmake
   echo 'string(APPEND CMAKE_CXX_FLAGS " -march=skylake")' >> cmake/adjust_global_compile_flags.cmake
@@ -235,7 +231,7 @@ build() {
   export TMP="$TMPDIR"
   export TEMP="$TMPDIR"
   cmake "${_cmake_cuda_args[@]}" \
-    -DCMAKE_CUDA_ARCHITECTURES="$(_pascal_sm)"
+    -DCMAKE_CUDA_ARCHITECTURES="$(_compatible_sm)"
   cmake --build build
 
   # Manually fix https://github.com/microsoft/onnxruntime/issues/24570
@@ -260,7 +256,7 @@ package_onnxruntime-cuda12() {
 }
 
 package_onnxruntime-opt-cuda12() {
-  pkgdesc="$_pkgdesc (CUDA 12, AVX2 CPU, SM 6.1 Pascal only)"
+  pkgdesc="$_pkgdesc (CUDA 12 with AVX2 CPU optimizations)"
   depends+=('cuda12' 'cudnn9-cuda12' 'nccl-cuda12' 'onednn') # cuda, cudnn, and nccl are needed to build the CUDA variants; we check for them manually in the build function to avoid hard deps for non-CUDA variants.
   provides=("${pkgbase}=${pkgver}")
   conflicts=("${pkgbase}")
@@ -289,7 +285,7 @@ package_python-onnxruntime-cuda12() {
 }
 
 package_python-onnxruntime-opt-cuda12() {
-  pkgdesc="$_pkgdesc Python bindings (CUDA 12, AVX2 CPU, SM 6.1 Pascal only)"
+  pkgdesc="$_pkgdesc Python bindings (CUDA 12 with AVX2 CPU optimizations)"
   depends+=("${pkgbase}-opt-cuda12" "${_pydepends[@]}")
   provides=("python-${pkgbase}=${pkgver}")
   conflicts=("python-${pkgbase}")
