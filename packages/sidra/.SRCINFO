@@ -1,6 +1,6 @@
 pkgbase = sidra
 	pkgdesc = An elegant Apple Music desktop client for Linux
-	pkgver = 1.1.1
+	pkgver = 1.1.2
 	pkgrel = 1
 	url = https://github.com/wimpysworld/sidra
 	arch = x86_64
@@ -15,8 +15,8 @@ pkgbase = sidra
 	optdepends = playerctl: command-line MPRIS control/testing
 	conflicts = sidra-bin
 	conflicts = sidra-git
-	source = sidra-1.1.1.tar.gz::https://github.com/wimpysworld/sidra/archive/refs/tags/1.1.1.tar.gz
-	sha256sums = 59771952b382ca888aa492d385dbae2a933f5f7983d2ae3ef1a439f5a2eeb4a5
-	b2sums = 2aa24406e4aa4b79e3b1af3917ce443b17ce1e354d90fbdabc0671aa644ea91184d63b4de2fc4adfb4b1b06680a3166b5ecbc5d662d391b98e62f331b15dd8a4
+	source = sidra-1.1.2.tar.gz::https://github.com/wimpysworld/sidra/archive/refs/tags/1.1.2.tar.gz
+	sha256sums = 32891370a80f5320a0283d8959381bc90e1044428c65266c0f4668059bac821c
+	b2sums = c7781425a51c2c98a8cb7d0e1f105eb1dba4309a7a282fbf9014fd8bf89bc250d1adf95f4bfc95eba9ff28e5a37e7de7616f001379220aa0e4b8f0d931eed6fb
 
 pkgname = sidra
