@@ -274,7 +274,7 @@ package_onnxruntime-opt-cuda12() {
 }
 
 package_python-onnxruntime-cuda12() {
-  pkgdesc="$_pkgdesc (with CUDA)"
+  pkgdesc="$_pkgdesc Python bindings (CUDA 12 broad compatibility)"
   depends+=("${pkgbase}-cuda12" "${_pydepends[@]}")
   provides=("python-${pkgbase}=${pkgver}")
   conflicts=("python-${pkgbase}")
@@ -289,7 +289,7 @@ package_python-onnxruntime-cuda12() {
 }
 
 package_python-onnxruntime-opt-cuda12() {
-  pkgdesc="$_pkgdesc (with CUDA and AVX2 CPU optimizations)"
+  pkgdesc="$_pkgdesc Python bindings (CUDA 12, AVX2 CPU, SM 6.1 Pascal only)"
   depends+=("${pkgbase}-opt-cuda12" "${_pydepends[@]}")
   provides=("python-${pkgbase}=${pkgver}")
   conflicts=("python-${pkgbase}")

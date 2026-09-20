@@ -79,7 +79,7 @@ pkgname = onnxruntime-opt-cuda12
 	replaces = onnxruntime-opt
 
 pkgname = python-onnxruntime-cuda12
-	pkgdesc = Cross-platform, high performance scoring engine for ML models (with CUDA)
+	pkgdesc = Cross-platform, high performance scoring engine for ML models Python bindings (CUDA 12 broad compatibility)
 	depends = abseil-cpp
 	depends = boost-libs
 	depends = protobuf
@@ -99,7 +99,7 @@ pkgname = python-onnxruntime-cuda12
 	replaces = python-onnxruntime
 
 pkgname = python-onnxruntime-opt-cuda12
-	pkgdesc = Cross-platform, high performance scoring engine for ML models (with CUDA and AVX2 CPU optimizations)
+	pkgdesc = Cross-platform, high performance scoring engine for ML models Python bindings (CUDA 12, AVX2 CPU, SM 6.1 Pascal only)
 	depends = abseil-cpp
 	depends = boost-libs
 	depends = protobuf
