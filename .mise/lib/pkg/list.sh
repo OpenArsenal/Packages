@@ -73,6 +73,7 @@ pkg::installed_selected() {
 
   for pkg_dir in "$packages_dir"/*; do
     [[ -f "$pkg_dir/PKGBUILD" ]] || continue
+    pkg::cache_srcinfo "$pkg_dir" || return
 
     while IFS= read -r output; do
       [[ -n "$output" ]] || continue
