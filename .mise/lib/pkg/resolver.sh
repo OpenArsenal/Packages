@@ -222,7 +222,6 @@ pkg::build_plan() {
 
   for pkg_dir in "${PKG_PLAN[@]}"; do
     pkg::build_dir "$pkg_dir"
-    pkg::verify_outputs "$pkg_dir"
     pkg::publish_outputs "$pkg_dir"
     published=true
 
@@ -233,7 +232,11 @@ pkg::build_plan() {
 
   if [[ "$published" == "true" ]] && declare -F repo::refresh_sync_db >/dev/null 2>&1; then
     : "${REPO_NAME:?REPO_NAME not set}"
-    repo::refresh_sync_db "$REPO_NAME"
+
+    if ! repo::refresh_sync_db "$REPO_NAME"; then
+      echo "error: packages were published, but the host sync database refresh failed" >&2
+      return 1
+    fi
   fi
 }
 

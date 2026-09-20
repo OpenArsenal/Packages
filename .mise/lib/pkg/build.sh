@@ -3,6 +3,8 @@
 pkg::pacman_can_resolve() {
   local spec="$1"
 
+  # --nodeps twice disables dependency checks while still requiring the target
+  # package itself to exist in an enabled sync repository.
   pacman \
     --sync \
     --print \
@@ -78,47 +80,54 @@ pkg::build_dir() {
   )
 }
 
-pkg::verify_outputs() {
+pkg::publish_outputs() {
   local pkg_dir="$1"
-  local output
-  local found_any=false
+  local version output matched
+  local -a archives=()
+  local -a matches=()
+  local found=false
+
+  version="$(pkg::metadata_version "$pkg_dir")" || {
+    echo "error: unable to determine package version for: ${pkg_dir##*/}" >&2
+    return 1
+  }
 
   while IFS= read -r output; do
     [[ -n "$output" ]] || continue
+    found=true
 
-    if repo::match_package_archives "$REPO_DIR" "$output" | grep -q .; then
-      found_any=true
-      continue
+    if ! matched="$(repo::match_package_archives "$REPO_DIR" "$output" "$version")"; then
+      echo "error: unable to inspect built package archives for: $output" >&2
+      return 1
     fi
 
-    echo "error: build completed but no package archive found for: $output" >&2
-    return 1
+    matches=()
+    if [[ -n "$matched" ]]; then
+      mapfile -t matches <<<"$matched"
+    fi
+
+    if (( ${#matches[@]} == 0 )); then
+      echo "error: build completed but no $version archive found for: $output" >&2
+      return 1
+    fi
+
+    if (( ${#matches[@]} > 1 )); then
+      echo "error: multiple $version archives found for: $output" >&2
+      printf '  %s\n' "${matches[@]}" >&2
+      return 1
+    fi
+
+    echo "==> Publishing: $output" >&2
+    archives+=("${matches[0]}")
   done < <(pkg::metadata_outputs "$pkg_dir")
 
-  [[ "$found_any" == "true" ]] || {
+  [[ "$found" == "true" ]] || {
     echo "error: no package outputs declared for: ${pkg_dir##*/}" >&2
     return 1
   }
-}
 
-pkg::publish_outputs() {
-  local pkg_dir="$1"
-  local output
-
-  while IFS= read -r output; do
-    [[ -n "$output" ]] || continue
-
-    echo "==> Publishing: $output" >&2
-    if ! repo::update_db \
-      "$REPO_DIR" \
-      "$REPO_DB" \
-      "$output" \
-      false \
-      false \
-      false \
-      false; then
-      echo "error: failed to publish package output: $output" >&2
-      return 1
-    fi
-  done < <(pkg::metadata_outputs "$pkg_dir")
+  if ! repo::add_archives "$REPO_DB" false false false "${archives[@]}"; then
+    echo "error: failed to publish package outputs for: ${pkg_dir##*/}" >&2
+    return 1
+  fi
 }

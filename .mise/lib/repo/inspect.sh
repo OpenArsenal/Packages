@@ -43,27 +43,87 @@ repo::remember_max_version() {
   fi
 }
 
-repo::desc_values() {
-  local key="$1"
+repo::db_records() {
+  local repo_db="$1"
+  local -a entries=()
 
-  awk -v marker="%${key}%" '
-    $0 == marker {
-      section = 1
-      next
-    }
-    section && NF == 0 {
-      exit
-    }
-    section {
-      print
-    }
-  '
+  [[ -e "$repo_db" ]] || return 0
+
+  if ! mapfile -t entries < <(
+    bsdtar -tf "$repo_db" 2>/dev/null | awk '/\/desc$/'
+  ); then
+    return 1
+  fi
+
+  (( ${#entries[@]} > 0 )) || return 0
+
+  # Extract all desc members in one bsdtar invocation. Emit compact records:
+  # P <name> <version> for packages and R <provide> for provides entries.
+  bsdtar -xOf "$repo_db" "${entries[@]}" 2>/dev/null |
+    awk '
+      function flush_package() {
+        if (name != "" && version != "") {
+          printf "P\t%s\t%s\n", name, version
+        }
+        name = ""
+        version = ""
+      }
+
+      $0 == "%NAME%" {
+        flush_package()
+        mode = "name"
+        next
+      }
+
+      $0 == "%VERSION%" {
+        mode = "version"
+        next
+      }
+
+      $0 == "%PROVIDES%" {
+        mode = "provides"
+        next
+      }
+
+      /^%.*%$/ {
+        mode = ""
+        next
+      }
+
+      NF == 0 {
+        if (mode == "provides") {
+          mode = ""
+        }
+        next
+      }
+
+      mode == "name" {
+        name = $0
+        mode = ""
+        next
+      }
+
+      mode == "version" {
+        version = $0
+        mode = ""
+        next
+      }
+
+      mode == "provides" {
+        printf "R\t%s\n", $0
+      }
+
+      END {
+        flush_package()
+      }
+    '
 }
 
 repo::index_build() {
   local repo_dir="$1"
   local repo_db="${REPO_DB:-}"
-  local entry desc pkg_name pkg_ver raw provide_name provide_op provide_ver
+  local records kind first second
+  local raw provide_name provide_op provide_ver
 
   repo::index_reset
 
@@ -72,36 +132,34 @@ repo::index_build() {
     return 0
   fi
 
-  while IFS= read -r entry; do
-    [[ "$entry" == */desc ]] || continue
+  if ! records="$(repo::db_records "$repo_db")"; then
+    echo "error: unable to inspect repository database: $repo_db" >&2
+    return 1
+  fi
 
-    desc="$(bsdtar -xOf "$repo_db" "$entry" 2>/dev/null)" || {
-      echo "warning: unable to inspect repository entry: $entry" >&2
-      continue
-    }
+  while IFS=$'\t' read -r kind first second; do
+    case "$kind" in
+      P)
+        [[ -n "$first" && -n "$second" ]] &&
+          repo::remember_max_version REPO_PACKAGE_VERSION "$first" "$second"
+        ;;
+      R)
+        raw="$first"
+        [[ -n "$raw" ]] || continue
 
-    pkg_name="$(repo::desc_values NAME <<<"$desc" | head -n1)"
-    pkg_ver="$(repo::desc_values VERSION <<<"$desc" | head -n1)"
+        provide_name=""
+        provide_op=""
+        provide_ver=""
+        spec::parse "$raw" provide_name provide_op provide_ver
+        [[ -n "$provide_name" ]] || continue
 
-    if [[ -n "$pkg_name" && -n "$pkg_ver" ]]; then
-      repo::remember_max_version REPO_PACKAGE_VERSION "$pkg_name" "$pkg_ver"
-    fi
-
-    while IFS= read -r raw; do
-      [[ -n "$raw" ]] || continue
-
-      provide_name=""
-      provide_op=""
-      provide_ver=""
-      spec::parse "$raw" provide_name provide_op provide_ver
-      [[ -n "$provide_name" ]] || continue
-
-      REPO_PROVIDE_PRESENT["$provide_name"]=1
-      if [[ -n "$provide_ver" ]]; then
-        repo::remember_max_version REPO_PROVIDE_VERSION "$provide_name" "$provide_ver"
-      fi
-    done < <(repo::desc_values PROVIDES <<<"$desc")
-  done < <(bsdtar -tf "$repo_db" 2>/dev/null)
+        REPO_PROVIDE_PRESENT["$provide_name"]=1
+        if [[ -n "$provide_ver" ]]; then
+          repo::remember_max_version REPO_PROVIDE_VERSION "$provide_name" "$provide_ver"
+        fi
+        ;;
+    esac
+  done <<<"$records"
 
   REPO_INDEX_DIR="$repo_dir"
 }
@@ -119,7 +177,8 @@ repo::is_dep_satisfied() {
 
   repo::ensure_index "$repo_dir"
 
-  if [[ -n "${REPO_PACKAGE_VERSION[$dep]+x}" ]]     && repo::version_satisfies "${REPO_PACKAGE_VERSION[$dep]}" "$op" "$ver"; then
+  if [[ -n "${REPO_PACKAGE_VERSION[$dep]+x}" ]] \
+    && repo::version_satisfies "${REPO_PACKAGE_VERSION[$dep]}" "$op" "$ver"; then
     return 0
   fi
 
@@ -129,7 +188,8 @@ repo::is_dep_satisfied() {
     return 0
   fi
 
-  [[ -n "${REPO_PROVIDE_VERSION[$dep]+x}" ]]     && repo::version_satisfies "${REPO_PROVIDE_VERSION[$dep]}" "$op" "$ver"
+  [[ -n "${REPO_PROVIDE_VERSION[$dep]+x}" ]] \
+    && repo::version_satisfies "${REPO_PROVIDE_VERSION[$dep]}" "$op" "$ver"
 }
 
 repo::has_built_pkg() {
@@ -138,14 +198,13 @@ repo::has_built_pkg() {
 
 repo::db_packages() {
   local repo_db="$1"
-  local entry desc
+  local records kind name version
 
   [[ -e "$repo_db" ]] || return 0
 
-  while IFS= read -r entry; do
-    [[ "$entry" == */desc ]] || continue
+  records="$(repo::db_records "$repo_db")" || return 1
 
-    desc="$(bsdtar -xOf "$repo_db" "$entry" 2>/dev/null)" || continue
-    repo::desc_values NAME <<<"$desc"
-  done < <(bsdtar -tf "$repo_db" 2>/dev/null)
+  while IFS=$'\t' read -r kind name version; do
+    [[ "$kind" == "P" && -n "$name" ]] && printf '%s\n' "$name"
+  done <<<"$records"
 }
