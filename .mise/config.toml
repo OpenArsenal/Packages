@@ -26,9 +26,10 @@ description = "List available tasks"
 run = "mise tasks"
 
 [tasks."repo:maintain"]
-description = "Update, reconcile, and prune the published repository"
+description = "Update, reconcile, prune, and refresh the published repository"
 run = [
   "mise run repo:update",
   "mise run repo:clean",
   "mise run repo:prune",
+  "mise run repo:refresh-sync",
 ]
