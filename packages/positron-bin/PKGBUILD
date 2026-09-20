@@ -59,6 +59,7 @@ depends=(
   'pango'
   'shared-mime-info'
   'systemd-libs'
+  'unixodbc'
   'xdg-utils'
 )
 
