@@ -3,7 +3,7 @@
 # Contributor: Ivo Noack <ivo at insonic dot de>
 
 pkgname=cudnn9-cuda12
-pkgver=9.10.2.21
+pkgver=9.26.0.51
 _pkgver=9.10.2
 cudaver=12.9
 _cudaver=12
@@ -22,7 +22,7 @@ depends=('cuda12')
 source=("https://developer.download.nvidia.com/compute/cudnn/redist/cudnn/linux-${CARCH}/cudnn-linux-${CARCH}-${pkgver}_cuda${_cudaver}-archive.tar.xz"
         "NVIDIA_SLA+cuDNN_Supp_Feb2017_release.pdf")
 
-sha512sums=('3bb42370ea5be3eade3a3203de3d925ed67169e7c019aee9e5c3e9d77422fd2c3e6682ecb7398e4be20d106b9f29ae8ff3adcdba891e129fbb04a441f165713f'
+sha512sums=('851489c141e3b7166a6416c2b8f481ad96ff4ae8867eab45d6121349b2b0170db7f4d2a2982b9d7048e9ba5a3b1b07afc8b7b778657d194b67b6d411bd3a1b0b'
             '38bbb7eb287914e4d7ba79da20a47222382687832d4ba0290715199a129c08715a23681800cf8d381f40e24202470a7b20505a31c8cea51a78762a740860251b')
 
 noextract=("cudnn-linux-${CARCH}-${pkgver}_cuda${_cudaver}-archive.tar.xz")
