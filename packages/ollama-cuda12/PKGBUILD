@@ -1,6 +1,6 @@
 pkgname=ollama-cuda12
 pkgver=0.34.2
-pkgrel=1
+pkgrel=2
 pkgdesc='CUDA 12 backend for Ollama (Pascal-compatible)'
 arch=(x86_64)
 url='https://github.com/ollama/ollama'
