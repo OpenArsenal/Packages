@@ -24,14 +24,12 @@ task::run_root() {
     "$@"
   elif command -v sudo >/dev/null 2>&1; then
     sudo "$@"
-  elif command -v run0 >/dev/null 2>&1; then
-    run0 "$@"
   else
-    echo "error: root privileges required; install sudo or run0" >&2
+    echo "error: root privileges required; install sudo" >&2
     return 127
   fi
 }
 
 task::has_root_runner() {
-  (( EUID == 0 ))     || command -v sudo >/dev/null 2>&1     || command -v run0 >/dev/null 2>&1
+  (( EUID == 0 )) || command -v sudo >/dev/null 2>&1
 }
