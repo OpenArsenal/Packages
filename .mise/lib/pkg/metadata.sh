@@ -1,24 +1,41 @@
 # shellcheck shell=bash
 
+declare -Ag PKG_SRCINFO_CACHE=()
+
+pkg::metadata_cache_reset() {
+  PKG_SRCINFO_CACHE=()
+}
+
+pkg::cache_srcinfo() {
+  local pkg_dir="$1"
+
+  [[ -n "${PKG_SRCINFO_CACHE[$pkg_dir]+x}" ]] && return 0
+
+  if [[ -f "$pkg_dir/.SRCINFO" ]]; then
+    PKG_SRCINFO_CACHE["$pkg_dir"]="$(<"$pkg_dir/.SRCINFO")"
+    return 0
+  fi
+
+  PKG_SRCINFO_CACHE["$pkg_dir"]="$(
+    cd "$pkg_dir" || exit 1
+    makepkg --printsrcinfo
+  )"
+}
+
 pkg::srcinfo() {
   local pkg_dir="$1"
 
-  if [[ -f "$pkg_dir/.SRCINFO" ]]; then
-    cat "$pkg_dir/.SRCINFO"
-    return
-  fi
-
-  (
-    cd "$pkg_dir" || exit 1
-    makepkg --printsrcinfo
-  )
+  pkg::cache_srcinfo "$pkg_dir" || return
+  printf '%s\n' "${PKG_SRCINFO_CACHE[$pkg_dir]}"
 }
 
 pkg::metadata_values() {
   local pkg_dir="$1"
   local key="$2"
 
-  pkg::srcinfo "$pkg_dir" | awk -v key="$key" '
+  pkg::cache_srcinfo "$pkg_dir" || return
+
+  awk -v key="$key" '
     {
       line=$0
       sub(/^[[:space:]]+/, "", line)
@@ -27,7 +44,7 @@ pkg::metadata_values() {
         print substr(line, length(prefix) + 1)
       }
     }
-  '
+  ' <<<"${PKG_SRCINFO_CACHE[$pkg_dir]}"
 }
 
 pkg::metadata_pkgbase() {
