@@ -191,6 +191,7 @@ pkg::print_plan() {
 
 pkg::build_plan() {
   local pkg_dir
+  local published=false
 
   if declare -F chroot::enable_repo >/dev/null 2>&1; then
     chroot::enable_repo
@@ -200,11 +201,17 @@ pkg::build_plan() {
     pkg::build_dir "$pkg_dir"
     pkg::verify_outputs "$pkg_dir"
     pkg::publish_outputs "$pkg_dir"
+    published=true
 
     if declare -F chroot::enable_repo >/dev/null 2>&1; then
       chroot::enable_repo
     fi
   done
+
+  if [[ "$published" == "true" ]] && declare -F repo::refresh_sync_db >/dev/null 2>&1; then
+    : "${REPO_NAME:?REPO_NAME not set}"
+    repo::refresh_sync_db "$REPO_NAME"
+  fi
 }
 
 pkg::build_selected() {
