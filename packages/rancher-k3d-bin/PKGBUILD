@@ -1,6 +1,6 @@
 # Maintainer: Jonas Dellinger <jonas@dellinger.dev>
 pkgname="rancher-k3d-bin"
-pkgver=5.8.3
+pkgver=5.9.0
 pkgrel=1
 pkgdesc='Little helper to run Rancher Labs k3s in Docker'
 arch=('x86_64' 'aarch64' 'arm' 'armv6h' 'armv7h')
@@ -20,3 +20,4 @@ source=("${pkgname}-${pkgver}-${_CARCH}::https://github.com/rancher/k3d/releases
 package() {
   install -Dm 0755 ${pkgname}-${pkgver}-${_CARCH} "$pkgdir/usr/bin/k3d"
 }
+sha256sums=('06d8f25bc3a971c4eb29e0ff08429b180402db0f4dec838c9eac427e296800a0')
