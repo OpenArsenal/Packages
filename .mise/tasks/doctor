@@ -37,7 +37,7 @@ for tool in "${tools[@]}"; do
 done
 
 if ! task::has_root_runner; then
-  echo "Missing: run0 or sudo (needed for chroot and host pacman operations)"
+  echo "Missing: sudo (needed for chroot and host pacman operations)"
   missing=1
 fi
 
