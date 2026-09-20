@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #MISE description="Build packages from PACKAGES_FILE and their local dependencies"
 #MISE depends=["repo:create", "chroot:create"]
+#USAGE flag "--force" help="Rebuild explicitly selected packages even if the same version is already published"
 
 source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
 source "${PKGBUILDS_ROOT}/.mise/lib/repo.sh"
@@ -18,4 +19,4 @@ pkg::load_requested "$PACKAGES_FILE" requested
   exit 1
 }
 
-pkg::build_selected "$PACKAGES_DIR" false "${requested[@]}"
+pkg::build_selected "$PACKAGES_DIR" "${usage_force:-false}" "${requested[@]}"

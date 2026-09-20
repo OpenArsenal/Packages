@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #MISE description="Show the local package build order without building"
 #MISE dir="{{cwd}}"
+#USAGE flag "--force" help="Plan explicitly selected packages even if the same version is already published"
 #USAGE arg "[package]" help="Package name or directory; omit to use PACKAGES_FILE"
 
 source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
@@ -23,5 +24,5 @@ fi
   exit 1
 }
 
-pkg::plan_selected "$PACKAGES_DIR" false "${requested[@]}"
+pkg::plan_selected "$PACKAGES_DIR" "${usage_force:-false}" "${requested[@]}"
 pkg::print_plan
