@@ -43,6 +43,7 @@ pkgbase = positron-bin
 	depends = pango
 	depends = shared-mime-info
 	depends = systemd-libs
+	depends = unixodbc
 	depends = xdg-utils
 	optdepends = python: Python interpreter support
 	optdepends = python-ipykernel: external Python kernels when not using Positron's bundled IPython kernel

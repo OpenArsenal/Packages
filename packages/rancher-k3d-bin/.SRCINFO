@@ -11,7 +11,15 @@ pkgbase = rancher-k3d-bin
 	license = MIT
 	provides = k3d
 	conflicts = rancher-k3d-beta-bin
-	source = rancher-k3d-bin-5.9.0-amd64::https://github.com/rancher/k3d/releases/download/v5.9.0/k3d-linux-amd64
-	sha256sums = 06d8f25bc3a971c4eb29e0ff08429b180402db0f4dec838c9eac427e296800a0
+	source_x86_64 = rancher-k3d-bin-5.9.0-amd64::https://github.com/rancher/k3d/releases/download/v5.9.0/k3d-linux-amd64
+	sha256sums_x86_64 = 06d8f25bc3a971c4eb29e0ff08429b180402db0f4dec838c9eac427e296800a0
+	source_aarch64 = rancher-k3d-bin-5.9.0-arm64::https://github.com/rancher/k3d/releases/download/v5.9.0/k3d-linux-arm64
+	sha256sums_aarch64 = 03cde5cf23e6e8e67de5a039ecf26e5b85aca82fba3e5d13dadf904cd218a250
+	source_arm = rancher-k3d-bin-5.9.0-arm::https://github.com/rancher/k3d/releases/download/v5.9.0/k3d-linux-arm
+	sha256sums_arm = 3b8e5772f880a85b6620e7f1245070240c5338361e80ef2717cbf3bc021e23ca
+	source_armv6h = rancher-k3d-bin-5.9.0-arm::https://github.com/rancher/k3d/releases/download/v5.9.0/k3d-linux-arm
+	sha256sums_armv6h = 3b8e5772f880a85b6620e7f1245070240c5338361e80ef2717cbf3bc021e23ca
+	source_armv7h = rancher-k3d-bin-5.9.0-arm::https://github.com/rancher/k3d/releases/download/v5.9.0/k3d-linux-arm
+	sha256sums_armv7h = 3b8e5772f880a85b6620e7f1245070240c5338361e80ef2717cbf3bc021e23ca
 
 pkgname = rancher-k3d-bin
