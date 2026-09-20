@@ -10,6 +10,7 @@ tools=(
   bash
   bsdtar
   curl
+  findmnt
   git
   gpg
   makechrootpkg
