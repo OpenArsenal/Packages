@@ -1,6 +1,6 @@
 pkgbase = onnxruntime
 	pkgver = 1.26.0
-	pkgrel = 1
+	pkgrel = 2
 	url = https://github.com/microsoft/onnxruntime
 	arch = x86_64
 	license = MIT
