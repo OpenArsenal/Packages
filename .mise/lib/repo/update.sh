@@ -16,6 +16,7 @@ repo::update_add_args() {
 repo::match_package_archives() {
   local repo_dir="$1"
   local pkg_filter="$2"
+  local pkg_version="${3:-}"
   local repo_dir_abs
 
   repo_dir_abs="$(cd "$repo_dir" && pwd -P)" || return 1
@@ -25,14 +26,21 @@ repo::match_package_archives() {
     shopt -s nullglob
 
     local -a pkgs=()
-    local pkg pkg_meta pkg_name
+    local pkg pkg_meta pkg_name pkg_ver
     local exact_name=false
 
     if [[ -n "$pkg_filter" ]]; then
-      if [[ "$pkg_filter" == *".pkg.tar."* ]]         || [[ "$pkg_filter" == ./* ]]         || [[ "$pkg_filter" == */* ]]         || [[ "$pkg_filter" == *"*"* ]]         || [[ "$pkg_filter" == *"?"* ]]         || [[ "$pkg_filter" == *"["* ]]; then
+      if [[ "$pkg_filter" == *".pkg.tar."* ]] \
+        || [[ "$pkg_filter" == ./* ]] \
+        || [[ "$pkg_filter" == */* ]] \
+        || [[ "$pkg_filter" == *"*"* ]] \
+        || [[ "$pkg_filter" == *"?"* ]] \
+        || [[ "$pkg_filter" == *"["* ]]; then
         mapfile -t pkgs < <(compgen -G "$pkg_filter" || true)
       else
-        pkgs=( ./*.pkg.tar.* )
+        # Narrow exact-name lookups before inspecting package metadata. The
+        # metadata check below still rejects names that merely share a prefix.
+        pkgs=( ./"${pkg_filter}"-*.pkg.tar.* )
         exact_name=true
       fi
     else
@@ -48,15 +56,16 @@ repo::match_package_archives() {
       if [[ "$exact_name" == "true" ]]; then
         pkg_meta="$(pacman -Qp -- "$pkg" 2>/dev/null)" || continue
         pkg_name="${pkg_meta%% *}"
+        pkg_ver="${pkg_meta#* }"
+
         [[ "$pkg_name" == "$pkg_filter" ]] || continue
+        [[ -z "$pkg_version" || "$pkg_ver" == "$pkg_version" ]] || continue
       fi
 
       if [[ "$pkg" = /* ]]; then
-        printf '%s
-' "$pkg"
+        printf '%s\n' "$pkg"
       else
-        printf '%s/%s
-' "$repo_dir_abs" "${pkg#./}"
+        printf '%s/%s\n' "$repo_dir_abs" "${pkg#./}"
       fi
     done | sort -uV
   )
@@ -81,7 +90,8 @@ repo::select_newest_archives() {
     pkg_name="${pkg_meta%% *}"
     pkg_ver="${pkg_meta#* }"
 
-    if [[ -z "${newest_ver[$pkg_name]+x}" ]]       || (( $(vercmp "$pkg_ver" "${newest_ver[$pkg_name]}") > 0 )); then
+    if [[ -z "${newest_ver[$pkg_name]+x}" ]] \
+      || (( $(vercmp "$pkg_ver" "${newest_ver[$pkg_name]}") > 0 )); then
       newest_ver["$pkg_name"]="$pkg_ver"
       newest_file["$pkg_name"]="$pkg"
     fi
@@ -94,14 +104,41 @@ repo::select_newest_archives() {
 
   local -a pkg_names=()
   mapfile -t pkg_names < <(
-    printf '%s
-' "${!newest_file[@]}" | sort
+    printf '%s\n' "${!newest_file[@]}" | sort
   )
 
   outvar=()
   for pkg_name in "${pkg_names[@]}"; do
     outvar+=("${newest_file[$pkg_name]}")
   done
+}
+
+repo::add_archives() {
+  local repo_db="$1"
+  local include_new="$2"
+  local prevent_downgrade="$3"
+  local include_sigs="$4"
+  shift 4
+
+  (( $# > 0 )) || {
+    echo "error: no package archives supplied to repo-add" >&2
+    return 1
+  }
+
+  local -a args=(--wait-for-lock)
+  local -a update_args=()
+  repo::update_add_args \
+    "$include_new" \
+    "$prevent_downgrade" \
+    "$include_sigs" \
+    update_args
+  args+=("${update_args[@]}")
+
+  repo-add "${args[@]}" "$repo_db" "$@"
+
+  if declare -F repo::index_reset >/dev/null 2>&1; then
+    repo::index_reset
+  fi
 }
 
 repo::update_db() {
@@ -128,19 +165,16 @@ repo::update_db() {
   fi
 
   if [[ "$dry_run" == "true" ]]; then
-    printf '%s
-' "${selected[@]}"
+    printf '%s\n' "${selected[@]}"
     return 0
   fi
 
-  local -a args=()
-  repo::update_add_args     "$include_new"     "$prevent_downgrade"     "$include_sigs"     args
-
-  repo-add "${args[@]}" "$repo_db" "${selected[@]}"
-
-  if declare -F repo::index_reset >/dev/null 2>&1; then
-    repo::index_reset
-  fi
+  repo::add_archives \
+    "$repo_db" \
+    "$include_new" \
+    "$prevent_downgrade" \
+    "$include_sigs" \
+    "${selected[@]}"
 }
 
 repo::refresh_sync_db() {
@@ -150,7 +184,9 @@ repo::refresh_sync_db() {
   db_path="$(pacman-conf DBPath)"
   sync_dir="${db_path%/}/sync"
 
-  task::run_root rm -f     "${sync_dir}/${repo_name}.db"*     "${sync_dir}/${repo_name}.files"*
+  task::run_root rm -f \
+    "${sync_dir}/${repo_name}.db"* \
+    "${sync_dir}/${repo_name}.files"*
 
-  task::run_root pacman -Sy
+  task::run_root pacman -Sy --noconfirm
 }
