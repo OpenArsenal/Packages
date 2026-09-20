@@ -9,6 +9,7 @@ pkgbase = ollama-cuda12
 	makedepends = ninja
 	makedepends = git
 	makedepends = gcc14
+	makedepends = patchelf
 	depends = ollama=0.34.2
 	depends = cuda12
 	depends = glibc
