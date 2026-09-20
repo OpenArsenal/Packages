@@ -2,11 +2,13 @@
 
 declare -Ag PKG_PROVIDER_DIR=()
 declare -Ag PKG_STATE=()
+declare -Ag PKG_FORCE_DIR=()
 declare -ag PKG_PLAN=()
 
 pkg::resolver_reset() {
   PKG_PROVIDER_DIR=()
   PKG_STATE=()
+  PKG_FORCE_DIR=()
   PKG_PLAN=()
 }
 
@@ -149,7 +151,7 @@ pkg::plan_dir() {
 
   PKG_STATE["$key"]="visiting"
 
-  if pkg::all_outputs_in_repo "$pkg_dir"; then
+  if [[ "${PKG_FORCE_DIR[$key]-false}" != "true" ]] && pkg::all_outputs_in_repo "$pkg_dir"; then
     PKG_STATE["$key"]="done"
     return 0
   fi
@@ -161,7 +163,8 @@ pkg::plan_dir() {
 
 pkg::plan_selected() {
   local packages_dir="$1"
-  shift
+  local force_selected="$2"
+  shift 2
   local entry pkg_dir
 
   pkg::index_packages "$packages_dir"
@@ -175,6 +178,10 @@ pkg::plan_selected() {
         echo "error: no local package provides: $entry" >&2
         return 1
       }
+    fi
+
+    if [[ "$force_selected" == "true" ]]; then
+      PKG_FORCE_DIR["$pkg_dir"]="true"
     fi
 
     pkg::plan_dir "$pkg_dir"
@@ -216,8 +223,9 @@ pkg::build_plan() {
 
 pkg::build_selected() {
   local packages_dir="$1"
-  shift
+  local force_selected="$2"
+  shift 2
 
-  pkg::plan_selected "$packages_dir" "$@"
+  pkg::plan_selected "$packages_dir" "$force_selected" "$@"
   pkg::build_plan
 }
