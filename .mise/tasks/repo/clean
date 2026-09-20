@@ -46,7 +46,7 @@ fi
 
 echo "Removing stale repository entries:"
 printf '  %s\n' "${stale[@]}"
-repo-remove "$REPO_DB" "${stale[@]}"
+repo-remove --wait-for-lock "$REPO_DB" "${stale[@]}"
 repo::index_reset
 
 if [[ "${usage_refresh_sync:-false}" == "true" ]]; then
