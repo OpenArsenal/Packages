@@ -9,14 +9,14 @@ pkgname=(
   "python-${pkgbase}-cuda12"
   "python-${pkgbase}-opt-cuda12"
 )
-pkgver='1.24.4'
+pkgver='1.26.0'
 _pkgdesc='Cross-platform, high performance scoring engine for ML models'
 pkgrel=1
 arch=('x86_64')
 url='https://github.com/microsoft/onnxruntime'
 license=('MIT')
 options=(!lto !debug)
-depends=('abseil-cpp' 'boost-libs')
+depends=('abseil-cpp' 'boost-libs' 'protobuf')
 # https://github.com/microsoft/onnxruntime/blob/main/onnxruntime/python/tools/transformers/requirements.txt
 _pydepends=('python-numpy' 'python-coloredlogs' 'python-psutil'
             'python-py-cpuinfo' 'python-sympy' 'python-scipy' 'python-pillow'
@@ -32,7 +32,7 @@ source=("git+https://github.com/microsoft/onnxruntime#tag=v${pkgver}"
         "${pkgbase}-system-flatbuffers.patch"
         "${pkgbase}-remove-pkg_resources.patch"
         fix-thrust-api.patch)
-b2sums=('4edead573c6b080e01e9afbcc13692b3016b757f761d48aaf10e0148bc371333e2e14d605158495bb84dca99359db0d7b3c98795816cdacc63d9d8487f194c93'
+b2sums=('5f7561e4758d96aae2d6d278f88b200df3ef23b3e909d756d538c45b34b5cb81514262521daa655a1e35bc67acd2f2ddacb2ae89a6415555c0c2b321b16af1e5'
         'af5a5524dd9b5fe0052d2d0da232de7f219d4abffb37a7a321145b428d06fcb2901ab4e76b6754440146c223fc761bcbdfeee230167d33aa4434b82a1ebad5c0'
         '57c79382537f5bd25a891de3a99415a6dd8f490676df213016e897040c88e28fb5f5a5c3a8a98057e3f6630edb3ddcaeae36dcc47d5354abaafafc36e579f731'
         '207f020f310a7b447b4dc2fac74819f80099f088fdad6e42d67d0f01aa35bb5b9475bd006d9bec318127ae2db3d7ae3df33382fa16339d936c1dfb3832010837'
@@ -55,8 +55,8 @@ _require_cuda12() {
   fi
 }
 
-valid_sm() {
- echo "50;52;53;60;61;62;70;72"
+_compatible_sm() {
+  echo "50;52;53;60;61;62;70;72"
 }
 
 prepare() {
@@ -90,12 +90,41 @@ prepare() {
   # Fix build with abseil 20250814; see https://github.com/microsoft/onnxruntime/issues/25815
   sed -i '/^absl::low_level_hash$/d' cmake/external/abseil-cpp.cmake
 
+  # Fix CUDA training softmax loss kernels with ORT 1.26 stream API.
+  # SoftMaxComputeHelper wants a native CUDA stream, not onnxruntime::Stream*.
+  sed -i -E \
+    's/(SoftMaxComputeHelper<[^>]+>\()ctx->GetComputeStream\(\),/\1Stream(ctx),/g' \
+    orttraining/orttraining/training_ops/cuda/loss/softmax_cross_entropy_loss_impl.cc \
+    orttraining/orttraining/training_ops/cuda/loss/softmaxcrossentropy_impl.cc
+
+  if grep -R "SoftMaxComputeHelper.*ctx->GetComputeStream" \
+    orttraining/orttraining/training_ops/cuda/loss/softmax_cross_entropy_loss_impl.cc \
+    orttraining/orttraining/training_ops/cuda/loss/softmaxcrossentropy_impl.cc; then
+    echo "error: CUDA training softmax stream fix did not apply" >&2
+    exit 1
+  fi
+
+  # Fix CUDA training GatherNDGrad with ORT 1.26 GatherNDBase::PrepareCompute signature.
+  sed -i -E \
+    's/PrepareCompute<TIndex>\([[:space:]]*context->GetComputeStream\(\),/PrepareCompute<TIndex>(GetComputeStream(context), Stream(context),/g' \
+    orttraining/orttraining/training_ops/cuda/tensor/gather_nd_grad.cc
+
+  if grep -R "PrepareCompute<TIndex>(context->GetComputeStream()" \
+    orttraining/orttraining/training_ops/cuda/tensor/gather_nd_grad.cc; then
+    echo "error: CUDA training GatherNDGrad stream fix did not apply" >&2
+    exit 1
+  fi
+
   # Fix thrust and cub API usage
   patch -p1 -i "${srcdir}/fix-thrust-api.patch"
 
   cd "${srcdir}"
-  cp -r "${pkgbase}" "${pkgbase}-cuda"
-  cp -r "${pkgbase}" "${pkgbase}-opt-cuda"
+
+  # Avoid reusing stale copied source trees from a previous failed build.
+  rm -rf "${pkgbase}-cuda" "${pkgbase}-opt-cuda"
+
+  cp -a "${pkgbase}" "${pkgbase}-cuda"
+  cp -a "${pkgbase}" "${pkgbase}-opt-cuda"
 }
 
 build() {
@@ -122,7 +151,7 @@ build() {
   local _cuda_inc="-I/opt/cuda/include -I/opt/cuda/targets/x86_64-linux/include"
 
   export CPPFLAGS="${CPPFLAGS} ${_prefix_flags} ${_cuda_inc}"
-  export export CFLAGS="${CFLAGS/-flto=auto/} ${_prefix_flags} ${_cuda_inc} -DNDEBUG"
+  export CFLAGS="${CFLAGS/-flto=auto/} ${_prefix_flags} ${_cuda_inc} -DNDEBUG"
   export CXXFLAGS="${CXXFLAGS/-flto=auto/} ${_prefix_flags} ${_cuda_inc} -DNDEBUG"
   export LDFLAGS="${LDFLAGS/-flto=auto/}"
 
@@ -146,7 +175,7 @@ build() {
     -Donnxruntime_ENABLE_TRAINING=ON
     -Donnxruntime_ENABLE_LAZY_TENSOR=OFF
     -Donnxruntime_USE_PREINSTALLED_EIGEN=OFF
-    -DCMAKE_CXX_STANDARD=17
+    -DCMAKE_CXX_STANDARD=20
     -Donnxruntime_USE_FULL_PROTOBUF=OFF
   )
 
@@ -164,7 +193,6 @@ build() {
   export CUDAHOSTCXX=g++-14
 
   local _cmake_cuda_args=("${_cmake_args[@]}"
-    -DCMAKE_CUDA_ARCHITECTURES="$(_valid_sm)"
     -DCMAKE_CUDA_STANDARD_REQUIRED=ON
     -DCMAKE_CXX_STANDARD_REQUIRED=ON
     -Donnxruntime_NVCC_THREADS=2
@@ -176,13 +204,14 @@ build() {
 
   ##### onnxruntime-cuda
 
-  echo "Build onnxruntime with CUDA without optimization"
+  echo "Build onnxruntime with CUDA for compatible CUDA 12 GPU targets: $(_compatible_sm)"
   cd "${srcdir}/${pkgbase}-cuda"
   mkdir -p build/tmp
   export TMPDIR="$PWD/build/tmp"
   export TMP="$TMPDIR"
   export TEMP="$TMPDIR"
-  cmake "${_cmake_cuda_args[@]}"
+  cmake "${_cmake_cuda_args[@]}" \
+    -DCMAKE_CUDA_ARCHITECTURES="$(_compatible_sm)"
   cmake --build build
 
   # Manually fix https://github.com/microsoft/onnxruntime/issues/24570
@@ -193,7 +222,7 @@ build() {
 
   ##### onnxruntime-opt-cuda
 
-  echo "Build onnxruntime with CUDA with AVX optimizations"
+  echo "Build onnxruntime with CUDA and AVX2 CPU optimizations"
   cd "${srcdir}/${pkgbase}-opt-cuda"
   echo 'string(APPEND CMAKE_C_FLAGS " -march=skylake")' >> cmake/adjust_global_compile_flags.cmake
   echo 'string(APPEND CMAKE_CXX_FLAGS " -march=skylake")' >> cmake/adjust_global_compile_flags.cmake
@@ -201,7 +230,8 @@ build() {
   export TMPDIR="$PWD/build/tmp"
   export TMP="$TMPDIR"
   export TEMP="$TMPDIR"
-  cmake "${_cmake_cuda_args[@]}"
+  cmake "${_cmake_cuda_args[@]}" \
+    -DCMAKE_CUDA_ARCHITECTURES="$(_compatible_sm)"
   cmake --build build
 
   # Manually fix https://github.com/microsoft/onnxruntime/issues/24570
@@ -212,7 +242,7 @@ build() {
 }
 
 package_onnxruntime-cuda12() {
-  pkgdesc="$_pkgdesc (with CUDA)"
+  pkgdesc="$_pkgdesc (CUDA 12 broad compatibility)"
   depends+=('cuda12' 'cudnn9-cuda12' 'nccl-cuda12' 'onednn') # cuda, cudnn, and nccl are needed to build the CUDA variants; we check for them manually in the build function to avoid hard deps for non-CUDA variants.
   provides=("${pkgbase}=${pkgver}")
   conflicts=("${pkgbase}")
@@ -226,7 +256,7 @@ package_onnxruntime-cuda12() {
 }
 
 package_onnxruntime-opt-cuda12() {
-  pkgdesc="$_pkgdesc (with CUDA and AVX2 CPU optimizations)"
+  pkgdesc="$_pkgdesc (CUDA 12 with AVX2 CPU optimizations)"
   depends+=('cuda12' 'cudnn9-cuda12' 'nccl-cuda12' 'onednn') # cuda, cudnn, and nccl are needed to build the CUDA variants; we check for them manually in the build function to avoid hard deps for non-CUDA variants.
   provides=("${pkgbase}=${pkgver}")
   conflicts=("${pkgbase}")
@@ -240,7 +270,7 @@ package_onnxruntime-opt-cuda12() {
 }
 
 package_python-onnxruntime-cuda12() {
-  pkgdesc="$_pkgdesc (with CUDA)"
+  pkgdesc="$_pkgdesc Python bindings (CUDA 12 broad compatibility)"
   depends+=("${pkgbase}-cuda12" "${_pydepends[@]}")
   provides=("python-${pkgbase}=${pkgver}")
   conflicts=("python-${pkgbase}")
@@ -255,7 +285,7 @@ package_python-onnxruntime-cuda12() {
 }
 
 package_python-onnxruntime-opt-cuda12() {
-  pkgdesc="$_pkgdesc (with CUDA and AVX2 CPU optimizations)"
+  pkgdesc="$_pkgdesc Python bindings (CUDA 12 with AVX2 CPU optimizations)"
   depends+=("${pkgbase}-opt-cuda12" "${_pydepends[@]}")
   provides=("python-${pkgbase}=${pkgver}")
   conflicts=("python-${pkgbase}")
