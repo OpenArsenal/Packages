@@ -1,9 +1,9 @@
 # Maintainer: Okiki <okiki@thunderstrike.co>
 pkgname=positron-bin
 _pkgname=positron
-pkgver='2026.04.1.10'
+pkgver=2026.09.1.2
 _upstream_ver="${pkgver%.*}-${pkgver##*.}"
-pkgrel=4
+pkgrel=1
 pkgdesc="A next-generation data science IDE from Posit (official bundled-runtime binary repack)"
 arch=('x86_64' 'aarch64')
 url="https://positron.posit.co/"
@@ -83,8 +83,8 @@ source_aarch64=(
 )
 
 sha256sums=('cc8f00ce7b3147f82dda6f3f43aaf911a3f9fcbec64c36f96ab4c6fadadd3d07')
-sha256sums_x86_64=('2b0db0e1fd7087b5f7041044b601323de7ea5c8fd8b0ba94e684141c64c2b28c')
-sha256sums_aarch64=('f5253c875ee671fd8fb724a35083925773b96e72c0cfeb61bd36793db199e99c')
+sha256sums_x86_64=('0397a98f868c35703fbf1e3167f83f887c0c9e3bee647230dec66a49ca5bce75')
+sha256sums_aarch64=('5f16f04d85a5ad95baaa7b46c7674ab11bd8769440f3b3d426f37bf9a0acd040')
 
 _remove_updater_metadata() {
   local _root="$1"
