@@ -1,6 +1,6 @@
 pkgbase = ktailctl
 	pkgdesc = GUI to monitor and manage Tailscale
-	pkgver = 0.22.1
+	pkgver = 0.22.3
 	pkgrel = 1
 	url = https://github.com/f-koehler/KTailctl
 	install = ktailctl.install
@@ -36,9 +36,9 @@ pkgbase = ktailctl
 	depends = qt6-svg
 	depends = tailscale
 	optdepends = qt6-wayland: native Wayland platform plugin support
-	source = ktailctl-0.22.1-tag.tar.gz::https://github.com/f-koehler/KTailctl/archive/refs/tags/v0.22.1.tar.gz
-	source = ktailctl-wrapper-vendor-v0.22.1.tar.gz::https://github.com/f-koehler/KTailctl/releases/download/v0.22.1/ktailctl-wrapper-vendor-v0.22.1.tar.gz
-	sha256sums = 5ec2c685b3507e4e1f73e147b3789473a03d63779011871864527d1b38ff7d6f
-	sha256sums = 308aa3646b6d1bbd3d5fe35b86a6a2aa8126a7aa80fff124617820d3a5cda614
+	source = ktailctl-0.22.3-tag.tar.gz::https://github.com/f-koehler/KTailctl/archive/refs/tags/v0.22.3.tar.gz
+	source = ktailctl-wrapper-vendor-v0.22.3.tar.gz::https://github.com/f-koehler/KTailctl/releases/download/v0.22.3/ktailctl-wrapper-vendor-v0.22.3.tar.gz
+	sha256sums = 591931508ccc3ad1b122bd3c9dd3d43d7e4b616d44c559d36f110bd5bc0afe0c
+	sha256sums = 4890a1e32396e7e6468615b09f95827a3d5761807f4df59e95a6d30b5884860a
 
 pkgname = ktailctl
