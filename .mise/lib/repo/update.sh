@@ -126,7 +126,11 @@ repo::add_archives() {
     return 1
   }
 
-  local -a args=(--wait-for-lock)
+  local repo_add_help
+  local -a args=()
+  repo_add_help="$(repo-add --help 2>&1 || true)"
+  [[ "$repo_add_help" == *"--wait-for-lock"* ]] && args+=(--wait-for-lock)
+
   local -a update_args=()
   repo::update_add_args \
     "$include_new" \
