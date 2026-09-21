@@ -11,6 +11,7 @@ repo::update_add_args() {
   [[ "$include_new" == "true" ]] && outvar+=(--new)
   [[ "$prevent_downgrade" == "true" ]] && outvar+=(--prevent-downgrade)
   [[ "$include_sigs" == "true" ]] && outvar+=(--include-sigs)
+  return 0
 }
 
 repo::match_package_archives() {
