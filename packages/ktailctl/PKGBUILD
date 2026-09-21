@@ -71,10 +71,15 @@ source=(
   # This makes the exact Go dependency snapshot part of the package source
   # contract and avoids undeclared build-time network access.
   "ktailctl-wrapper-vendor-v$pkgver.tar.gz::$url/releases/download/v$pkgver/ktailctl-wrapper-vendor-v$pkgver.tar.gz"
+
+  # Fix Kirigami navigation warnings and login-profile navigation.
+  # Upstream: https://github.com/f-koehler/KTailctl/pull/630
+  "kirigami-navigation-warnings.patch::https://github.com/ran-dall/KTailctl/commit/1bad83efc785c0523a2dc123b71324dfe4967fe0.patch"
 )
 
 sha256sums=('591931508ccc3ad1b122bd3c9dd3d43d7e4b616d44c559d36f110bd5bc0afe0c'
-            '4890a1e32396e7e6468615b09f95827a3d5761807f4df59e95a6d30b5884860a')
+            '4890a1e32396e7e6468615b09f95827a3d5761807f4df59e95a6d30b5884860a'
+            '5e89d7af8fc9dbdabde62ee0e49f12287a0846d5216105658c98badc131c8dcc')
 
 _prepare_go_env() {
   # Keep all Go build state inside $srcdir. This avoids polluting the builder's
@@ -137,6 +142,10 @@ prepare() {
   cd "$_upstream_dir"
   _prepare_go_env
   _check_go_toolchain
+
+  # Fix initial PageRow navigation and avoid Kirigami StackView anchor
+  # warnings when opening and closing login profile details.
+  patch -Np1 -i "$srcdir/kirigami-navigation-warnings.patch"
 
   # v0.22.x moved the Go wrapper from src/wrapper to src/tailscale/wrapper and
   # renamed the release vendor artifact from the older tailwrap form to

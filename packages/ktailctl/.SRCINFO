@@ -38,7 +38,9 @@ pkgbase = ktailctl
 	optdepends = qt6-wayland: native Wayland platform plugin support
 	source = ktailctl-0.22.3-tag.tar.gz::https://github.com/f-koehler/KTailctl/archive/refs/tags/v0.22.3.tar.gz
 	source = ktailctl-wrapper-vendor-v0.22.3.tar.gz::https://github.com/f-koehler/KTailctl/releases/download/v0.22.3/ktailctl-wrapper-vendor-v0.22.3.tar.gz
+	source = kirigami-navigation-warnings.patch::https://github.com/ran-dall/KTailctl/compare/8e6ddb1ecb500b9955b176b8bd91f922a9c3379f...6324d850d9d2a4e1564ba7a83ebc979e19b1bcd7.patch
 	sha256sums = 591931508ccc3ad1b122bd3c9dd3d43d7e4b616d44c559d36f110bd5bc0afe0c
 	sha256sums = 4890a1e32396e7e6468615b09f95827a3d5761807f4df59e95a6d30b5884860a
+	sha256sums = 5e89d7af8fc9dbdabde62ee0e49f12287a0846d5216105658c98badc131c8dcc
 
 pkgname = ktailctl
