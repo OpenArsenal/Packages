@@ -52,13 +52,19 @@ pkg::installed_selected() {
   }
 
   declare -A installed=()
-  local name pkg_dir output installed_packager repo_packager
+  declare -A output_dirs=()
+  declare -A output_count=()
+  declare -A repo_installed=()
+  declare -A selected_dirs=()
+
+  local name pkg_dir output candidate candidates exact_dir
+  local installed_packager repo_packager
+  local covered
 
   while IFS= read -r name; do
     [[ -n "$name" ]] && installed["$name"]=1
   done < <(pacman -Qq)
 
-  outvar=()
   shopt -s nullglob
 
   for pkg_dir in "$packages_dir"/*; do
@@ -66,19 +72,62 @@ pkg::installed_selected() {
 
     while IFS= read -r output; do
       [[ -n "$output" ]] || continue
-      [[ -n "${installed[$output]+x}" ]] || continue
+      output_dirs["$output"]+=" $pkg_dir"
+      (( output_count["$output"] += 1 ))
+    done < <(pkg::metadata_outputs "$pkg_dir")
+  done
 
-      repo_packager="$(pkg::pacman_info_value S "$repo_name/$output" Packager)"
-      [[ -n "$repo_packager" ]] || continue
+  for output in "${!output_dirs[@]}"; do
+    [[ -n "${installed[$output]+x}" ]] || continue
 
-      installed_packager="$(pkg::pacman_info_value Q "$output" Packager)"
-      [[ -n "$installed_packager" ]] || continue
+    repo_packager="$(pkg::pacman_info_value S "$repo_name/$output" Packager)"
+    [[ -n "$repo_packager" ]] || continue
 
-      if [[ "$installed_packager" == "$repo_packager" ]]; then
-        outvar+=("${pkg_dir##*/}")
+    installed_packager="$(pkg::pacman_info_value Q "$output" Packager)"
+    [[ -n "$installed_packager" ]] || continue
+    [[ "$installed_packager" == "$repo_packager" ]] || continue
+
+    repo_installed["$output"]=1
+  done
+
+  # Unique outputs identify their source directory unambiguously.
+  for output in "${!repo_installed[@]}"; do
+    (( output_count["$output"] == 1 )) || continue
+    candidate="${output_dirs[$output]# }"
+    selected_dirs["$candidate"]=1
+  done
+
+  # Shared outputs are already covered when a more specific installed output
+  # selected one of their source directories. Otherwise prefer an exact
+  # repository directory-name match, and warn rather than guessing.
+  for output in "${!repo_installed[@]}"; do
+    (( output_count["$output"] > 1 )) || continue
+
+    candidates="${output_dirs[$output]}"
+    covered=false
+
+    for candidate in $candidates; do
+      if [[ -n "${selected_dirs[$candidate]+x}" ]]; then
+        covered=true
         break
       fi
-    done < <(pkg::metadata_outputs "$pkg_dir")
+    done
+
+    [[ "$covered" == "true" ]] && continue
+
+    exact_dir="$packages_dir/$output"
+    if [[ "$candidates" == *" $exact_dir"* && -f "$exact_dir/PKGBUILD" ]]; then
+      selected_dirs["$exact_dir"]=1
+      continue
+    fi
+
+    echo "warning: ambiguous installed package '$output'; skipping source selection" >&2
+  done
+
+  outvar=()
+  for pkg_dir in "$packages_dir"/*; do
+    [[ -n "${selected_dirs[$pkg_dir]+x}" ]] || continue
+    outvar+=("${pkg_dir##*/}")
   done
 
   shopt -u nullglob
