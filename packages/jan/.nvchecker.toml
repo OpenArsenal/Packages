@@ -1,5 +1,6 @@
 [jan]
 source = "github"
-github = "menloresearch/jan"
-use_max_tag = true
-prefix = "v"
+github = "janhq/jan"
+use_latest_release = true
+from_pattern = "^[vV]"
+to_pattern = ""

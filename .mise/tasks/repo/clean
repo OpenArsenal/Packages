@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+#MISE description="Remove database entries for packages no longer defined in packages/"
+#USAGE flag "-d --dry-run" help="Print stale database package names without changing the database"
+#USAGE flag "--refresh-sync" help="Refresh the host pacman sync database after changes"
+
+source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/repo.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/pkg.sh"
+
+task::bootstrap
+task::require_env PACKAGES_DIR REPO_DB REPO_NAME
+
+if [[ ! -e "$REPO_DB" ]]; then
+  echo "Repository database does not exist yet: $REPO_DB"
+  exit 0
+fi
+
+declare -A desired=()
+shopt -s nullglob
+
+for pkg_dir in "$PACKAGES_DIR"/*; do
+  [[ -f "$pkg_dir/PKGBUILD" ]] || continue
+  pkg::cache_srcinfo "$pkg_dir" || exit
+
+  while IFS= read -r output; do
+    [[ -n "$output" ]] && desired["$output"]=1
+  done < <(pkg::metadata_outputs "$pkg_dir")
+done
+
+shopt -u nullglob
+
+declare -a stale=()
+while IFS= read -r pkg_name; do
+  [[ -n "$pkg_name" ]] || continue
+  [[ -n "${desired[$pkg_name]+x}" ]] || stale+=("$pkg_name")
+done < <(repo::db_packages "$REPO_DB" | sort -u)
+
+if [[ "${#stale[@]}" -eq 0 ]]; then
+  echo "Repository database already matches packages/."
+  exit 0
+fi
+
+if [[ "${usage_dry_run:-false}" == "true" ]]; then
+  printf '%s\n' "${stale[@]}"
+  exit 0
+fi
+
+echo "Removing stale repository entries:"
+printf '  %s\n' "${stale[@]}"
+repo-remove --wait-for-lock "$REPO_DB" "${stale[@]}"
+repo::index_reset
+
+if [[ "${usage_refresh_sync:-false}" == "true" ]]; then
+  repo::refresh_sync_db "$REPO_NAME"
+fi

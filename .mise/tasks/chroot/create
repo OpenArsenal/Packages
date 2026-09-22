@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+#MISE description="Provision the clean package-build chroot"
+#MISE hide=true
+
+source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/chroot.sh"
+
+task::bootstrap
+chroot::create

@@ -1,0 +1,165 @@
+#!/usr/bin/env bash
+#MISE description="Check or apply package updates with pkgctl"
+#MISE alias="update"
+#USAGE flag "-a --apply" help="Update PKGBUILDs to the latest upstream versions"
+#USAGE flag "--no-update-checksums" help="Do not update checksums when applying"
+#USAGE flag "-v --verbose" help="Show up-to-date packages too"
+#USAGE flag "--json" help="Print pkgctl JSON output"
+#USAGE flag "--list-outdated" help="Print only out-of-date package names"
+#USAGE arg "[package]" var=#true help="Package names to check; defaults to PACKAGES_FILE, then all nvchecker-enabled packages"
+
+source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/pkg.sh"
+
+task::bootstrap
+task::require_env PACKAGES_DIR PACKAGES_FILE
+
+declare -a requested=()
+explicit_selection=false
+file_selection=false
+
+if [[ -n "${usage_package:-}" ]]; then
+  read -r -a requested <<< "${usage_package}"
+  explicit_selection=true
+else
+  pkg::load_requested "$PACKAGES_FILE" requested
+  [[ "${#requested[@]}" -gt 0 ]] && file_selection=true
+fi
+
+declare -a package_dirs=()
+
+if [[ "${#requested[@]}" -gt 0 ]]; then
+  for package in "${requested[@]}"; do
+    dir="$PACKAGES_DIR/$package"
+
+    if [[ ! -f "$dir/PKGBUILD" ]]; then
+      if [[ "$explicit_selection" == "true" ]]; then
+        echo "error: package not found: $package" >&2
+        exit 1
+      fi
+
+      echo "Skipping selected package not found in repository: $package" >&2
+      continue
+    fi
+
+    if [[ ! -f "$dir/.nvchecker.toml" ]]; then
+      if [[ "$explicit_selection" == "true" ]]; then
+        echo "error: no nvchecker config for: $package" >&2
+        exit 1
+      fi
+
+      echo "Skipping selected package without nvchecker config: $package" >&2
+      continue
+    fi
+
+    package_dirs+=("$dir")
+  done
+else
+  while IFS= read -r -d '' config; do
+    package_dirs+=("${config%/.nvchecker.toml}")
+  done < <(
+    find "$PACKAGES_DIR"       -mindepth 2       -maxdepth 2       -type f       -name .nvchecker.toml       -print0 |
+      sort -z
+  )
+fi
+
+if [[ "${#package_dirs[@]}" -eq 0 ]]; then
+  if [[ "$file_selection" == "true" ]]; then
+    echo "No nvchecker-enabled packages are selected in $PACKAGES_FILE." >&2
+    exit 0
+  fi
+
+  echo "error: no nvchecker-enabled packages found" >&2
+  exit 1
+fi
+
+if [[ "${usage_apply:-false}" == "true" ]]; then
+  [[ "${usage_json:-false}" != "true" ]] || {
+    echo "error: --json cannot be combined with --apply" >&2
+    exit 2
+  }
+
+  [[ "${usage_list_outdated:-false}" != "true" ]] || {
+    echo "error: --list-outdated cannot be combined with --apply" >&2
+    exit 2
+  }
+
+  args=(version upgrade)
+  [[ "${usage_verbose:-false}" == "true" ]] && args+=("--verbose")
+  [[ "${usage_no_update_checksums:-false}" == "true" ]] && args+=("--no-update-checksums")
+
+  if pkgctl "${args[@]}" "${package_dirs[@]}"; then
+    rc=0
+  else
+    rc=$?
+  fi
+
+  srcinfo_rc=0
+  for dir in "${package_dirs[@]}"; do
+    if (
+      cd "$dir"
+      makepkg --printsrcinfo > .SRCINFO.tmp
+      mv .SRCINFO.tmp .SRCINFO
+    ); then
+      :
+    else
+      rm -f "$dir/.SRCINFO.tmp"
+      echo "error: failed to refresh .SRCINFO for: ${dir##*/}" >&2
+      srcinfo_rc=1
+    fi
+  done
+
+  [[ "$rc" -eq 0 ]] || exit "$rc"
+  [[ "$srcinfo_rc" -eq 0 ]] || exit "$srcinfo_rc"
+  exit 0
+fi
+
+[[ "${usage_no_update_checksums:-false}" != "true" ]] || {
+  echo "error: --no-update-checksums requires --apply" >&2
+  exit 2
+}
+
+args=(version check)
+[[ "${usage_verbose:-false}" == "true" ]] && args+=("--verbose")
+
+if [[ "${usage_json:-false}" == "true" ]]; then
+  exec pkgctl "${args[@]}" --json "${package_dirs[@]}"
+fi
+
+if [[ "${usage_list_outdated:-false}" == "true" ]]; then
+  status_log="$(mktemp)"
+  trap 'rm -f "$status_log"' EXIT
+
+  if pkgctl "${args[@]}" "${package_dirs[@]}" 2>&1 >/dev/null |
+    tee "$status_log" >&2; then
+    rc=0
+  else
+    rc="${PIPESTATUS[0]}"
+  fi
+
+  python3 - "$status_log" <<'PY'
+import re
+import sys
+
+ansi = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+outdated = re.compile(r"^\s*!\s+([^:]+): upgrade from version ")
+
+with open(sys.argv[1], encoding="utf-8", errors="replace") as stream:
+    for line in stream:
+        line = ansi.sub("", line)
+        match = outdated.match(line)
+        if match:
+            print(match.group(1))
+PY
+
+  [[ "$rc" -eq 2 ]] && exit 0
+  exit "$rc"
+fi
+
+if pkgctl "${args[@]}" "${package_dirs[@]}"; then
+  exit 0
+else
+  rc=$?
+  [[ "$rc" -eq 2 ]] && exit 0
+  exit "$rc"
+fi

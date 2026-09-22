@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+#MISE description="Prune old versions and archives no longer indexed by the repository"
+#USAGE flag "-q --quiet" help="Do not print removed orphan archive names"
+#USAGE flag "-d --dry-run" help="Preview removals"
+#USAGE arg "-k --keep <count>" help="Versions to keep per indexed package" default="2"
+#USAGE arg "-a --min-atime <age>" help="Only remove old versions unused for this long" required=#false
+
+source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/repo.sh"
+
+task::bootstrap
+task::require_env REPO_DIR REPO_DB
+
+if [[ -e "$REPO_DB" ]]; then
+  declare -A indexed=()
+
+  while IFS= read -r pkg_name; do
+    [[ -n "$pkg_name" ]] && indexed["$pkg_name"]=1
+  done < <(repo::db_packages "$REPO_DB" | sort -u)
+
+  while IFS= read -r -d '' archive; do
+    meta="$(pacman -Qp -- "$archive" 2>/dev/null)" || {
+      echo "warning: unable to inspect package archive: $archive" >&2
+      continue
+    }
+
+    pkg_name="${meta%% *}"
+    [[ -n "${indexed[$pkg_name]+x}" ]] && continue
+
+    if [[ "${usage_dry_run:-false}" == "true" ]]; then
+      printf '%s\n' "$archive"
+      [[ -f "$archive.sig" ]] && printf '%s\n' "$archive.sig"
+      continue
+    fi
+
+    [[ "${usage_quiet:-false}" == "true" ]] || echo "Removing unindexed archive: $archive"
+    rm -f -- "$archive" "$archive.sig"
+  done < <(
+    find "$REPO_DIR" -maxdepth 1 -type f       -name '*.pkg.tar.*' ! -name '*.sig' -print0 2>/dev/null
+  )
+fi
+
+args=(-c "$REPO_DIR" -k "${usage_keep:-2}")
+
+if [[ "${usage_dry_run:-false}" == "true" ]]; then
+  args+=(-d)
+else
+  args+=(-r)
+fi
+
+[[ "${usage_quiet:-false}" == "true" ]] && args+=(-q)
+[[ -n "${usage_min_atime:-}" ]] && args+=(--min-atime "${usage_min_atime}")
+
+paccache "${args[@]}"

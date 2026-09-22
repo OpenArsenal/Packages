@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+#MISE description="Build one package and its local dependencies"
+#MISE depends=["repo:create", "chroot:create"]
+#MISE dir="{{cwd}}"
+#USAGE flag "--force" help="Rebuild the selected package even if the same version is already published"
+#USAGE arg "[package]" help="Package name or directory; defaults to the invocation directory"
+
+source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/repo.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/chroot.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/pkg.sh"
+
+task::bootstrap
+task::require_env PACKAGES_DIR REPO_DIR REPO_DB CHROOT_DIR
+
+target="${usage_package:-$PWD}"
+pkg::build_selected "$PACKAGES_DIR" "${usage_force:-false}" "$target"

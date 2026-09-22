@@ -1,5 +1,6 @@
 [kurtosis-cli-bin]
 source = "github"
-github = "kurtosis-tech/kurtosis-cli-release-artifacts"
-use_max_tag = true
-prefix = "v"
+github = "kurtosis-tech/kurtosis"
+use_latest_release = true
+from_pattern = "^[vV]"
+to_pattern = ""

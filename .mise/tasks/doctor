@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+#MISE description="Check tools used by the package workflows"
+
+source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
+
+task::bootstrap
+
+tools=(
+  arch-nspawn
+  bash
+  bsdtar
+  curl
+  findmnt
+  git
+  gpg
+  makechrootpkg
+  makepkg
+  mkarchroot
+  nvchecker
+  paccache
+  pacman
+  pacman-conf
+  pkgctl
+  python3
+  repo-add
+  repo-remove
+  updpkgsums
+  vercmp
+)
+
+missing=0
+
+for tool in "${tools[@]}"; do
+  if ! command -v "$tool" >/dev/null 2>&1; then
+    printf 'Missing: %s\n' "$tool"
+    missing=1
+  fi
+done
+
+if ! task::has_root_runner; then
+  echo "Missing: sudo (needed for chroot and host pacman operations)"
+  missing=1
+fi
+
+(( missing == 0 )) || exit 1
+echo "OK"

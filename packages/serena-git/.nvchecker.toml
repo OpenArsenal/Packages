@@ -1,4 +1,0 @@
-[serena-git]
-source = "git"
-git = "https://github.com/oraios/serena.git"
-use_commit = true
