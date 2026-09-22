@@ -1,4 +1,0 @@
-[youki-git]
-source = "git"
-git = "https://github.com/youki-dev/youki.git"
-use_commit = true

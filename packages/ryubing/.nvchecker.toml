@@ -1,0 +1,4 @@
+[ryubing]
+source = "git"
+git = "https://git.ryujinx.app/ryubing/ryujinx.git"
+use_max_tag = true
