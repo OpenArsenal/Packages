@@ -3,6 +3,8 @@ node_modules
 .cache
 .gnupg
 .packages
+repo/
+packages/*/logs/
 repomix-instruction.md
 
 *-repomix-output.xml

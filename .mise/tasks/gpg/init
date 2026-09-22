@@ -8,4 +8,5 @@ task::bootstrap
 task::require_env GNUPGHOME
 
 mkdir -p "$GNUPGHOME"
+chmod 700 "$GNUPGHOME"
 gpg --homedir "$GNUPGHOME" --list-keys >/dev/null

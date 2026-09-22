@@ -2,6 +2,13 @@
 
 declare -Ag PKG_PROVIDER_DIR=()
 declare -Ag PKG_STATE=()
+declare -ag PKG_PLAN=()
+
+pkg::resolver_reset() {
+  PKG_PROVIDER_DIR=()
+  PKG_STATE=()
+  PKG_PLAN=()
+}
 
 pkg::index_register() {
   local name="$1"
@@ -19,12 +26,9 @@ pkg::index_packages() {
   local packages_dir="$1"
   local pkg_dir name raw provide_name provide_op provide_ver
 
-  PKG_PROVIDER_DIR=()
-  PKG_STATE=()
-
+  pkg::resolver_reset
   shopt -s nullglob
 
-  # Real package names and directory/pkgbase names take precedence.
   for pkg_dir in "$packages_dir"/*; do
     [[ -f "$pkg_dir/PKGBUILD" ]] || continue
 
@@ -36,7 +40,6 @@ pkg::index_packages() {
     done < <(pkg::metadata_outputs "$pkg_dir")
   done
 
-  # Virtual provides fill gaps but never replace a real package mapping.
   for pkg_dir in "$packages_dir"/*; do
     [[ -f "$pkg_dir/PKGBUILD" ]] || continue
 
@@ -44,8 +47,8 @@ pkg::index_packages() {
       provide_name=""
       provide_op=""
       provide_ver=""
-      pkg::spec_parse "$raw" provide_name provide_op provide_ver
-      pkg::index_register "$provide_name" "$pkg_dir" false
+      spec::parse "$raw" provide_name provide_op provide_ver
+      pkg::index_register "$provide_name" "$pkg_dir"
     done < <(pkg::metadata_provides "$pkg_dir")
   done
 
@@ -54,7 +57,8 @@ pkg::index_packages() {
 
 pkg::all_outputs_in_repo() {
   local pkg_dir="$1"
-  local version output found=false
+  local version output
+  local found=false
 
   version="$(pkg::metadata_version "$pkg_dir")" || return 1
 
@@ -67,7 +71,7 @@ pkg::all_outputs_in_repo() {
   [[ "$found" == true ]]
 }
 
-pkg::ensure_deps_built() {
+pkg::plan_deps() {
   local pkg_dir="$1"
   local pkg_label="$2"
   local raw dep op ver provider_dir
@@ -78,7 +82,7 @@ pkg::ensure_deps_built() {
     dep=""
     op=""
     ver=""
-    pkg::spec_parse "$raw" dep op ver
+    spec::parse "$raw" dep op ver
     [[ -n "$dep" ]] || continue
 
     if repo::is_dep_satisfied "$REPO_DIR" "$dep" "$op" "$ver"; then
@@ -87,21 +91,14 @@ pkg::ensure_deps_built() {
 
     provider_dir="${PKG_PROVIDER_DIR[$dep]-}"
     if [[ -n "$provider_dir" ]]; then
-      pkg::build_dir_with_deps "$provider_dir"
-
-      if repo::is_dep_satisfied "$REPO_DIR" "$dep" "$op" "$ver"; then
-        continue
-      fi
-
-      echo "error: local provider did not satisfy dependency for $pkg_label: $raw" >&2
-      return 1
+      pkg::plan_dir "$provider_dir"
+      continue
     fi
 
     if pkg::pacman_has "$dep"; then
       continue
     fi
 
-    # Common virtual package exposed by systemd.
     if [[ "$dep" == "udev" ]] && pkg::pacman_has systemd; then
       continue
     fi
@@ -111,9 +108,9 @@ pkg::ensure_deps_built() {
   done < <(pkg::metadata_deps "$pkg_dir")
 }
 
-pkg::build_dir_with_deps() {
+pkg::plan_dir() {
   local pkg_dir="$1"
-  local key pkgbase
+  local pkgbase key
 
   pkg::validate_dir "$pkg_dir" || return
 
@@ -131,47 +128,63 @@ pkg::build_dir_with_deps() {
   PKG_STATE["$key"]="visiting"
 
   if pkg::all_outputs_in_repo "$pkg_dir"; then
-    echo "==> Already current in repo: $key" >&2
     PKG_STATE["$key"]="done"
     return 0
   fi
 
-  pkg::ensure_deps_built "$pkg_dir" "$key"
-  pkg::build_dir "$pkg_dir"
-  pkg::publish_outputs "$pkg_dir"
-
+  pkg::plan_deps "$pkg_dir" "$key"
+  PKG_PLAN+=("$pkg_dir")
   PKG_STATE["$key"]="done"
 }
 
-pkg::build_with_deps() {
-  local name="$1"
-  local pkg_dir="${PKG_PROVIDER_DIR[$name]-}"
+pkg::plan_selected() {
+  local packages_dir="$1"
+  shift
+  local entry pkg_dir
 
-  if [[ -z "$pkg_dir" ]]; then
-    echo "error: no local package provides: $name" >&2
-    return 1
-  fi
+  pkg::index_packages "$packages_dir"
 
-  pkg::build_dir_with_deps "$pkg_dir"
+  for entry in "$@"; do
+    if [[ -d "$entry" ]]; then
+      pkg_dir="$(pkg::resolve_dir "$entry" "$packages_dir")"
+    else
+      pkg_dir="${PKG_PROVIDER_DIR[$entry]-}"
+      [[ -n "$pkg_dir" ]] || {
+        echo "error: no local package provides: $entry" >&2
+        return 1
+      }
+    fi
+
+    pkg::plan_dir "$pkg_dir"
+  done
+}
+
+pkg::print_plan() {
+  local pkg_dir pkgbase
+
+  for pkg_dir in "${PKG_PLAN[@]}"; do
+    pkgbase="$(pkg::metadata_pkgbase "$pkg_dir")"
+    printf '%s\t%s\n' "${pkgbase:-${pkg_dir##*/}}" "$pkg_dir"
+  done
+}
+
+pkg::build_plan() {
+  local pkg_dir
+
+  for pkg_dir in "${PKG_PLAN[@]}"; do
+    pkg::build_dir "$pkg_dir"
+    pkg::publish_outputs "$pkg_dir"
+
+    if declare -F chroot::enable_repo >/dev/null 2>&1; then
+      chroot::enable_repo
+    fi
+  done
 }
 
 pkg::build_selected() {
   local packages_dir="$1"
   shift
-  local -a requested=("$@")
-  local entry pkg_dir
 
-  pkg::index_packages "$packages_dir"
-
-  for entry in "${requested[@]}"; do
-    echo "==> Requested: $entry" >&2
-
-    if [[ "$entry" = /* ]]; then
-      pkg_dir="$entry"
-      pkg::index_register "${pkg_dir##*/}" "$pkg_dir" true
-      pkg::build_dir_with_deps "$pkg_dir"
-    else
-      pkg::build_with_deps "$entry"
-    fi
-  done
+  pkg::plan_selected "$packages_dir" "$@"
+  pkg::build_plan
 }

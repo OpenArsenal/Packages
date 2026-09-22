@@ -87,10 +87,10 @@ repo::select_newest_archives() {
     fi
   done
 
-  if [[ "${#newest_file[@]}" -eq 0 ]]; then
+  [[ "${#newest_file[@]}" -gt 0 ]] || {
     outvar=()
     return 1
-  fi
+  }
 
   local -a pkg_names=()
   mapfile -t pkg_names < <(printf '%s\n' "${!newest_file[@]}" | sort)
@@ -108,13 +108,7 @@ repo::update_db() {
   local include_new="$4"
   local prevent_downgrade="$5"
   local include_sigs="$6"
-
-  local -a args=()
-  repo::update_add_args \
-    "$include_new" \
-    "$prevent_downgrade" \
-    "$include_sigs" \
-    args
+  local dry_run="${7:-false}"
 
   local -a candidates=()
   if ! mapfile -t candidates < <(repo::match_package_archives "$repo_dir" "$pkg_filter") \
@@ -129,6 +123,18 @@ repo::update_db() {
     return 1
   fi
 
+  if [[ "$dry_run" == "true" ]]; then
+    printf '%s\n' "${selected[@]}"
+    return 0
+  fi
+
+  local -a args=()
+  repo::update_add_args \
+    "$include_new" \
+    "$prevent_downgrade" \
+    "$include_sigs" \
+    args
+
   repo-add "${args[@]}" "$repo_db" "${selected[@]}"
 
   if declare -F repo::index_reset >/dev/null 2>&1; then
@@ -138,12 +144,11 @@ repo::update_db() {
 
 repo::refresh_sync_db() {
   local repo_name="$1"
-  local sync_dir="/var/lib/pacman/sync"
+  local db_path sync_dir
 
-  sudo rm -f "${sync_dir}/${repo_name}.db"* "${sync_dir}/${repo_name}.files"*
-  sudo pacman -Sy
-}
+  db_path="$(pacman-conf DBPath)"
+  sync_dir="${db_path%/}/sync"
 
-repo::reindex() {
-  repo::update_db "$REPO_DIR" "$REPO_DB" "" false false false
+  run0 rm -f "${sync_dir}/${repo_name}.db"* "${sync_dir}/${repo_name}.files"*
+  run0 pacman -Sy
 }
