@@ -118,9 +118,11 @@ _assert_generated_workspace_state() {
 _assert_built_templates() {
   local _manifest='packages/frontend/templates/edgeless-templates.gen.ts'
   local _template
+  local _found=false
 
   while IFS= read -r _template; do
     [[ -n "${_template}" ]] || continue
+    _found=true
     if [[ ! -s "packages/frontend/templates/${_template#./}" ]]; then
       printf 'Missing generated AFFiNE template: %s\n' "${_template}" >&2
       return 1
@@ -128,6 +130,11 @@ _assert_built_templates() {
   done < <(
     sed -n "s@^import .* from '\\(./edgeless/.*\\.json\\)';$@\\1@p" "${_manifest}"
   )
+
+  if [[ "${_found}" != true ]]; then
+    printf 'No generated AFFiNE template imports found in %s\n' "${_manifest}" >&2
+    return 1
+  fi
 }
 
 _build_templates() {
@@ -274,6 +281,9 @@ _affine_build() {
   _common_build_env
   _setup_build_toolchain
 
+  # Catch template generation regressions before the expensive native build.
+  _assert_built_templates || _build_templates
+
   export APP_VERSION="${_app_version}"
   ./scripts/set-version.sh "${APP_VERSION}"
 
@@ -283,9 +293,8 @@ _affine_build() {
   export BUILD_TYPE=stable
   export RELEASE_VERSION="${_app_version}"
 
-  # Keep this check before the expensive native build on future refactors, and
-  # regenerate if a build step ever removes the generated template payloads.
-  _assert_built_templates || _build_templates
+  # Do not let later build steps silently remove required generated payloads.
+  _assert_built_templates
 
   # Upstream generate-assets.ts does not propagate spawnSync failures. Run the
   # two builds directly so renderer errors stop the package build immediately.
