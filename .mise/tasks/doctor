@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+#MISE description="Check required package-build tools"
+
+set -euo pipefail
+
+need_bins=(
+  arch-nspawn
+  bash
+  bsdtar
+  git
+  makechrootpkg
+  makepkg
+  mkarchroot
+  paccache
+  pacman
+  repo-add
+  run0
+  vercmp
+)
+
+missing=0
+for bin in "${need_bins[@]}"; do
+  if ! command -v "$bin" >/dev/null 2>&1; then
+    echo "Missing: $bin"
+    missing=1
+  fi
+done
+
+if ! command -v aur >/dev/null 2>&1; then
+  echo "Missing: aur (aurutils)"
+  echo "  Build packages/aurutils first if AUR import/update tasks are needed."
+fi
+
+(( missing == 0 )) || exit 1
+echo "OK"
