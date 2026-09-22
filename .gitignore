@@ -1,11 +1,10 @@
 node_modules
 
 .cache
+.env
 .gnupg
 .packages
-repo/
 packages/*/logs/
 repomix-instruction.md
 
 *-repomix-output.xml
-.env
