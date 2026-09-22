@@ -115,6 +115,47 @@ _assert_generated_workspace_state() {
   done
 }
 
+_assert_built_templates() {
+  local _manifest='packages/frontend/templates/edgeless-templates.gen.ts'
+  local _template
+
+  while IFS= read -r _template; do
+    [[ -n "${_template}" ]] || continue
+    if [[ ! -s "packages/frontend/templates/${_template#./}" ]]; then
+      printf 'Missing generated AFFiNE template: %s\n' "${_template}" >&2
+      return 1
+    fi
+  done < <(
+    sed -n "s@^import .* from '\\(./edgeless/.*\\.json\\)';$@\\1@p" "${_manifest}"
+  )
+}
+
+_build_templates() {
+  node packages/frontend/templates/build-edgeless.mjs
+  node packages/frontend/templates/build-stickers.mjs
+  _assert_built_templates
+}
+
+_generate_electron_assets() {
+  local _electron_dir='packages/frontend/apps/electron'
+  local _renderer_dir='packages/frontend/apps/electron-renderer'
+  local _resources_dir="${_electron_dir}/resources"
+  local _electron_app_version
+
+  _electron_app_version="$(jq -r .version "${_electron_dir}/package.json")"
+  if [[ "${_electron_app_version}" != "${RELEASE_VERSION}" ]]; then
+    printf 'Electron app version mismatch: expected %s, got %s\n' \
+      "${RELEASE_VERSION}" "${_electron_app_version}" >&2
+    return 1
+  fi
+
+  SKIP_NX_CACHE=1 yarn affine @affine/electron-renderer build
+  SKIP_NX_CACHE=1 yarn affine @affine/electron build
+
+  rm -rf "${_resources_dir}/web-static"
+  mv "${_renderer_dir}/dist" "${_resources_dir}/web-static"
+}
+
 _patch_build_label_fallback() {
   local _html_plugin='tools/cli/src/webpack/html-plugin.ts'
 
@@ -223,10 +264,9 @@ _affine_prepare() {
 
   yarn install --immutable --inline-builds
 
-  # Upstream's @affine/templates postinstall generates the built-in edgeless
-  # template JSON and static assets from edgeless-snapshot/*.zip. We suppress
-  # workspace postinstalls above, so run this required generation explicitly.
-  yarn workspace @affine/templates build
+  # Upstream normally generates these from @affine/templates' postinstall.
+  # Run the generators directly because workspace postinstalls are suppressed.
+  _build_templates
 }
 
 _affine_build() {
@@ -243,7 +283,13 @@ _affine_build() {
   export BUILD_TYPE=stable
   export RELEASE_VERSION="${_app_version}"
 
-  SKIP_NX_CACHE=1 yarn affine @affine/electron generate-assets
+  # Keep this check before the expensive native build on future refactors, and
+  # regenerate if a build step ever removes the generated template payloads.
+  _assert_built_templates || _build_templates
+
+  # Upstream generate-assets.ts does not propagate spawnSync failures. Run the
+  # two builds directly so renderer errors stop the package build immediately.
+  _generate_electron_assets
   yarn config set nmMode classic
   yarn config set nmHoistingLimits workspaces
   find . -name 'node_modules' -type d -prune -exec rm -rf '{}' +
