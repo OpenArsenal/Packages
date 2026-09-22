@@ -59,10 +59,7 @@ pkg::build_dir() {
   fi
 
   local -a makepkg_args=(
-    --syncdeps
     --cleanbuild
-    --noconfirm
-    --log
   )
 
   echo "==> Building: $pkg_dir" >&2
