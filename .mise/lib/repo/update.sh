@@ -93,8 +93,10 @@ repo::select_newest_archives() {
   }
 
   local -a pkg_names=()
-  mapfile -t pkg_names < <(printf '%s
-' "${!newest_file[@]}" | sort)
+  mapfile -t pkg_names < <(
+    printf '%s
+' "${!newest_file[@]}" | sort
+  )
 
   outvar=()
   for pkg_name in "${pkg_names[@]}"; do
@@ -112,7 +114,9 @@ repo::update_db() {
   local dry_run="${7:-false}"
 
   local -a candidates=()
-  if ! mapfile -t candidates < <(repo::match_package_archives "$repo_dir" "$pkg_filter")     || [[ "${#candidates[@]}" -eq 0 ]]; then
+  if ! mapfile -t candidates < <(
+    repo::match_package_archives "$repo_dir" "$pkg_filter"
+  ) || [[ "${#candidates[@]}" -eq 0 ]]; then
     echo "No matching package archives found in $repo_dir for: ${pkg_filter:-<all>}" >&2
     return 1
   fi
@@ -146,6 +150,7 @@ repo::refresh_sync_db() {
   db_path="$(pacman-conf DBPath)"
   sync_dir="${db_path%/}/sync"
 
-  run0 rm -f "${sync_dir}/${repo_name}.db"* "${sync_dir}/${repo_name}.files"*
+  run0 rm -f     "${sync_dir}/${repo_name}.db"*     "${sync_dir}/${repo_name}.files"*
+
   run0 pacman -Sy
 }
