@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+#MISE description="Format and validate package nvchecker configs"
+#USAGE flag "-c --check" help="Check formatting without writing"
+#USAGE arg "[package]" var=#true help="Only process selected package names"
+
+source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
+
+task::bootstrap
+task::require_env SCRIPTS PACKAGES_DIR
+
+args=(--packages-dir "$PACKAGES_DIR")
+[[ "${usage_check:-false}" == "true" ]] && args+=(--check)
+
+if [[ -n "${usage_package:-}" ]]; then
+  read -r -a packages <<< "${usage_package}"
+  args+=("${packages[@]}")
+fi
+
+python3 "$SCRIPTS/format-nvchecker.py" "${args[@]}"
