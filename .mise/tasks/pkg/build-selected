@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+#MISE description="Build selected packages listed in .packages (plus repo-local deps) and update repo DB"
+#MISE depends=["repo:create", "chroot:create"]
+
+source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/pkg/list.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/pkg/build.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/pkg/deps.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/pkg/resolver.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/repo/inspect.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/repo/update.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/pkg/orchestrator.sh"
+
+task::bootstrap
+
+PACKAGES_FILE="${PACKAGES_FILE:-${PKGBUILDS_ROOT}/.packages}"
+PACKAGES_DIR="${PACKAGES_DIR:-${PKG_DIR}}"
+
+declare -a requested=()
+pkg::load_requested "$PACKAGES_FILE" requested
+
+if [[ "${#requested[@]}" -eq 0 ]]; then
+  echo "No packages listed in $PACKAGES_FILE" >&2
+  exit 1
+fi
+
+echo "REPO_DIR=${REPO_DIR}" >&2
+echo "CHROOT_DIR=${CHROOT_DIR}" >&2
+echo "PACKAGES_DIR=${PACKAGES_DIR}" >&2
+echo "Building ${#requested[@]} requested package(s) from $PACKAGES_FILE" >&2
+
+pkg::build_selected "${requested[@]}"
