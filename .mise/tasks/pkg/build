@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #MISE description="Build one package and its local dependencies"
-#MISE depends=["repo:create", "chroot:create", "gpg:init"]
+#MISE depends=["repo:create", "chroot:create"]
 #MISE dir="{{cwd}}"
 #USAGE arg "[package]" help="Package name or directory; defaults to the invocation directory"
 
