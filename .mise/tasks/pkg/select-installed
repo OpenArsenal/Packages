@@ -1,20 +1,15 @@
 #!/usr/bin/env bash
-#MISE description="Populate PACKAGES_FILE with repo packages installed on this system"
+#MISE description="Populate PACKAGES_FILE with packages installed from REPO_NAME"
 #USAGE flag "-n --dry-run" help="Print the selected package list without writing PACKAGES_FILE"
 
 source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
 source "${PKGBUILDS_ROOT}/.mise/lib/pkg.sh"
 
 task::bootstrap
-task::require_env PACKAGES_DIR PACKAGES_FILE
+task::require_env PACKAGES_DIR PACKAGES_FILE REPO_NAME
 
 declare -a selected=()
-pkg::installed_selected "$PACKAGES_DIR" selected
-
-if [[ "${#selected[@]}" -eq 0 ]]; then
-  echo "No installed packages are provided by this repository." >&2
-  exit 0
-fi
+pkg::installed_selected "$PACKAGES_DIR" "$REPO_NAME" selected
 
 if [[ "${usage_dry_run:-false}" == "true" ]]; then
   printf '%s\n' "${selected[@]}"
