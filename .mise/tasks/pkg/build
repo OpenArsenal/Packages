@@ -12,5 +12,5 @@ source "${PKGBUILDS_ROOT}/.mise/lib/pkg.sh"
 task::bootstrap
 task::require_env PACKAGES_DIR REPO_DIR REPO_DB CHROOT_DIR
 
-target="${usage_package:-${MISE_ORIGINAL_CWD:-$PWD}}"
+target="${usage_package:-$PWD}"
 pkg::build_selected "$PACKAGES_DIR" "$target"
