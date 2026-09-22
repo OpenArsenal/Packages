@@ -1,17 +1,31 @@
 # shellcheck shell=bash
 
 pkg::pacman_has() {
-  local dep="$1"
-  pacman -Si "$dep" >/dev/null 2>&1
+  pacman -Si "$1" >/dev/null 2>&1
+}
+
+pkg::resolve_dir() {
+  local input="$1"
+  local packages_dir="$2"
+  local candidate
+
+  if [[ -d "$input" ]]; then
+    candidate="$input"
+  elif [[ "$input" != */* && -d "$packages_dir/$input" ]]; then
+    candidate="$packages_dir/$input"
+  else
+    echo "error: package not found: $input" >&2
+    return 1
+  fi
+
+  (
+    cd "$candidate" || exit 1
+    pwd -P
+  )
 }
 
 pkg::validate_dir() {
   local pkg_dir="$1"
-
-  [[ -d "$pkg_dir" ]] || {
-    echo "error: package directory not found: $pkg_dir" >&2
-    return 1
-  }
 
   [[ -f "$pkg_dir/PKGBUILD" ]] || {
     echo "error: PKGBUILD not found: $pkg_dir/PKGBUILD" >&2
@@ -24,6 +38,11 @@ pkg::build_dir() {
 
   pkg::validate_dir "$pkg_dir" || return
 
+  local -a args=(-r "${CHROOT_DIR:?CHROOT_DIR not set}" -c -u -x failure)
+  if [[ -d "${REPO_BASE:-}" ]]; then
+    args+=(-D "$REPO_BASE")
+  fi
+
   echo "==> Building: $pkg_dir" >&2
 
   (
@@ -32,17 +51,11 @@ pkg::build_dir() {
     export LOGDEST="$PWD/logs"
     mkdir -p "$LOGDEST"
 
-    makechrootpkg -r "${CHROOT_DIR:?CHROOT_DIR not set}" -c -u -x failure \
-      -- --syncdeps --cleanbuild --noconfirm --log
+    makechrootpkg "${args[@]}" -- \
+      --syncdeps --cleanbuild --noconfirm --log
   )
 }
 
 pkg::publish_outputs() {
-  local pkg_dir="$1"
-  local output
-
-  while IFS= read -r output; do
-    [[ -n "$output" ]] || continue
-    repo::update_db "$REPO_DIR" "$REPO_DB" "$output" false false false
-  done < <(pkg::metadata_outputs "$pkg_dir")
+  repo::update_db "$REPO_DIR" "$REPO_DB" "" false false false false
 }
