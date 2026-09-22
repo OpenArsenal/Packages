@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #MISE description="Check or apply package updates with pkgctl and nvchecker"
 #MISE alias="update"
+#MISE depends=["pkg:nvchecker:check"]
 #USAGE flag "-a --apply" help="Update PKGBUILDs to the latest upstream versions"
 #USAGE flag "--no-update-checksums" help="Do not update checksums when applying"
 #USAGE flag "-v --verbose" help="Show up-to-date packages too"
 #USAGE flag "--json" help="Print pkgctl JSON output"
 #USAGE flag "--list-outdated" help="Print only out-of-date package names"
-#USAGE flag "-n --dry-run" help="Check only; this is already the default"
 #USAGE arg "[package]" var=#true help="Package names to check; defaults to every package with .nvchecker.toml"
 
 source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
@@ -16,7 +16,7 @@ task::require_env PACKAGES_DIR
 
 declare -a requested=()
 if [[ -n "${usage_package:-}" ]]; then
-  eval "requested=(${usage_package})"
+  read -r -a requested <<< "${usage_package}"
 fi
 
 declare -a package_dirs=()
