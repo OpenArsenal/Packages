@@ -18,7 +18,7 @@ chroot::enable_repo() {
   grep -qxF "[$REPO_NAME]" "$pacman_conf" && return 0
 
   repo::pacman_stanza "$REPO_NAME" "$REPO_DIR" "$REPO_SIG_LEVEL" |
-    run0 tee -a "$pacman_conf" >/dev/null
+    task::run_root tee -a "$pacman_conf" >/dev/null
 }
 
 chroot::create() {
@@ -53,7 +53,7 @@ chroot::create() {
     packages+=(cachyos-keyring)
   fi
 
-  run0 mkarchroot "${args[@]}" "$root" "${packages[@]}"
+  task::run_root mkarchroot "${args[@]}" "$root" "${packages[@]}"
 }
 
 chroot::update() {
@@ -67,7 +67,7 @@ chroot::update() {
     return 1
   }
 
-  run0 arch-nspawn "$root" pacman -Syu --noconfirm
+  task::run_root arch-nspawn "$root" pacman -Syu --noconfirm
 }
 
 chroot::destroy() {
@@ -80,5 +80,5 @@ chroot::destroy() {
       ;;
   esac
 
-  run0 rm -rf -- "$CHROOT_DIR"
+  task::run_root rm -rf -- "$CHROOT_DIR"
 }
