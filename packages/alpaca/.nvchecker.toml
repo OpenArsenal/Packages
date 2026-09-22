@@ -1,4 +1,6 @@
 [alpaca]
 source = "github"
 github = "Jeffser/Alpaca"
-use_max_tag = true
+use_latest_release = true
+from_pattern = "^[vV]"
+to_pattern = ""

@@ -1,5 +1,6 @@
 [youki]
 source = "github"
-github = "containers/youki"
-prefix = "v"
-use_max_tag = true
+github = "youki-dev/youki"
+use_latest_release = true
+from_pattern = "^[vV]"
+to_pattern = ""
