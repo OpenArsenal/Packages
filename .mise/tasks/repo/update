@@ -6,70 +6,22 @@
 #USAGE flag "--refresh-sync" help="Remove local pacman sync DB for this repo and run pacman -Sy (requires sudo)"
 #USAGE arg "<package>" help="Limit to a single package (pkgname, glob, or a .pkg.tar.* path)" required=#false
 
-set -euo pipefail
+source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/repo/update.sh"
 
-: "${REPO_DIR:?REPO_DIR not set}"
-: "${REPO_DB:?REPO_DB not set}"
+task::bootstrap
+task::require_env REPO_DIR REPO_DB
 
-add_flag() {
-  if [[ "${1:-false}" == "true" ]]; then
-    args+=("$2")
-  fi
-}
+# shellcheck disable=SC2153
+repo::update_db \
+  "$REPO_DIR" \
+  "$REPO_DB" \
+  "${usage_package:-}" \
+  "${usage_new:-false}" \
+  "${usage_prevent_downgrade:-false}" \
+  "${usage_include_sigs:-false}"
 
-args=()
-add_flag "${usage_new:-false}" "--new"
-add_flag "${usage_prevent_downgrade:-false}" "--prevent-downgrade"
-add_flag "${usage_include_sigs:-false}" "--include-sigs"
-
-(
-  cd "$REPO_DIR"
-
-  shopt -s nullglob
-  pkg_filter="${usage_package:-}"
-
-  if [ -n "$pkg_filter" ]; then
-    # If the input already looks like a path or glob, use it directly.
-    # Otherwise treat it as a pkgname and match common package archive shapes.
-    if [[ "$pkg_filter" == *".pkg.tar."* ]] \
-      || [[ "$pkg_filter" == ./* ]] \
-      || [[ "$pkg_filter" == */* ]] \
-      || [[ "$pkg_filter" == *"*"* ]] \
-      || [[ "$pkg_filter" == *"?"* ]] \
-      || [[ "$pkg_filter" == *"["* ]]; then
-      pkgs=( "$pkg_filter" )
-    else
-      pkgs=( ./"$pkg_filter"-*.pkg.tar.* ./"$pkg_filter".pkg.tar.* ./"$pkg_filter"*.pkg.tar.* )
-    fi
-  else
-    pkgs=( ./*.pkg.tar.* )
-  fi
-  shopt -u nullglob
-
-  if [ "${#pkgs[@]}" -eq 0 ]; then
-    echo "No matching package archives found in $REPO_DIR for: ${pkg_filter:-<all>}" >&2
-    exit 1
-  fi
-
-  # Keep processing order stable so runs are predictable.
-  mapfile -t pkgs < <(printf '%s\n' "${pkgs[@]}" | sort -V)
-
-  # Update the repository one package at a time.
-  #
-  # repo-add supports multiple package files in one call, but processing
-  # packages individually has proven more reliable here and keeps failures
-  # easier to isolate.
-  for pkg in "${pkgs[@]}"; do
-    repo-add "${args[@]}" "$REPO_DB" "$pkg" 2>&1
-  done
-)
-
-if [ "${usage_refresh_sync:-false}" = "true" ]; then
-  : "${REPO_NAME:?REPO_NAME not set}"
-
-  sync_dir="/var/lib/pacman/sync"
-  repo="$REPO_NAME"
-
-  sudo rm -f "${sync_dir}/${repo}.db"* "${sync_dir}/${repo}.files"*
-  sudo pacman -Sy
+if [[ "${usage_refresh_sync:-false}" == "true" ]]; then
+  task::require_env REPO_NAME
+  repo::refresh_sync_db "$REPO_NAME"
 fi
