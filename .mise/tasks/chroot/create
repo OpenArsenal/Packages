@@ -1,70 +1,10 @@
 #!/usr/bin/env bash
 #MISE description="Provision the clean package-build chroot"
 #MISE hide=true
-#USAGE flag "--root <dir>" help="Chroot root directory" env="CHROOT_ROOT"
-#USAGE flag "--pacman-conf <file>" help="Pacman config to use" env="CHROOT_PACMAN_CONF"
-#USAGE flag "--mirrorlist-v4 <file>" help="Optional CachyOS v4 mirrorlist" env="CHROOT_MIRRORLIST_V4"
-#USAGE flag "--mirrorlist-v3 <file>" help="Optional CachyOS v3 mirrorlist" env="CHROOT_MIRRORLIST_V3"
-#USAGE flag "--mirrorlist <file>" help="Optional CachyOS mirrorlist" env="CHROOT_MIRRORLIST"
-#USAGE flag "--arch-mirrorlist <file>" help="Optional Arch mirrorlist" env="CHROOT_ARCH_MIRRORLIST"
 
-set -euo pipefail
+source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/repo.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/chroot.sh"
 
-CHROOT_ROOT="${usage_root:-${CHROOT_ROOT:-}}"
-CHROOT_PACMAN_CONF="${usage_pacman_conf:-${CHROOT_PACMAN_CONF:-}}"
-CHROOT_MIRRORLIST_V4="${usage_mirrorlist_v4:-${CHROOT_MIRRORLIST_V4:-}}"
-CHROOT_MIRRORLIST_V3="${usage_mirrorlist_v3:-${CHROOT_MIRRORLIST_V3:-}}"
-CHROOT_MIRRORLIST="${usage_mirrorlist:-${CHROOT_MIRRORLIST:-}}"
-CHROOT_ARCH_MIRRORLIST="${usage_arch_mirrorlist:-${CHROOT_ARCH_MIRRORLIST:-}}"
-
-[[ -n "$CHROOT_ROOT" ]] || { echo "error: CHROOT_ROOT is required" >&2; exit 1; }
-[[ -n "$CHROOT_PACMAN_CONF" ]] || { echo "error: CHROOT_PACMAN_CONF is required" >&2; exit 1; }
-[[ -f "$CHROOT_PACMAN_CONF" ]] || { echo "error: pacman config does not exist: $CHROOT_PACMAN_CONF" >&2; exit 1; }
-
-case "$CHROOT_ROOT" in
-  "/" | "." | "")
-    echo "error: refusing to use CHROOT_ROOT=$CHROOT_ROOT" >&2
-    exit 1
-    ;;
-esac
-
-mkarchroot_args=(-C "$CHROOT_PACMAN_CONF")
-
-add_mirrorlist() {
-  local src="$1"
-  local dest="$2"
-
-  [[ -n "$src" ]] || return
-  [[ -f "$src" ]] || {
-    echo "error: mirrorlist does not exist: $src" >&2
-    exit 1
-  }
-
-  mkarchroot_args+=(-f "$src:$dest")
-}
-
-add_mirrorlist "$CHROOT_MIRRORLIST_V4" /etc/pacman.d/cachyos-v4-mirrorlist
-add_mirrorlist "$CHROOT_MIRRORLIST_V3" /etc/pacman.d/cachyos-v3-mirrorlist
-add_mirrorlist "$CHROOT_MIRRORLIST" /etc/pacman.d/cachyos-mirrorlist
-add_mirrorlist "$CHROOT_ARCH_MIRRORLIST" /etc/pacman.d/mirrorlist
-
-if [[ -d "$CHROOT_ROOT" && -f "$CHROOT_ROOT/etc/pacman.conf" ]]; then
-  echo "Chroot already provisioned; skipping: $CHROOT_ROOT"
-  exit 0
-fi
-
-if [[ -e "$CHROOT_ROOT" ]]; then
-  echo "error: chroot root exists but is not provisioned: $CHROOT_ROOT" >&2
-  echo "       run 'mise run chroot:destroy' and retry" >&2
-  exit 1
-fi
-
-run0 mkdir -p -- "${CHROOT_DIR:?CHROOT_DIR not set}"
-
-run0 mkarchroot "${mkarchroot_args[@]}" "$CHROOT_ROOT"   base-devel   git   archlinux-keyring   cachyos-keyring
-
-run0 sh -c   "grep -qxF 'no-secmem-warning' '$CHROOT_ROOT/etc/pacman.d/gnupg/gpg.conf' 2>/dev/null || printf '%s\n' 'no-secmem-warning' >> '$CHROOT_ROOT/etc/pacman.d/gnupg/gpg.conf'"
-
-run0 arch-nspawn "$CHROOT_ROOT" pacman-key --init
-run0 arch-nspawn "$CHROOT_ROOT" pacman-key --populate archlinux
-run0 arch-nspawn "$CHROOT_ROOT" pacman-key --populate cachyos
+task::bootstrap
+chroot::create
