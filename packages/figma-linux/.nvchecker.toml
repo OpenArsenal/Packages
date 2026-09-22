@@ -1,5 +1,6 @@
 [figma-linux]
 source = "github"
 github = "Figma-Linux/figma-linux"
-use_max_tag = true
-prefix = "v"
+use_latest_release = true
+from_pattern = "^[vV]"
+to_pattern = ""
