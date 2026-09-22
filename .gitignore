@@ -3,6 +3,7 @@ node_modules
 .cache
 .gnupg
 .packages
+repomix-instruction.md
 
 *-repomix-output.xml
 .env
