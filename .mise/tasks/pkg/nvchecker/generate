@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+#MISE description="Generate per-package nvchecker configs from feeds.json"
+#USAGE flag "-f --force" help="Overwrite existing .nvchecker.toml files"
+#USAGE flag "-n --dry-run" help="Preview generated configs without writing"
+#USAGE arg "[package]" help="Only process one package" required=#false
+
+source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
+
+task::bootstrap
+task::require_env SCRIPTS FEEDS_JSON PACKAGES_DIR
+
+args=(
+  --feeds "$FEEDS_JSON"
+  --packages-dir "$PACKAGES_DIR"
+)
+
+[[ "${usage_force:-false}" == "true" ]] && args+=(--force)
+[[ "${usage_dry_run:-false}" == "true" ]] && args+=(--dry-run)
+[[ -n "${usage_package:-}" ]] && args+=("${usage_package}")
+
+python3 "$SCRIPTS/generate-nvchecker.py" "${args[@]}"
