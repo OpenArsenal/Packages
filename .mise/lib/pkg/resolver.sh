@@ -198,6 +198,7 @@ pkg::build_plan() {
 
   for pkg_dir in "${PKG_PLAN[@]}"; do
     pkg::build_dir "$pkg_dir"
+    pkg::verify_outputs "$pkg_dir"
     pkg::publish_outputs "$pkg_dir"
 
     if declare -F chroot::enable_repo >/dev/null 2>&1; then
