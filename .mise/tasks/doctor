@@ -21,8 +21,8 @@ tools=(
   pacman-conf
   pkgctl
   python3
-  repo-add
   nvchecker
+  repo-add
   updpkgsums
   vercmp
 )
@@ -31,8 +31,7 @@ missing=0
 
 for tool in "${tools[@]}"; do
   if ! command -v "$tool" >/dev/null 2>&1; then
-    printf 'Missing: %s
-' "$tool"
+    printf 'Missing: %s\\n' "$tool"
     missing=1
   fi
 done
