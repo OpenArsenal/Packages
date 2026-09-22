@@ -126,29 +126,30 @@ if [[ "${usage_apply:-false}" == "true" ]]; then
     exit 0
   }
 
-  declare -A before=()
-  for dir in "${apply_dirs[@]}"; do
-    before["$dir"]="$(sha256sum "$dir/PKGBUILD" | cut -d' ' -f1)"
-  done
-
   if pkgctl "${args[@]}" "${apply_dirs[@]}"; then
     rc=0
   else
     rc=$?
   fi
 
+  srcinfo_rc=0
   for dir in "${apply_dirs[@]}"; do
-    after="$(sha256sum "$dir/PKGBUILD" | cut -d' ' -f1)"
-    [[ "$after" != "${before[$dir]}" ]] || continue
-
-    (
+    if (
       cd "$dir"
       makepkg --printsrcinfo > .SRCINFO.tmp
       mv .SRCINFO.tmp .SRCINFO
-    )
+    ); then
+      :
+    else
+      rm -f "$dir/.SRCINFO.tmp"
+      echo "error: failed to refresh .SRCINFO for: ${dir##*/}" >&2
+      srcinfo_rc=1
+    fi
   done
 
-  exit "$rc"
+  [[ "$rc" -eq 0 ]] || exit "$rc"
+  [[ "$srcinfo_rc" -eq 0 ]] || exit "$srcinfo_rc"
+  exit 0
 fi
 
 [[ "${usage_no_update_checksums:-false}" != "true" ]] || {
