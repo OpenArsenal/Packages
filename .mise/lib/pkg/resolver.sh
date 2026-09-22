@@ -164,12 +164,17 @@ pkg::print_plan() {
 
   for pkg_dir in "${PKG_PLAN[@]}"; do
     pkgbase="$(pkg::metadata_pkgbase "$pkg_dir")"
-    printf '%s\t%s\n' "${pkgbase:-${pkg_dir##*/}}" "$pkg_dir"
+    printf '%s	%s
+' "${pkgbase:-${pkg_dir##*/}}" "$pkg_dir"
   done
 }
 
 pkg::build_plan() {
   local pkg_dir
+
+  if declare -F chroot::enable_repo >/dev/null 2>&1; then
+    chroot::enable_repo
+  fi
 
   for pkg_dir in "${PKG_PLAN[@]}"; do
     pkg::build_dir "$pkg_dir"
