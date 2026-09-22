@@ -41,7 +41,12 @@ else
   while IFS= read -r -d '' config; do
     package_dirs+=("${config%/.nvchecker.toml}")
   done < <(
-    find "$PACKAGES_DIR"       -mindepth 2       -maxdepth 2       -type f       -name .nvchecker.toml       -print0 |
+    find "$PACKAGES_DIR" \
+      -mindepth 2 \
+      -maxdepth 2 \
+      -type f \
+      -name .nvchecker.toml \
+      -print0 |
       sort -z
   )
 fi
