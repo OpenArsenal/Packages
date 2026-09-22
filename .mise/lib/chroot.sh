@@ -1,11 +1,12 @@
 # shellcheck shell=bash
 
 chroot::root() {
-  printf '%s/root\n' "${CHROOT_DIR:?CHROOT_DIR not set}"
+  printf '%s/root
+' "${CHROOT_DIR:?CHROOT_DIR not set}"
 }
 
 chroot::enable_repo() {
-  task::require_env CHROOT_DIR REPO_NAME REPO_DIR REPO_DB
+  task::require_env CHROOT_DIR REPO_NAME REPO_DIR REPO_DB REPO_SIG_LEVEL
 
   [[ -e "$REPO_DB" ]] || return 0
 
@@ -16,18 +17,17 @@ chroot::enable_repo() {
   [[ -f "$pacman_conf" ]] || return 0
   grep -qxF "[$REPO_NAME]" "$pacman_conf" && return 0
 
-  repo::pacman_stanza "$REPO_NAME" "$REPO_DIR" |
+  repo::pacman_stanza "$REPO_NAME" "$REPO_DIR" "$REPO_SIG_LEVEL" |
     run0 tee -a "$pacman_conf" >/dev/null
 }
 
 chroot::create() {
-  task::require_env CHROOT_DIR REPO_NAME REPO_DIR REPO_DB
+  task::require_env CHROOT_DIR
 
   local root
   root="$(chroot::root)"
 
   if [[ -f "$root/etc/pacman.conf" ]]; then
-    chroot::enable_repo
     echo "Chroot already provisioned: $root"
     return 0
   fi
@@ -37,7 +37,7 @@ chroot::create() {
     return 1
   fi
 
-  mkdir -p "$CHROOT_DIR" "$REPO_DIR"
+  mkdir -p "$CHROOT_DIR"
 
   local -a args=()
   if [[ -n "${CHROOT_PACMAN_CONF:-}" ]]; then
@@ -54,7 +54,6 @@ chroot::create() {
   fi
 
   run0 mkarchroot "${args[@]}" "$root" "${packages[@]}"
-  chroot::enable_repo
 }
 
 chroot::destroy() {
