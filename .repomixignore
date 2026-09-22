@@ -11,11 +11,24 @@
 !.mise/tasks/**
 !.mise/config.toml
 
+# Local
+.gnupg/
+.cache/
+
+*
+!.mise/
+!.mise/lib/
+!.mise/lib/**
+!.mise/tasks/
+!.mise/tasks/**
+!.mise/config.toml
+
 # GitHub workflows
 #!.github/workflows/
 
 # Repomix output/config (safe to ignore)
-#!repomix.config.*
+repomix.config.json
+repomix-output.*
 
 !packages/
 !packages/*
