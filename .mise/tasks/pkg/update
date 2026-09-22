@@ -151,16 +151,20 @@ if [[ "${usage_list_outdated:-false}" == "true" ]]; then
     rc="${PIPESTATUS[0]}"
   fi
 
-  sed -E 
-if pkgctl "${args[@]}" "${package_dirs[@]}"; then
-  exit 0
-else
-  rc=$?
-  [[ "$rc" -eq 2 ]] && exit 0
-  exit "$rc"
-fi
-s/\\x1B\\[[0-9;?]*[ -\\/]*[@-~]//g' "$status_log" |
-    sed -nE 's/^[[:space:]]*![[:space:]]+([^:]+): upgrade from version .*/\\1/p'
+  python3 - "$status_log" <<'PY'
+import re
+import sys
+
+ansi = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+outdated = re.compile(r"^\s*!\s+([^:]+): upgrade from version ")
+
+with open(sys.argv[1], encoding="utf-8", errors="replace") as stream:
+    for line in stream:
+        line = ansi.sub("", line)
+        match = outdated.match(line)
+        if match:
+            print(match.group(1))
+PY
 
   [[ "$rc" -eq 2 ]] && exit 0
   exit "$rc"
