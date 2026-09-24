@@ -1,5 +1,5 @@
 pkgname=ollama-cuda12
-pkgver=0.34.2
+pkgver=0.35.0
 pkgrel=1
 pkgdesc='CUDA 12 backend for Ollama (Pascal-compatible)'
 arch=(x86_64)
@@ -23,7 +23,7 @@ makedepends=(
 provides=("ollama-cuda=${pkgver}")
 conflicts=('ollama-cuda' 'ollama-cuda13')
 source=("git+${url}#tag=v${pkgver}")
-b2sums=('80fe109351d3fcafb2065fb678ee51aca07f0786ca242e5800e579293b408234fb9a7c03f8b94f05ade9f62a7b549c3b8eb91ce777bbf131c2257f359b9d547a')
+b2sums=('c1f890f32ca35b9e3fde2cc40f5cf6e848d0128ef99a09d5fe03c9cf5604d7d1ba6cb462dddedd3d0b02594fe71fd2a4f7e280c6f99fe9cb4a632891eddb0d7e')
 
 _build_dir='build/llama-server-cuda_v12'
 _payload_dir='dist/lib/ollama/cuda_v12'
