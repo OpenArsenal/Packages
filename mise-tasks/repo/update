@@ -2,17 +2,16 @@
 #MISE description="Update pacman repository database"
 #USAGE flag "-n --new" help="Only add packages not already present"
 #USAGE flag "-p --prevent-downgrade" help="Skip if newer version already exists"
-#USAGE flag "--include-sigs" help="Include PGP signatures if available"
+
 
 set -euo pipefail
 
-pushd "${REPO_DIR:?REPO_DIR not set}" >/dev/null
-trap 'popd >/dev/null' EXIT
+cd "${REPO_DIR:?REPO_DIR not set}"
 
 args=()
 [ "${usage_new:-false}" = "true" ] && args+=("--new")
 [ "${usage_prevent_downgrade:-false}" = "true" ] && args+=("--prevent-downgrade")
-[ "${usage_include_sigs:-false}" = "true" ] && args+=("--include-sigs")
+
 
 shopt -s nullglob
 pkgs=( ./*.pkg.tar.* )
@@ -23,10 +22,11 @@ if [ "${#pkgs[@]}" -eq 0 ]; then
   exit 1
 fi
 
-declare -A newest_file
-declare -A newest_ver
+declare -A newest_file=()
+declare -A newest_ver=()
 
 for pkg in "${pkgs[@]}"; do
+  [[ "$pkg" == *.sig ]] && continue
   pkg_meta=$(pacman -Qp -- "$pkg")
   pkg_name=${pkg_meta%% *}
   pkg_ver=${pkg_meta#* }
@@ -43,10 +43,15 @@ for pkg in "${pkgs[@]}"; do
   fi
 done
 
+if [[ ${#newest_file[@]} -eq 0 ]]; then
+  echo "No package archives found in $REPO_DIR"
+  exit 1
+fi
+
 mapfile -t pkg_names < <(printf '%s\n' "${!newest_file[@]}" | sort)
 selected_pkgs=()
 for pkg_name in "${pkg_names[@]}"; do
   selected_pkgs+=("${newest_file[$pkg_name]}")
 done
 
-repo-add "${args[@]}" "${REPO_DB:?REPO_DB not set}" "${selected_pkgs[@]}"
+exec repo-add "${args[@]}" "${REPO_DB:?REPO_DB not set}" "${selected_pkgs[@]}"
