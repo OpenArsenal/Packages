@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
-#MISE description="Cleanup repo artifacts / old packages"
+#MISE description="Preview ignored package/cache cleanup; use --force to delete"
+#USAGE flag "--force" help="Delete the listed ignored artifacts instead of previewing"
 
-git clean -fdx
+set -euo pipefail
+
+mode=--dry-run
+[[ "${usage_force:-false}" == true ]] && mode=--force
+
+# Scope cleanup so local credentials, signing keys, and new recipes are preserved.
+exec git --no-pager -C "${PKGBUILDS_ROOT:?}" clean -dX "$mode" -- packages .cache
