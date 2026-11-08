@@ -1,6 +1,6 @@
 pkgbase = sandlock
 	pkgdesc = Lightweight process sandbox for Linux using Landlock and seccomp
-	pkgver = 0.8.8
+	pkgver = 0.9.1
 	pkgrel = 1
 	url = https://github.com/multikernel/sandlock
 	arch = x86_64
@@ -10,8 +10,8 @@ pkgbase = sandlock
 	makedepends = cargo
 	depends = gcc-libs
 	options = !lto
-	source = sandlock-0.8.8.tar.gz::https://github.com/multikernel/sandlock/archive/refs/tags/v0.8.8.tar.gz
-	sha256sums = 7033bc961af6f7499274b28e930a9693c39f9360460e24c77948788d0e2ad912
-	b2sums = 05bb3222899a67a73801a8cb68a9afbbb7b00c9b1850eb85699bb65b98d0d1e2d1cf2389ab4aadffe3af20b2c8561f0cea999eafaadba09462b7b934148baac1
+	source = sandlock-0.9.1.tar.gz::https://github.com/multikernel/sandlock/archive/refs/tags/v0.9.1.tar.gz
+	sha256sums = 3f60bce8e265851333ecc1162b31b42bb16f4169516dbe3118b194f03ce01830
+	b2sums = 0f87c42459e513be8b957a68874e4c47566d3ddeb89c2ce473ee057046ea6d06a02197210f046ae12a371bb68bea4f0a8d1611b4e718223419957a1d12ece8e2
 
 pkgname = sandlock
