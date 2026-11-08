@@ -9,7 +9,7 @@ strict="${usage_strict:-false}"
 for tool in pacman nvchecker jq vercmp timeout; do
   command -v "$tool" >/dev/null || { echo "Missing tool: $tool" >&2; exit 1; }
 done
-root="${PKGBUILDS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)}"
+root="${PKGBUILDS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)}"
 installed="$(pacman -Q)" || exit 1
 declare -A versions=() rows=() counts=()
 while read -r name version; do
@@ -65,7 +65,7 @@ compare() {
 
 checked=0
 shopt -s nullglob
-for srcinfo in "${PKG_DIR:-$root/packages}"/*/.SRCINFO; do
+for srcinfo in "${PACKAGES_DIR:-$root/packages}"/*/.SRCINFO; do
   names=()
   base=""
   while read -r key equals value; do

@@ -178,5 +178,15 @@ chroot::destroy() {
       ;;
   esac
 
+  task::require_env CHROOT_BASE
+  local base target
+  base="$(realpath -m -- "$CHROOT_BASE")" || return 1
+  target="$(realpath -m -- "$CHROOT_DIR")" || return 1
+
+  if [[ "$base" == "/" || "${target%/*}" != "$base" ]]; then
+    echo "error: refusing unsafe CHROOT_DIR: $CHROOT_DIR" >&2
+    return 1
+  fi
+
   task::run_root rm -rf -- "$CHROOT_DIR"
 }

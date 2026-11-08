@@ -13,8 +13,8 @@ force="${usage_force:-false}"
 # Mise supplies variadic arguments as a shell-quoted list.
 eval "packages=(${usage_packages:?Provide at least one package name or URL})"
 
-root="${PKGBUILDS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)}"
-destination="${PKG_DIR:-$root/packages}"
+root="${PKGBUILDS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)}"
+destination="${PACKAGES_DIR:-$root/packages}"
 mkdir -p -- "$destination"
 temporary=""
 trap '[[ -z "$temporary" ]] || rm -rf -- "$temporary"' EXIT
