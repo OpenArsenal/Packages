@@ -1,6 +1,6 @@
 pkgbase = positron-bin
 	pkgdesc = A next-generation data science IDE from Posit (official bundled-runtime binary repack)
-	pkgver = 2026.09.1.2
+	pkgver = 2026.11.0.308
 	pkgrel = 1
 	url = https://positron.posit.co/
 	install = positron.install
@@ -50,15 +50,15 @@ pkgbase = positron-bin
 	optdepends = r: R language support
 	optdepends = libdbusmenu-glib: KDE global menu integration
 	optdepends = org.freedesktop.secrets: settings sync and secret storage integration
-	provides = positron=2026.09.1.2
+	provides = positron=2026.11.0.308
 	conflicts = positron
 	conflicts = positron-electron
 	options = !strip
 	source = positron-flags-wrapper.sh
 	sha256sums = cc8f00ce7b3147f82dda6f3f43aaf911a3f9fcbec64c36f96ab4c6fadadd3d07
-	source_x86_64 = Positron-2026.09.1-2-x64.rpm::https://cdn.posit.co/positron/releases/rpm/x86_64/Positron-2026.09.1-2-x64.rpm
-	sha256sums_x86_64 = 0397a98f868c35703fbf1e3167f83f887c0c9e3bee647230dec66a49ca5bce75
-	source_aarch64 = Positron-2026.09.1-2-arm64.rpm::https://cdn.posit.co/positron/releases/rpm/arm64/Positron-2026.09.1-2-arm64.rpm
-	sha256sums_aarch64 = 5f16f04d85a5ad95baaa7b46c7674ab11bd8769440f3b3d426f37bf9a0acd040
+	source_x86_64 = Positron-2026.11.0-308-x64.rpm::https://cdn.posit.co/positron/releases/rpm/x86_64/Positron-2026.11.0-308-x64.rpm
+	sha256sums_x86_64 = 886d5e304b807039668156cfeb93a88de77331b69ec99c4843feeb32672c5fa9
+	source_aarch64 = Positron-2026.11.0-308-arm64.rpm::https://cdn.posit.co/positron/releases/rpm/arm64/Positron-2026.11.0-308-arm64.rpm
+	sha256sums_aarch64 = c5effecbe5bba5005ffb87b87747b100e31dee25ba74ebfd643a012547a236e6
 
 pkgname = positron-bin
