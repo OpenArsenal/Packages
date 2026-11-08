@@ -1,7 +1,7 @@
 pkgname=ntfsplus-dkms-git
 _pkgname=ntfsplus
-pkgver=2026.07.20+ca149db
-pkgrel=2
+pkgver=2026.09.21+fdfea0c
+pkgrel=1
 pkgdesc="Backport DKMS module for the new Linux ntfs read-write filesystem driver"
 arch=('any')
 url="https://github.com/namjaejeon/linux-ntfs"
