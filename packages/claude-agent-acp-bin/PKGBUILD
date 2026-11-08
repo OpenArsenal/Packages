@@ -1,27 +1,47 @@
-#!/usr/bin/env bash
-# shellcheck disable=SC2034
-# Maintainer: Zachary Hanham <z@zmhanham.com>
-_org=agentclientprotocol
-_realname=claude-agent-acp
-_alias=claude-code-acp
-pkgname=${_realname}-bin
-pkgver=0.24.2
+# Contributor: Zachary Hanham <z@zmhanham.com>
+pkgname=claude-agent-acp-bin
+pkgver=0.101.0
 pkgrel=1
-pkgdesc="Use Claude Agent from any ACP client such as Zed! (precompiled binary)"
-url="https://github.com/${_org}/${_realname}"
-license=('Apache-2.0')
+pkgdesc='ACP adapter for the Claude Agent SDK (prebuilt executable)'
 arch=('x86_64' 'aarch64')
-conflicts=("${_realname}" "${_alias}")
-provides=("${_realname}" "${_alias}")
-options=(!strip)
+url='https://github.com/agentclientprotocol/claude-agent-acp'
+license=('Apache-2.0')
+depends=('glibc' 'gcc-libs')
+provides=('claude-agent-acp' 'claude-code-acp')
+conflicts=('claude-agent-acp' 'claude-code-acp')
+options=('!strip' '!debug')
 
-source_x86_64=("${_realname}-${pkgver}-${pkgrel}-linux-x64.tar.gz::${url}/releases/download/v${pkgver}/${_realname}-linux-x64.tar.gz")
-sha256sums_x86_64=('a8611f547b14852e35963def6781be4b40aa180468186ef8213b656f7236ac74')
+source_x86_64=("claude-agent-acp-${pkgver}-linux-x64.tar.gz::${url}/releases/download/v${pkgver}/claude-agent-acp-linux-x64.tar.gz")
+sha256sums_x86_64=('abfce3f9875d7ec1d04799fe90023de7bca28f1c109717206b5f071be10657d7')
+source_aarch64=("claude-agent-acp-${pkgver}-linux-arm64.tar.gz::${url}/releases/download/v${pkgver}/claude-agent-acp-linux-arm64.tar.gz")
+sha256sums_aarch64=('24096e79c0db76738022f036cc7ccc0bb5176af511827ea1d3da1e62430521f2')
 
-source_aarch64=("${_realname}-${pkgver}-${pkgrel}-linux-arm64.tar.gz::${url}/releases/download/v${pkgver}/${_realname}-linux-arm64.tar.gz")
-sha256sums_aarch64=('2f7f627764280474bd6beaf618a017fdf3cc1591cd3320086c4a9d6232dbaf7c')
+check() {
+  local _version _cli_version
+
+  _version="$("${srcdir}/claude-agent-acp" --version)"
+  [[ "${_version}" == "${pkgver}" ]] || {
+    printf 'Expected claude-agent-acp %s, got %s\n' "${pkgver}" "${_version}" >&2
+    return 1
+  }
+
+  # Since 0.101.0, the standalone agent requires a companion Claude CLI.
+  # The upstream smoke test exercises this same --cli entry point.
+  _cli_version="$("${srcdir}/claude-agent-acp" --cli --version)"
+  [[ "${_cli_version}" == *'(Claude Code)' ]] || {
+    printf 'Bundled Claude CLI did not start: %s\n' "${_cli_version}" >&2
+    return 1
+  }
+}
 
 package() {
-  install -Dm755 "${srcdir}/${_realname}" "${pkgdir}/usr/bin/${_realname}"
-  ln -s "${_realname}" "${pkgdir}/usr/bin/${_alias}"
+  local _appdir="${pkgdir}/usr/lib/claude-agent-acp"
+
+  # Keep the agent and Claude CLI together. Upstream resolves the CLI next to
+  # the executable's real path, including when /usr/bin is a symlink.
+  install -Dm755 "${srcdir}/claude-agent-acp" "${_appdir}/claude-agent-acp"
+  install -Dm755 "${srcdir}/claude" "${_appdir}/claude"
+  install -dm755 "${pkgdir}/usr/bin"
+  ln -s '../lib/claude-agent-acp/claude-agent-acp' "${pkgdir}/usr/bin/claude-agent-acp"
+  ln -s 'claude-agent-acp' "${pkgdir}/usr/bin/claude-code-acp"
 }

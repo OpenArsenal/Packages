@@ -1,0 +1,6 @@
+[claude-agent-acp-bin]
+source = "github"
+github = "agentclientprotocol/claude-agent-acp"
+use_latest_release = true
+include_prereleases = false
+prefix = "v"
