@@ -1,23 +1,23 @@
 pkgname=gitbutler-git
 _pkgname=${pkgname%-git}
 pkgver=0.21.0.r172.gec521d3
-pkgrel=1
+pkgrel=2
 pkgdesc="Version control client, backed by Git, powered by Tauri/Rust/Svelte (git version)"
 arch=('x86_64')
 url='https://github.com/gitbutlerapp/gitbutler'
 license=('LicenseRef-FSL-1.1-MIT')
-provides=("${_pkgname}")
+provides=("${_pkgname}=${pkgver}")
 conflicts=('gitbutler' 'gitbutler-bin')
 options=('!lto')
 depends=('bash' 'git' 'gtk3' 'hicolor-icon-theme' 'libayatana-appindicator' 'xdotool' 'openssl' 'webkit2gtk-4.1' 'xdg-utils')
 makedepends=('cargo' 'cmake' 'git' 'jq' 'nodejs' 'perl' 'pnpm' 'rust')
 
 source=("${_pkgname}::git+${url}.git"
-  "gitbutler-flags-wrapper.sh")
+        'gitbutler-flags-wrapper.sh')
 sha256sums=('SKIP'
-            '9a34df546f30e5aa0e0c3309d0f4ce0b95af456936b2ef79223f6602d235e3bc')
+            '821db8bc26b590648936c3ee2fefd5a6ba3378048e899e638c2627e7c450d30b')
 b2sums=('SKIP'
-        'af6a176a6430a292c158f55573ac17fb543bed5af71a814d0ff0e34cf2c1fbc1892e477261b2150c51e1c89021b5e01b103700e4cc845ff143f6e9b80b3bed44')
+        'cda6648d63b0f85d3df982a55b3c9c0fb7c6313bf67c43bb8b01626493d95a00ecf35a16b2a4ef0c4033c2ba0e797b929a484b7299a5226346384bcdd16840d9')
 
 _wrapper_target='/usr/lib/gitbutler/gitbutler-tauri'
 
@@ -25,13 +25,11 @@ _install_wrapper() {
   install -Dm755 /dev/null "${pkgdir}/usr/bin/gitbutler"
   sed -e "s#@GITBUTLER_EXEC@#${_wrapper_target}#g" \
     "${srcdir}/gitbutler-flags-wrapper.sh" >"${pkgdir}/usr/bin/gitbutler"
-
   ln -sf gitbutler "${pkgdir}/usr/bin/gitbutler-tauri"
 }
 
 _fix_desktop_exec() {
   local _desktop
-
   while IFS= read -r -d '' _desktop; do
     sed -i 's#^Exec=gitbutler-tauri#Exec=gitbutler#' "${_desktop}"
   done < <(find "${pkgdir}/usr/share/applications" -type f -name '*.desktop' -print0 2>/dev/null)
@@ -39,7 +37,6 @@ _fix_desktop_exec() {
 
 _scrub_srcdir_refs() {
   local _file="$1"
-
   if grep -aFq "${srcdir}" "${_file}"; then
     local _srcdir_replacement
     printf -v _srcdir_replacement '%*s' "${#srcdir}" ''
@@ -47,7 +44,6 @@ _scrub_srcdir_refs() {
     SRC_DIR_REF="${srcdir}" SRC_DIR_REPL="${_srcdir_replacement}" \
       perl -0pi -e 's/\Q$ENV{SRC_DIR_REF}\E/$ENV{SRC_DIR_REPL}/g' "${_file}"
   fi
-
   if grep -aFq "${srcdir}" "${_file}"; then
     echo "ERROR: ${_file} still contains a reference to \$srcdir" >&2
     return 1
@@ -56,23 +52,21 @@ _scrub_srcdir_refs() {
 
 pkgver() {
   cd "${srcdir}/${_pkgname}"
-  git describe --tags --long --abbrev=7 --match 'release/*' | sed 's#^release/##;s/\([^-]*-g\)/r\1/;s/-/./g'
+  git describe --tags --long --abbrev=7 --match 'release/*' \
+    | sed 's#^release/##;s/\([^-]*-g\)/r\1/;s/-/./g'
 }
 
 prepare() {
   cd "${srcdir}/${_pkgname}"
-
   export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
   export PNPM_HOME="${srcdir}/pnpm-home"
   export npm_config_cache="${srcdir}/npm-cache"
   export CARGO_HOME="${srcdir}/cargo-home"
-
   pnpm install --frozen-lockfile
 }
 
 build() {
   cd "${srcdir}/${_pkgname}"
-
   export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
   export PNPM_HOME="${srcdir}/pnpm-home"
   export npm_config_cache="${srcdir}/npm-cache"
@@ -93,10 +87,8 @@ build() {
 
   local _tauri_version
   _tauri_version="$(git describe --tags --abbrev=0 --match 'release/*' | sed 's#^release/##')"
-
   export VERSION="${_tauri_version}"
   export CHANNEL=release
-
   local _tauri_config="${srcdir}/tauri.conf.release.${pkgname}.json"
   jq --arg version "${_tauri_version}" '
     .version = $version
@@ -106,7 +98,6 @@ build() {
   ' crates/gitbutler-tauri/tauri.conf.release.json >"${_tauri_config}"
 
   cargo build --release --locked --package but --features packaged-but-distribution
-
   pnpm tauri build \
     --features "builtin-but packaged-but-distribution disable-auto-updates" \
     --config "${_tauri_config}" \
@@ -118,14 +109,16 @@ package() {
 
   local _rpm
   _rpm="$(find target/tauri/release/bundle/rpm target/release/bundle/rpm \
-    -type f -name 'GitButler-*.x86_64.rpm' -print -quit 2>/dev/null)"
-
+    -type f -name 'GitButler-*.x86_64.rpm' -print -quit 2>/dev/null || true)"
+  if [[ -z "${_rpm}" ]]; then
+    echo 'ERROR: GitButler RPM was not created by the Tauri build.' >&2
+    return 1
+  fi
   bsdtar -xf "${_rpm}" -C "${pkgdir}"
 
   local _bin="${pkgdir}${_wrapper_target}"
   install -Dm755 "${pkgdir}/usr/bin/gitbutler-tauri" "${_bin}"
   rm -f "${pkgdir}/usr/bin/gitbutler-tauri"
-
   _scrub_srcdir_refs "${_bin}"
 
   _install_wrapper
@@ -134,6 +127,5 @@ package() {
   local _but="${pkgdir}/usr/bin/but"
   install -Dm755 target/release/but "${_but}"
   _scrub_srcdir_refs "${_but}"
-
   install -Dm644 LICENSE.md "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE.md"
 }
