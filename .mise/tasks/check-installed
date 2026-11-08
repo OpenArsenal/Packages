@@ -1,0 +1,149 @@
+#!/usr/bin/env bash
+#MISE description="Check upstream versions of installed local packages (read-only)"
+#USAGE flag "--strict" help="Fail if any upstream check is unavailable or unknown"
+
+set -euo pipefail
+
+strict="${usage_strict:-false}"
+
+for tool in pacman nvchecker jq vercmp timeout; do
+  command -v "$tool" >/dev/null || { echo "Missing tool: $tool" >&2; exit 1; }
+done
+root="${PKGBUILDS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)}"
+installed="$(pacman -Q)" || exit 1
+declare -A versions=() rows=() counts=()
+while read -r name version; do
+  versions["$name"]="$version"
+done <<< "$installed"
+
+umask 077
+work="$(mktemp -d)"
+clear_progress() { if [[ -t 2 ]]; then printf '\r\033[2K' >&2; fi; }
+trap 'clear_progress; rm -rf -- "$work"' EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+# Authentication is configured locally, not fetched on each task invocation.
+auth=()
+if [[ -n "${GITHUB_TOKEN:-}" ]]; then
+  printf '[keys]\n"github.com" = %s\n' "$(printf '%s' "$GITHUB_TOKEN" | jq -Rs .)" > "$work/keys.toml"
+  auth=(--keyfile "$work/keys.toml")
+fi
+
+record() {
+  local status="$1" name="$2" detail="$3"
+  counts[$status]=$(( ${counts[$status]:-0} + 1 ))
+  rows[$status]+="  $name: $detail"$'\n'
+}
+
+compare() {
+  local name="$1" current="$2" latest="$3" commit order
+  current="${current#*:}"
+  current="${current%-*}"
+  status=unknown
+  if [[ "$latest" =~ ^([[:xdigit:]]{40}|[[:xdigit:]]{64})$ ]]; then
+    commit="$current"
+    [[ "$current" =~ (\.g|\+)([[:xdigit:]]{7,64})$ ]] && commit="${BASH_REMATCH[2]}"
+    if [[ "$commit" =~ ^[[:xdigit:]]{7,64}$ ]]; then
+      status=different-commit
+      [[ "${latest,,}" == "${commit,,}"* ]] && status=current
+    fi
+    return 0
+  fi
+  latest="${latest#v}"
+  # This recipe stores the NCCL tag revision separately from pkgver.
+  [[ "$name" == nccl-cuda12 ]] && latest="${latest%-*}"
+  if [[ "$current" =~ ^[0-9]+([._+][[:alnum:]]+)*$ && "$latest" =~ ^[0-9]+([._+][[:alnum:]]+)*$ && ! "$current" =~ \.r[0-9]+ ]]; then
+    order="$(vercmp "$current" "$latest")"
+    case "$order" in
+      -1) status=outdated ;;
+      0) status=current ;;
+      1) status=newer ;;
+    esac
+  fi
+}
+
+checked=0
+shopt -s nullglob
+for srcinfo in "${PACKAGES_DIR:-$root/packages}"/*/.SRCINFO; do
+  names=()
+  base=""
+  while read -r key equals value; do
+    case "$key" in
+      pkgbase) base="$value" ;;
+      pkgname) [[ -n "${versions[$value]:-}" ]] && names+=("$value") ;;
+    esac
+  done < "$srcinfo"
+  [[ ${#names[@]} -gt 0 ]] || continue
+  checked=$((checked + ${#names[@]}))
+  directory="${srcinfo%/*}"
+  config="$directory/.nvchecker.toml"
+  [[ -f "$config" ]] || config="$directory/nvchecker.toml"
+  if [[ ! -f "$config" ]]; then
+    for name in "${names[@]}"; do record skipped "$name" 'no nvchecker config'; done
+    continue
+  fi
+
+  # Keep checks read-only even for configs that normally write version-state files.
+  sed -E '/^[[:space:]]*(oldver|newver)[[:space:]]*=/d' "$config" > "$work/config.toml"
+  if [[ -t 2 ]]; then printf '\r\033[2KChecking %s…' "${names[0]}" >&2; fi
+  result=0
+  (cd -- "$directory" && timeout --kill-after=1s 30s nvchecker --logger json --failures --tries 1 \
+    "${auth[@]}" -c "$work/config.toml") > "$work/log" 2>&1 || result=$?
+  clear_progress
+
+  if [[ $result != 0 ]]; then
+    case "$result" in
+      124|137) reason='upstream timed out after 30s' ;;
+      *)
+        if grep -Eqi 'rate.?limit' "$work/log"; then
+          reason='GitHub rate limit reached; set GITHUB_TOKEN in .env or retry later'
+        else
+          reason="$(jq -Rrs '[split("\n")[] | fromjson? | select(.level == "error") | .event] | unique | join("; ")' "$work/log")"
+          reason="${reason:-nvchecker exited $result; check the package config or upstream}"
+        fi
+        ;;
+    esac
+    # Never include the locally supplied token in diagnostics.
+    if [[ -n "${GITHUB_TOKEN:-}" ]]; then reason="${reason//"$GITHUB_TOKEN"/[REDACTED]}"; fi
+    for name in "${names[@]}"; do record warning "$name" "$reason"; done
+    continue
+  fi
+
+  for name in "${names[@]}"; do
+    latest="$(jq -Rrs --arg name "$name" --arg base "$base" '
+      [split("\n")[] | fromjson? | select(.event == "updated" or .event == "up-to-date")]
+      | (map(select(.name == $name))[0] // map(select(.name == $base))[0]
+         // (if length == 1 then .[0] else null end))
+      | .version // empty
+    ' "$work/log")"
+    if [[ -z "$latest" ]]; then
+      record warning "$name" 'no unambiguous upstream version returned'
+      continue
+    fi
+    compare "$name" "${versions[$name]}" "$latest"
+    [[ "$latest" =~ ^[[:xdigit:]]{40,64}$ ]] && latest="${latest:0:12}"
+    detail="${versions[$name]} -> $latest"
+    if [[ "$status" == unknown ]]; then
+      record warning "$name" "unsupported comparison ($detail)"
+    else
+      record "$status" "$name" "$detail"
+    fi
+  done
+done
+
+printf 'Checked %s installed local package(s).\n' "$checked"
+for status in outdated different-commit newer; do
+  if [[ -n "${rows[$status]:-}" ]]; then
+    printf '\n%s (%s):\n%s' "${status^}" "${counts[$status]}" "${rows[$status]}"
+  fi
+done
+printf '\nCurrent: %s\n' "${counts[current]:-0}"
+for status in skipped warning; do
+  if [[ -n "${rows[$status]:-}" ]]; then
+    title=Skipped
+    [[ "$status" == warning ]] && title=Warnings
+    printf '\n%s (%s):\n%s' "$title" "${counts[$status]}" "${rows[$status]}"
+  fi
+done
+if [[ "$strict" == true && ${counts[warning]:-0} -gt 0 ]]; then exit 1; fi

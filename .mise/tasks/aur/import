@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+#MISE description="Import AUR or Arch Linux packaging into packages/"
+#USAGE arg "<packages>" var=#true help="Package names or HTTPS packaging URLs"
+#USAGE flag "--source <source>" default="auto" help="Packaging source" {
+#USAGE   choices "auto" "aur" "archlinux"
+#USAGE }
+#USAGE flag "--force" help="Replace existing package directories after a successful import"
+
+set -euo pipefail
+
+source="${usage_source:-auto}"
+force="${usage_force:-false}"
+# Mise supplies variadic arguments as a shell-quoted list.
+eval "packages=(${usage_packages:?Provide at least one package name or URL})"
+
+root="${PKGBUILDS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)}"
+destination="${PACKAGES_DIR:-$root/packages}"
+mkdir -p -- "$destination"
+temporary=""
+trap '[[ -z "$temporary" ]] || rm -rf -- "$temporary"' EXIT
+
+for package in "${packages[@]}"; do
+  package="${package%/}"
+  name="${package##*/}"
+  name="${name%.git}"
+  [[ "$name" =~ ^[a-zA-Z0-9][a-zA-Z0-9@._+-]*$ ]] || { echo "Invalid package name: $name" >&2; exit 1; }
+  target="$destination/$name"
+  if [[ -e "$target" || -L "$target" ]]; then
+    [[ "$force" == true ]] || { echo "$target already exists; use --force to replace it." >&2; exit 1; }
+  fi
+
+  case "$package" in
+    https://archlinux.org/packages/*) urls=("https://gitlab.archlinux.org/archlinux/packaging/packages/$name.git") ;;
+    https://*) urls=("$package") ;;
+    *)
+      case "$source" in
+        aur) urls=("https://aur.archlinux.org/$name.git") ;;
+        archlinux) urls=("https://gitlab.archlinux.org/archlinux/packaging/packages/$name.git") ;;
+        auto) urls=("https://aur.archlinux.org/$name.git" "https://gitlab.archlinux.org/archlinux/packaging/packages/$name.git") ;;
+      esac
+      ;;
+  esac
+
+  temporary="$(mktemp -d "$destination/.import.XXXXXX")"
+  imported=false
+  for url in "${urls[@]}"; do
+    if git clone --depth 1 -- "$url" "$temporary"; then imported=true; break; fi
+    rm -rf -- "$temporary"
+  done
+  [[ "$imported" == true && -f "$temporary/PKGBUILD" ]] || { echo "Could not import a PKGBUILD for $name." >&2; exit 1; }
+
+  # Only replace an existing recipe after the new clone has been verified.
+  rm -rf -- "$temporary/.git"
+  if [[ -e "$target" || -L "$target" ]]; then rm -rf --one-file-system -- "$target"; fi
+  mv -- "$temporary" "$target"
+  temporary=""
+  echo "Imported $name -> $target"
+done

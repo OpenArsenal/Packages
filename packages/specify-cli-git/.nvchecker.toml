@@ -1,4 +1,0 @@
-[specify-cli-git]
-source = "git"
-git = "https://github.com/github/spec-kit.git"
-use_commit = true

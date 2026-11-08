@@ -1,7 +1,7 @@
 pkgbase = affine-electron-git
 	pkgdesc = Collaborative knowledge base and whiteboard desktop application (git version; system Electron)
 	pkgver = 0.26.6.r11237.gdb0ff0a9df
-	pkgrel = 1
+	pkgrel = 2
 	url = https://affine.pro/
 	arch = x86_64
 	license = LicenseRef-custom

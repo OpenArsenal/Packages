@@ -1,0 +1,197 @@
+# shellcheck shell=bash
+
+repo::update_add_args() {
+  local include_new="$1"
+  local prevent_downgrade="$2"
+  local include_sigs="$3"
+  local outvar_name="$4"
+  local -n outvar="$outvar_name"
+
+  outvar=()
+  [[ "$include_new" == "true" ]] && outvar+=(--new)
+  [[ "$prevent_downgrade" == "true" ]] && outvar+=(--prevent-downgrade)
+  [[ "$include_sigs" == "true" ]] && outvar+=(--include-sigs)
+  return 0
+}
+
+repo::match_package_archives() {
+  local repo_dir="$1"
+  local pkg_filter="$2"
+  local pkg_version="${3:-}"
+  local repo_dir_abs
+
+  repo_dir_abs="$(cd "$repo_dir" && pwd -P)" || return 1
+
+  (
+    cd "$repo_dir_abs" || exit 1
+    shopt -s nullglob
+
+    local -a pkgs=()
+    local pkg pkg_meta pkg_name pkg_ver
+    local exact_name=false
+
+    if [[ -n "$pkg_filter" ]]; then
+      if [[ "$pkg_filter" == *".pkg.tar."* ]] \
+        || [[ "$pkg_filter" == ./* ]] \
+        || [[ "$pkg_filter" == */* ]] \
+        || [[ "$pkg_filter" == *"*"* ]] \
+        || [[ "$pkg_filter" == *"?"* ]] \
+        || [[ "$pkg_filter" == *"["* ]]; then
+        mapfile -t pkgs < <(compgen -G "$pkg_filter" || true)
+      else
+        # Narrow exact-name lookups before inspecting package metadata. The
+        # metadata check below still rejects names that merely share a prefix.
+        pkgs=( ./"${pkg_filter}"-*.pkg.tar.* )
+        exact_name=true
+      fi
+    else
+      pkgs=( ./*.pkg.tar.* )
+    fi
+
+    shopt -u nullglob
+
+    for pkg in "${pkgs[@]}"; do
+      [[ "$pkg" == *.sig ]] && continue
+      [[ -f "$pkg" ]] || continue
+
+      if [[ "$exact_name" == "true" ]]; then
+        pkg_meta="$(pacman -Qp -- "$pkg" 2>/dev/null)" || continue
+        pkg_name="${pkg_meta%% *}"
+        pkg_ver="${pkg_meta#* }"
+
+        [[ "$pkg_name" == "$pkg_filter" ]] || continue
+        [[ -z "$pkg_version" || "$pkg_ver" == "$pkg_version" ]] || continue
+      fi
+
+      if [[ "$pkg" = /* ]]; then
+        printf '%s\n' "$pkg"
+      else
+        printf '%s/%s\n' "$repo_dir_abs" "${pkg#./}"
+      fi
+    done | sort -uV
+  )
+}
+
+repo::select_newest_archives() {
+  local outvar_name="$1"
+  shift
+  local -n outvar="$outvar_name"
+
+  declare -A newest_file=()
+  declare -A newest_ver=()
+
+  local pkg pkg_meta pkg_name pkg_ver
+
+  for pkg in "$@"; do
+    if ! pkg_meta="$(pacman -Qp -- "$pkg" 2>/dev/null)"; then
+      echo "warning: unable to read package metadata; skipping: $pkg" >&2
+      continue
+    fi
+
+    pkg_name="${pkg_meta%% *}"
+    pkg_ver="${pkg_meta#* }"
+
+    if [[ -z "${newest_ver[$pkg_name]+x}" ]] \
+      || (( $(vercmp "$pkg_ver" "${newest_ver[$pkg_name]}") > 0 )); then
+      newest_ver["$pkg_name"]="$pkg_ver"
+      newest_file["$pkg_name"]="$pkg"
+    fi
+  done
+
+  [[ "${#newest_file[@]}" -gt 0 ]] || {
+    outvar=()
+    return 1
+  }
+
+  local -a pkg_names=()
+  mapfile -t pkg_names < <(
+    printf '%s\n' "${!newest_file[@]}" | sort
+  )
+
+  outvar=()
+  for pkg_name in "${pkg_names[@]}"; do
+    outvar+=("${newest_file[$pkg_name]}")
+  done
+}
+
+repo::add_archives() {
+  local repo_db="$1"
+  local include_new="$2"
+  local prevent_downgrade="$3"
+  local include_sigs="$4"
+  shift 4
+
+  (( $# > 0 )) || {
+    echo "error: no package archives supplied to repo-add" >&2
+    return 1
+  }
+
+  local repo_add_help
+  local -a args=()
+  repo_add_help="$(repo-add --help 2>&1 || true)"
+  [[ "$repo_add_help" == *"--wait-for-lock"* ]] && args+=(--wait-for-lock)
+
+  local -a update_args=()
+  repo::update_add_args \
+    "$include_new" \
+    "$prevent_downgrade" \
+    "$include_sigs" \
+    update_args
+  args+=("${update_args[@]}")
+
+  repo-add "${args[@]}" "$repo_db" "$@"
+
+  if declare -F repo::index_reset >/dev/null 2>&1; then
+    repo::index_reset
+  fi
+}
+
+repo::update_db() {
+  local repo_dir="$1"
+  local repo_db="$2"
+  local pkg_filter="$3"
+  local include_new="$4"
+  local prevent_downgrade="$5"
+  local include_sigs="$6"
+  local dry_run="${7:-false}"
+
+  local -a candidates=()
+  if ! mapfile -t candidates < <(
+    repo::match_package_archives "$repo_dir" "$pkg_filter"
+  ) || [[ "${#candidates[@]}" -eq 0 ]]; then
+    echo "No matching package archives found in $repo_dir for: ${pkg_filter:-<all>}" >&2
+    return 1
+  fi
+
+  local -a selected=()
+  if ! repo::select_newest_archives selected "${candidates[@]}"; then
+    echo "No readable package archives found in $repo_dir for: ${pkg_filter:-<all>}" >&2
+    return 1
+  fi
+
+  if [[ "$dry_run" == "true" ]]; then
+    printf '%s\n' "${selected[@]}"
+    return 0
+  fi
+
+  repo::add_archives \
+    "$repo_db" \
+    "$include_new" \
+    "$prevent_downgrade" \
+    "$include_sigs" \
+    "${selected[@]}"
+}
+
+repo::refresh_sync_db() {
+  local repo_name="$1"
+  local db_path sync_dir
+
+  db_path="$(pacman-conf DBPath)"
+  sync_dir="${db_path%/}/sync"
+
+  task::run_root rm -f \
+    "${sync_dir}/${repo_name}.db"* \
+    "${sync_dir}/${repo_name}.files"*
+
+  task::run_root pacman -Sy --noconfirm
+}

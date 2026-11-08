@@ -1,0 +1,35 @@
+[env]
+_.file = ".env"
+
+PKGBUILDS_ROOT = "{{ config_root }}"
+PACKAGES_DIR = "{{ get_env(name='PACKAGES_DIR', default=env.PKGBUILDS_ROOT ~ '/packages') }}"
+PACKAGES_FILE = "{{ get_env(name='PACKAGES_FILE', default=env.PKGBUILDS_ROOT ~ '/.packages') }}"
+
+REPO_NAME = "{{ get_env(name='REPO_NAME', default='openarsenal') }}"
+REPO_BASE = "{{ get_env(name='REPO_BASE', default='/srv/pacman/repos/openarsenal') }}"
+REPO_ARCH = "{{ get_env(name='REPO_ARCH', default='x86_64_v3') }}"
+REPO_DIR = "{{ get_env(name='REPO_DIR', default=env.REPO_BASE ~ '/' ~ env.REPO_ARCH) }}"
+REPO_DB = "{{ get_env(name='REPO_DB', default=env.REPO_DIR ~ '/' ~ env.REPO_NAME ~ '.db.tar.zst') }}"
+REPO_SIG_LEVEL = "{{ get_env(name='REPO_SIG_LEVEL', default='Optional TrustAll') }}"
+PKGDEST = "{{ get_env(name='PKGDEST', default=env.REPO_DIR) }}"
+
+CHROOT_NAME = "{{ get_env(name='CHROOT_NAME', default=env.REPO_NAME ~ '-' ~ env.REPO_ARCH) }}"
+CHROOT_BASE = "{{ get_env(name='CHROOT_BASE', default='/var/lib/archbuild') }}"
+CHROOT_DIR = "{{ get_env(name='CHROOT_DIR', default=env.CHROOT_BASE ~ '/' ~ env.CHROOT_NAME) }}"
+CHROOT_PACMAN_CONF = "{{ get_env(name='CHROOT_PACMAN_CONF', default='') }}"
+
+PACKAGER = "{{ get_env(name='PACKAGER', default='OpenArsenal Contributors <arch-packaging-team(at)openarsenal(dot)com>') }}"
+SOURCE_DATE_EPOCH = "{{ exec(command='git log -1 --format=%ct 2>/dev/null || date -u +%s') | trim }}"
+
+[tasks.default]
+description = "List available tasks"
+run = "mise tasks"
+
+[tasks."repo:maintain"]
+description = "Update, reconcile, prune, and refresh the published repository"
+run = [
+  "mise run repo:update",
+  "mise run repo:clean",
+  "mise run repo:prune",
+  "mise run repo:refresh-sync",
+]

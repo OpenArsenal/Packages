@@ -1,5 +1,6 @@
 [cherry-studio-bin]
 source = "github"
-github = "cherryHQ/cherry-studio"
-use_max_tag = true
-prefix = "v"
+github = "CherryHQ/cherry-studio"
+use_latest_release = true
+from_pattern = "^[vV]"
+to_pattern = ""

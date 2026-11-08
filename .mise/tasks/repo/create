@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+#MISE description="Ensure the published repository directory exists"
+#MISE hide=true
+
+source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
+
+task::bootstrap
+task::require_env REPO_DIR
+
+if [[ ! -d "$REPO_DIR" ]]; then
+  owner="$(id -un)"
+  group="$(id -gn)"
+  echo "Creating repository directory: $REPO_DIR"
+  task::run_root install -d -m 0775 -o "$owner" -g "$group" "$REPO_DIR"
+fi
+
+[[ -w "$REPO_DIR" ]] || {
+  echo "error: repository directory is not writable: $REPO_DIR" >&2
+  echo "       fix its ownership/group permissions before building packages" >&2
+  exit 1
+}

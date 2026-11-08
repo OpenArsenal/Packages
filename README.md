@@ -1,373 +1,226 @@
-Multi-package Arch Linux repository with automated builds and GitHub Pages distribution.
+# OpenArsenal Packages
 
-This repo provides:
+Arch/CachyOS package sources and local repository tooling for OpenArsenal.
 
-* Reproducible package builds
-* Repo-local build + cache isolation
-* Automated CI builds + hosting
-* Upstream signature verification
+The package source tree lives under `packages/`. Built packages are published to a system repository outside the Git checkout.
 
----
+## Repository layout
 
-# Development
+The default production layout is:
+
+```text
+/srv/pacman/repos/openarsenal/
+└── x86_64_v3/
+    ├── openarsenal.db
+    ├── openarsenal.db.tar.zst
+    ├── openarsenal.files
+    ├── openarsenal.files.tar.zst
+    └── *.pkg.tar.zst
+```
+
+There is intentionally no `repo/` directory inside this Git repository.
+
+## Environment
+
+Copy the example file once per checkout:
+
+```sh
+cp .env.example .env
+```
+
+`.env` is ignored by Git and loaded by mise. The defaults in `.mise/config.toml` already match the production layout, so only machine-specific overrides need to be added.
+
+Important variables:
+
+```text
+REPO_NAME=openarsenal
+REPO_BASE=/srv/pacman/repos/openarsenal
+REPO_ARCH=x86_64_v3
+REPO_DIR=$REPO_BASE/$REPO_ARCH
+REPO_DB=$REPO_DIR/openarsenal.db.tar.zst
+PKGDEST=$REPO_DIR
+CHROOT_BASE=/var/lib/archbuild
+CHROOT_DIR=$CHROOT_BASE/openarsenal-x86_64_v3
+```
 
 ## Prerequisites
 
-```bash
-sudo pacman -S --needed base-devel devtools git gnupg jq mise nvchecker pacman-contrib
-mise trust
+The workflow expects Arch packaging/devtools commands, including `makepkg`, `pkgctl`, `mkarchroot`, `makechrootpkg`, `repo-add`, `repo-remove`, `paccache`, and `nvchecker`.
+
+Check the host before building:
+
+```sh
 mise run doctor
 ```
 
-## Repository environment
+## Pacman repository configuration
 
-`mise.toml` defines defaults, `.env.repo` provides shared settings, and the
-ignored `.env` holds local overrides and credentials. Tasks load this environment
-automatically.
-
-Key paths:
-
-* `PKG_DIR` → package recipes
-* `REPO_DIR` → local pacman repository
-* `PKGDEST` → built packages (defaults to `REPO_DIR`)
-* `CHROOT_DIR` → build chroot directory containing `root/`
-* `GNUPGHOME` → repo-local GPG keyring
-
-Repository, package, and chroot paths can be overridden in `.env`.
-`GNUPGHOME` stays repo-local to isolate signing keys. Optional makepkg settings
-such as `SRCDEST`, `BUILDDIR`, and `LOGDEST` can also be set in `.env`.
-`package:build` sets `SOURCE_DATE_EPOCH` from the latest repository commit unless
-you supply a value.
-
-## Build setup
-
-```bash
-mise run repo:create
-mise run chroot:create
-```
-
-The chroot uses `/etc/pacman.conf` by default. Set `CHROOT_PACMAN_CONF` in `.env`
-to use a different configuration.
-
-Run builds from the desired package directory:
-
-```bash
-cd packages/1password-cli-bin
-mise run package:build
-```
-
----
-
-# Repo-Local GPG Keyring
-
-## Why this exists
-
-We isolate GPG operations so builds are:
-
-* Reproducible
-* Independent of maintainer keyrings
-* CI-compatible
-* Auditable via `validpgpkeys`
-
-Because of this, the repo keyring is **git-ignored**:
-
-```
-.gnupg/
-```
-
-Every contributor must bootstrap it locally.
-
----
-
-## Initializing the keyring
-
-Run once per clone:
-
-```bash
-mkdir -p "$GNUPGHOME"
-chmod 700 "$GNUPGHOME"
-
-gpg --homedir "$GNUPGHOME" --list-keys >/dev/null
-```
-
----
-
-# Upstream Signature Verification
-
-Some PKGBUILDs verify upstream artifacts in `check()`.
-
-If a key is missing, builds fail with:
-
-```
-gpg: Can't check signature: No public key
-==> ERROR: A failure occurred in check().
-```
-
-This means the signing key is not in the repo keyring.
-
----
-
-## Importing Signing Keys
-
-### Example — 1Password CLI
-
-Fingerprint:
-
-```
-3FEF 9748 469A DBE1 5DA7  CA80 AC2D 6274 2012 EA22
-```
-
-### Import via keyserver
-
-**Bash/zsh**
-
-```bash
-KEY=3FEF9748469ADBE15DA7CA80AC2D62742012EA22
-gpg --homedir "$GNUPGHOME" --keyserver keyserver.ubuntu.com --recv-keys "$KEY"
-```
-
-**Fish**
-
-```fish
-set KEY 3FEF9748469ADBE15DA7CA80AC2D62742012EA22
-gpg --homedir "$GNUPGHOME" --keyserver keyserver.ubuntu.com --recv-keys $KEY
-```
-
----
-
-## Trusting Keys (optional)
-
-Without trust you may see:
-
-```
-WARNING: This key is not certified with a trusted signature!
-```
-
-The signature is still valid — this is only a Web-of-Trust warning.
-
-To suppress it:
-
-```bash
-gpg --homedir "$GNUPGHOME" --edit-key 3FEF9748469ADBE15DA7CA80AC2D62742012EA22
-trust
-# choose 4 or 5
-quit
-```
-
-Rebuild trustdb:
-
-```bash
-gpg --homedir "$GNUPGHOME" --check-trustdb
-```
-
----
-
-## Verify key presence
-
-```bash
-gpg --homedir "$GNUPGHOME" --list-keys
-```
-
----
-
-# Building Packages
-
-From the desired package directory:
-
-```bash
-mise run package:build
-```
-
-Artifacts go to `PKGDEST`, which defaults to
-`/srv/pacman/repos/openarsenal/x86_64_v3`. The build task does not install them.
-
-After building, update the repository database:
-
-```bash
-mise run repo:update --prevent-downgrade
-```
-
-## Local repo permissions (pacman `DownloadUser`)
-
-For a `file://` repository, pacman's download user (commonly `alpm`) needs
-traversal access to every parent directory and read access to the database and
-package files. This is particularly important if you move the repo under a
-private home directory.
-
-Check the configured location with:
-
-```bash
-mise exec -- printenv REPO_DIR
-```
-
-If downloads report permission errors, inspect that path's parent permissions
-with `namei -l`, then grant only the necessary traversal/read access. Keep
-future files readable through appropriate directory permissions or default ACLs.
-
----
-
-# Automation
-
-## GitHub Actions
-
-Features:
-
-* Auto-build on changes
-* Parallel package builds
-* GitHub Pages repo hosting
-* Manual workflow triggers
-* Weekly rebuilds
-* Signature verification
-* Artifact uploads
-
----
-
-## Manual CI Trigger
-
-1. Actions → **Build All Packages**
-2. Run workflow
-3. Select packages or `all`
-
----
-
-# Repository Structure
-
-```
-.
-├── 1password/
-│   ├── PKGBUILD
-│   └── 1password.install
-├── another-package/
-│   └── PKGBUILD
-└── yet-another/
-    └── PKGBUILD
-```
-
----
-
-# Packaging Guidelines
-
-* Runtime deps → `depends=()`
-* Build deps → `makedepends=()`
-* Optional → `optdepends=()`
-* AUR deps allowed
-* Add `validpgpkeys=()` for signed sources
-* Bump `pkgrel` for packaging-only changes
-
----
-
-# Checking Installed Packages
-
-Run `mise run check-installed` (requires Bash, `pacman`, `nvchecker`, `jq`,
-`vercmp`, and GNU `timeout`). This is check-only: it does not install/build packages, edit
-PKGBUILDs or `.SRCINFO`, or update nvchecker version-state files. Upstream
-checks use the network and any credentials required by the local config.
-
-Mise loads shared settings from `.env.repo` and local overrides from the
-**git-ignored `.env`**. To authenticate GitHub checks, set `GITHUB_TOKEN` in `.env`.
-You can reuse your `gh` login with this one-time setup command from the repo root
-(run only if `.env` does not already define `GITHUB_TOKEN`):
+Print the stanza for the configured repository:
 
 ```sh
-sh -c 'umask 077; token=$(gh auth token --hostname github.com) || exit; printf "\nGITHUB_TOKEN=%s\n" "$token" >> .env'
-chmod 600 .env
+mise run repo:config
 ```
 
-The task does not call `gh` or parse credential stores. When `GITHUB_TOKEN` is
-set, it supplies NVChecker a private temporary keyfile containing only the
-`github.com` key (overriding configured keyfiles). Explicit per-entry tokens still
-take precedence. Without the environment token, NVChecker uses its own keyfile
-and netrc handling; use absolute keyfile paths because checks use temporary
-configs. Temporary files are removed after use, and the local token is redacted
-from diagnostics. Public checks work without a token, but have lower rate limits.
+With the default environment it resolves to:
 
-Only installed names from `pacman -Q` that appear as `pkgname` in local
-`packages/*/.SRCINFO` are checked, including split packages. The checker reads
-`.nvchecker.toml` (preferred) or `nvchecker.toml`. Entries are selected by package
-name, then pkgbase, then a sole entry; ambiguous mappings are reported.
+```ini
+[openarsenal]
+SigLevel = Optional TrustAll
+Server = file:///srv/pacman/repos/openarsenal/x86_64_v3
+```
 
-Results compare **installed versions against upstream**, not against the local
-recipe version. Release comparisons use `vercmp` on pkgver, ignoring the installed
-Arch epoch and pkgrel. Numeric upstream `v` prefixes are normalized. For NCCL,
-the upstream tag revision is excluded, matching the recipe’s separate
-`_upstr_pkgrel` (revision-only updates cannot be detected from installed pkgver).
-Git sources without commit checking can also return comparable release tags.
-Unrecognized release formats are `unknown`. Git configs
-with `use_commit = true` compare the full upstream hash against an installed
-`.g<short hash>` or `+<short hash>` suffix (as generated by ntfsplus), or raw hash. A mismatch is `different-commit`, not a claim
-that the installed commit is older (ancestry is not checked).
+The same path is made visible to clean build chroots when local repository dependencies are needed.
 
-The final report groups `outdated`, `different-commit`, and `newer` packages into
-installed -> upstream rows, abbreviating long hashes to 12 characters. Current
-packages are counted without individual rows. Missing configs appear in a skipped
-list; failed checks (including config errors and unreachable upstreams) and
-`unknown` comparisons appear separately under warnings with concise reasons, never
-as current. Progress uses a single transient line on interactive stderr only;
-redirected/non-TTY output contains only the final report. Each upstream check has
-a 30-second timeout, with subprocess-group cleanup on timeout.
+## Clean chroot
 
-By default, per-package warnings return exit status 0 so an unreachable upstream
-does not fail the whole task. Use `mise run check-installed --strict` to return 1
-if any check failed or is unknown. Inability to enumerate installed packages is
-always fatal (exit 1). Skipped, outdated, newer, and different-commit results do
-not themselves cause a nonzero exit, even in strict mode. “Newer” describes only
-the configured upstream result, not proof that its release channel is correct.
-No remediation is performed.
+Provision or update the clean package-build chroot:
 
-## Other mise tasks
+```sh
+mise run chroot:create
+mise run chroot:update
+```
 
-- `mise run aur:import <package-or-url>...` imports packaging into `packages/`,
-  preserving upstream `.nvchecker.toml` files. It tries AUR, then Arch packaging;
-  use `--source aur` or `--source archlinux` to select one. Existing directories
-  require `--force` and are replaced only after a successful clone containing
-  `PKGBUILD`.
-- Run `mise run package:build` from the directory containing the desired
-  `PKGBUILD`. This builds in the configured chroot but does not install it.
-- `mise run repo:update` adds the newest local archive for each package to the
-  configured repository database, ignoring detached signature files.
-- `mise run cleanup` previews ignored files under `packages/` and `.cache/`.
-  Add `--force` to delete them. Credentials, signing keys, and untracked recipes
-  outside that ignored-artifact scope are preserved.
-- `mise run chroot:delete --force` explicitly confirms chroot deletion.
-- `mise run doctor` checks the tools needed by the tasks.
+Destroying the chroot is safe because it is disposable build state:
 
-All mise task files are Bash scripts. Use `check-installed` to inspect versions,
-then review and update recipes before building. The intentionally pinned
-ONNX Runtime CUDA 12 recipe stays pinned.
+```sh
+mise run chroot:destroy
+```
 
-# Update Workflow
+The published package repository is persistent state and deliberately has no corresponding `repo:destroy` task.
 
-1. Detect upstream release
-2. Update locally
-3. Test build
-4. Commit + push
-5. CI builds + deploys
+## Building packages
 
----
+Show the local dependency/build order:
 
-# Troubleshooting
+```sh
+mise run pkg:plan <package>
+```
 
-## Build failures
+Build one package plus any local dependencies that are not already satisfied:
 
-* Check CI logs
-* Rebuild locally
-* Verify sources + sums
+```sh
+mise run pkg:build <package>
+```
 
-## GPG failures
+Build the packages listed in `.packages`:
 
-* Import missing keys
-* Verify fingerprints
-* Ensure `$GNUPGHOME` is initialized
+```sh
+mise run pkg:build-selected
+```
 
-## Repo access issues
+Builds use `PKGDEST=$REPO_DIR`. Successful outputs are added to `openarsenal.db.tar.zst` immediately.
 
-* Confirm Pages enabled
-* Check pacman.conf URL
-* Adjust SigLevel if needed
+## Package updates
 
----
+Package-local `.nvchecker.toml` files are the source of truth for version checks. There is no separate feed registry or generator.
 
-# License
+Check all nvchecker-enabled packages:
 
-Repo structure: MIT
-Packages retain upstream licenses.
+```sh
+mise run pkg:update
+```
+
+Check one package:
+
+```sh
+mise run pkg:update <package>
+```
+
+Apply detected updates and refresh `.SRCINFO`:
+
+```sh
+mise run pkg:update --apply <package>
+```
+
+## Repository database maintenance
+
+### Add/update package archives
+
+`repo:update` selects the newest archive for each package and updates the repository database:
+
+```sh
+mise run repo:update
+```
+
+It can also target one package/archive/glob:
+
+```sh
+mise run repo:update <package>
+```
+
+### Remove stale database entries
+
+Deleting a package directory from Git does not automatically remove its old entry from a pacman repository database.
+
+Preview entries present in the DB but no longer produced by any `packages/*/PKGBUILD`:
+
+```sh
+mise run repo:clean --dry-run
+```
+
+Remove those stale entries:
+
+```sh
+mise run repo:clean
+```
+
+Remove them and refresh the host pacman sync DB:
+
+```sh
+mise run repo:clean --refresh-sync
+```
+
+This uses `repo-remove`; it does not rebuild the database from scratch.
+
+### Prune archives
+
+Preview package archives that are no longer indexed plus old retained versions:
+
+```sh
+mise run repo:prune --dry-run
+```
+
+Prune them, keeping two indexed versions per package by default:
+
+```sh
+mise run repo:prune
+```
+
+Change the retained version count when needed:
+
+```sh
+mise run repo:prune --keep 1
+```
+
+### Full maintenance
+
+Run update, DB reconciliation, then archive pruning:
+
+```sh
+mise run repo:maintain
+```
+
+## Package selection
+
+Populate `.packages` from packages currently installed from the configured OpenArsenal repository:
+
+```sh
+mise run pkg:select-installed
+```
+
+Use `pkg:plan` before a larger build to inspect the dependency order without changing the chroot or repository.
+
+## Design rules
+
+- `packages/` is the only package-source root.
+- `/srv/pacman/repos/openarsenal/x86_64_v3` is the default published repository.
+- `/var/lib/archbuild/openarsenal-x86_64_v3` is disposable clean-chroot state.
+- `.env` contains machine-local overrides; `.env.example` documents supported defaults.
+- Package-local `.nvchecker.toml` files are authoritative for update checks.
+- The repository is maintained locally; there is no GitHub Actions package publisher.
+
+## Additional tasks
+
+- `mise run aur:import <package>` imports AUR or Arch packaging.
+- `mise run check-installed` checks installed package versions.
+- `mise run check-installed --strict` fails on unknown or failed checks.

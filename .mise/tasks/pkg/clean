@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+#MISE description="Preview or remove package build logs"
+#MISE alias="clean"
+#USAGE flag "-f --force" help="Remove package build logs instead of only previewing"
+
+source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
+
+task::bootstrap
+task::require_env PACKAGES_DIR
+
+mapfile -d '' logs < <(
+  find "$PACKAGES_DIR"     -mindepth 2     -maxdepth 2     -type d     -name logs     -print0
+)
+
+if [[ "${#logs[@]}" -eq 0 ]]; then
+  echo "No package build logs found."
+  exit 0
+fi
+
+printf '%s
+' "${logs[@]}"
+
+if [[ "${usage_force:-false}" == "true" ]]; then
+  rm -rf -- "${logs[@]}"
+else
+  echo "Preview only. Re-run with --force to remove these log directories."
+fi
