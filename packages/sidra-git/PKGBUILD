@@ -1,5 +1,5 @@
 pkgname=sidra-git
-pkgver=1.1.1.r6.gc28396c
+pkgver=1.2.1.r2.g34e7eb6
 _electron='electron44-castlab'
 pkgrel=1
 pkgdesc='An elegant Apple Music desktop client for Linux - latest Git snapshot using CastLabs Electron'
