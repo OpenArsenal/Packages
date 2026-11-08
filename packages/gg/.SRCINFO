@@ -1,6 +1,6 @@
 pkgbase = gg
 	pkgdesc = A GUI for the version control system Jujutsu.
-	pkgver = 0.41.0
+	pkgver = 0.46.0
 	pkgrel = 1
 	url = https://github.com/gulbanana/gg
 	arch = x86_64
@@ -20,10 +20,10 @@ pkgbase = gg
 	conflicts = gg-bin
 	conflicts = gg-git
 	options = !lto
-	source = gg-0.41.0.tar.gz::https://github.com/gulbanana/gg/archive/refs/tags/v0.41.0.tar.gz
+	source = gg-0.46.0.tar.gz::https://github.com/gulbanana/gg/archive/refs/tags/v0.46.0.tar.gz
 	source = gg-flags-wrapper.sh
 	source = gg.desktop
-	sha256sums = 22ddde62333e683d98e8cb14843bc19e689a5f4f8830e35f7970b21983693613
+	sha256sums = 6e7ac9210aba2414afdddfda5caf8925af95416d8786090a574e3e758e34b5b5
 	sha256sums = 3c576e9b645624991067bb8ec22f0e6b8572250cba58497dc1b797b494f880d0
 	sha256sums = 0ca4096e28fed3dc039a1d43f2291bb1c8b34021869dccb673a93e198a1faf1e
 
