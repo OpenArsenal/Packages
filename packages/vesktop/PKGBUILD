@@ -1,15 +1,17 @@
 _nodeversion=22
 
 pkgname=vesktop
-pkgver=1.6.7
+pkgver=1.6.8
 pkgrel=1
 pkgdesc="A standalone Electron-based Discord app with Vencord & improved Linux support (bundled Electron)"
 arch=('x86_64' 'aarch64')
 url="https://github.com/Vencord/Vesktop"
-license=('GPL-3.0-only')
+license=('GPL-3.0-or-later')
 options=('!debug' '!strip')
 
 _pkgsrc="Vesktop-${pkgver}"
+_repo="https://github.com/Vencord/Vesktop.git"
+_release_commit="4bf170e0acaf6488d3b97b19dba53bbc3c1d655d"
 
 conflicts=(
   'vesktop-git'
@@ -46,52 +48,25 @@ depends=(
 )
 
 makedepends=(
+  'git'
   'nvm'
+  'pkgconf'
   'pnpm'
+  'python'
 )
 
 source=(
-  "${_pkgsrc}.tar.gz::${url}/archive/v${pkgver}.tar.gz"
+  "${_pkgsrc}::git+${_repo}#commit=${_release_commit}"
   'vesktop.desktop'
   'vesktop-flags-wrapper.sh'
 )
 
-sha256sums=('8c0dbd65e85f46797bc89591a92f8677e2565ea51cd96f661f1dd5da74c819d1'
+sha256sums=('SKIP'
             'c7734c79b1329161d57aabe851f8f346b24d02824a6081d8cfb8355945e61b1d'
             'a97a9dbef2fd14a6a931f78a1ddce5f6f50944971492104515fdce58c7fc55a5')
-b2sums=('ad3171b01ffbcc476661cf6780e271112f7d1dcf0ea5fb2bc2317a312f15db2d4bb274aa750e994c1e7fd53d31b468eae77e3a5bb5beba3e2890a24c237b32d8'
+b2sums=('SKIP'
         '18f00fecda0f4293d6c4429f3590fadef1f212fe161327dffb5c3fbc436845f6b8a96d1557a5b120bca2e0c06e459849b0a2966f69c22000b90e7d087ceb1606'
         '10030f288016cd98672bd23628c54efeaac6a04d82fe5b72200441ae9e0708c26827a86729e4404f46ef7775766503b8067b48aef84b6631b08b17abf56e7a45')
-
-_approve_pnpm_builds() {
-  python - <<'PYTHON_EOF'
-from pathlib import Path
-
-path = Path("pnpm-workspace.yaml")
-if path.exists():
-    lines = path.read_text().splitlines()
-else:
-    lines = []
-
-if any(line.strip() == "- arrpc" for line in lines):
-    raise SystemExit
-
-for index, line in enumerate(lines):
-    if line.strip() == "onlyBuiltDependencies:":
-        indent = line[:len(line) - len(line.lstrip())]
-        lines.insert(index + 1, f"{indent}  - arrpc")
-        break
-else:
-    if lines and lines[-1].strip():
-        lines.append("")
-    lines.extend([
-        "onlyBuiltDependencies:",
-        "  - arrpc",
-    ])
-
-path.write_text("\n".join(lines) + "\n")
-PYTHON_EOF
-}
 
 _nvm_env() {
   local _cache_root="${SRCDEST:-${srcdir}}"
@@ -102,10 +77,28 @@ _nvm_env() {
   export XDG_DATA_HOME="${HOME}/.local/share"
 
   export NVM_DIR="${_cache_root}/${pkgname}-node-nvm"
+  export COREPACK_HOME="${_cache_root}/${pkgname}-corepack"
 
   source /usr/share/nvm/init-nvm.sh || [[ $? != 1 ]]
   nvm install "${_nodeversion}"
   nvm use "${_nodeversion}"
+  corepack enable
+}
+
+_pnpm_env() {
+  corepack prepare "$(node -p "require('./package.json').packageManager")" --activate
+}
+
+_build_libvesktop() {
+  (
+    cd packages/libvesktop
+
+    npm_config_cache="${XDG_CACHE_HOME}/npm" \
+      npm install --include=dev --no-audit --no-fund --no-package-lock --ignore-scripts
+
+    npm_config_cache="${XDG_CACHE_HOME}/npm" \
+      npm run build
+  )
 }
 
 build() {
@@ -113,11 +106,12 @@ build() {
 
   cd "${srcdir}/${_pkgsrc}"
 
-  _approve_pnpm_builds
-  pnpm install --frozen-lockfile
-  pnpm updateArrpcDB
-  pnpm build
-  pnpm exec electron-builder --dir
+  _pnpm_env
+
+  corepack pnpm install --frozen-lockfile
+  _build_libvesktop
+  corepack pnpm build
+  corepack pnpm exec electron-builder --dir
 }
 
 package() {

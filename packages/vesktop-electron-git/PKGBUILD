@@ -1,13 +1,13 @@
 _nodeversion=22
-_electron_version=43
+_electron_version=44
 
 pkgname=vesktop-electron-git
-pkgver=1.6.7.r570.gcb9c55f
+pkgver=1.6.8.r595.g1723bd2
 pkgrel=1
 pkgdesc="A standalone Electron-based Discord app with Vencord & improved Linux support (git version; system Electron)"
 arch=('x86_64' 'aarch64')
 url="https://github.com/Vencord/Vesktop"
-license=('GPL-3.0-only')
+license=('GPL-3.0-or-later')
 options=('!debug' '!strip')
 
 _repo="https://github.com/Vencord/Vesktop.git"
@@ -87,21 +87,6 @@ pkgver() {
   printf '%s.r%s.g%s\n' "${_latest_tag:-0.0.0}" "${_rev_count}" "${_commit}"
 }
 
-_approve_pnpm_builds() {
-  node <<'EOF'
-const fs = require("node:fs");
-const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
-pkg.pnpm ??= {};
-pkg.pnpm.onlyBuiltDependencies ??= [];
-for (const dep of ["@vencord/venmic", "electron", "esbuild", "arrpc"]) {
-  if (!pkg.pnpm.onlyBuiltDependencies.includes(dep)) {
-    pkg.pnpm.onlyBuiltDependencies.push(dep);
-  }
-}
-fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2) + "\n");
-EOF
-}
-
 _nvm_env() {
   local _cache_root="${SRCDEST:-${srcdir}}"
 
@@ -136,13 +121,6 @@ _build_libvesktop() {
   )
 }
 
-prepare() {
-  _nvm_env
-
-  cd "${srcdir}/${_pkgsrc}"
-  _pnpm_env
-}
-
 build() {
   _nvm_env
 
@@ -152,12 +130,14 @@ build() {
   export ELECTRON_OVERRIDE_DIST_PATH="/usr/lib/electron${_electron_version}"
   export ELECTRON_DIST="${ELECTRON_OVERRIDE_DIST_PATH}"
 
-  _approve_pnpm_builds
   corepack pnpm install --frozen-lockfile
   _build_libvesktop
-  corepack pnpm updateArrpcDB
   corepack pnpm build
-  corepack pnpm exec electron-builder --dir --config "${srcdir}/electron-builder-config.cjs"
+  local _electron_version_full
+  _electron_version_full="$(<"/usr/lib/electron${_electron_version}/version")"
+  _electron_version_full="${_electron_version_full#v}"
+  corepack pnpm exec electron-builder --dir --config "${srcdir}/electron-builder-config.cjs" \
+    -c.electronDist="${ELECTRON_DIST}" -c.electronVersion="${_electron_version_full}"
 }
 
 package() {
