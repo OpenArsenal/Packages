@@ -1,17 +1,19 @@
-_nodeversion=22
-_electron_version=38
+# Updated for Logseq 2.0.2 beta / current master (2026-11-07).
+# Upstream desktop build uses Node 24, pnpm 10, OCaml/opam, and Electron 42.
+_nodeversion=24
+_electron_version=42
 
 pkgname=logseq-electron
-pkgver=0.10.15
+pkgver=2.0.2
 pkgrel=1
-pkgdesc="Privacy-first, open-source platform for knowledge sharing and management (system Electron)"
+pkgdesc="Privacy-first knowledge management (system Electron; source)"
 arch=('x86_64')
-url="https://github.com/logseq/logseq"
+url='https://github.com/logseq/logseq'
 license=('AGPL-3.0-or-later')
 options=('!debug' '!strip')
 
 _pkgsrc="logseq-${pkgver}"
-_out_path="${_pkgsrc}/static/out/Logseq-linux-x64"
+_out_path="${_pkgsrc}/static/dist/linux-unpacked"
 
 provides=('logseq')
 conflicts=('logseq')
@@ -20,81 +22,102 @@ install='logseq.install'
 depends=(
   "electron${_electron_version}"
   'bash'
+  'libsecret'
+  'python'
 )
 
 makedepends=(
   'asar'
   'clojure'
   'git'
+  'jdk21-openjdk'
+  'libsecret'
   'nvm'
+  'ocaml'
+  'opam'
   'patchelf'
+  'pkgconf'
   'python'
   'python-setuptools'
-  'yarn'
 )
 
 source=(
   "${_pkgsrc}.tar.gz::${url}/archive/refs/tags/${pkgver}.tar.gz"
   'logseq.desktop'
   'logseq-flags-wrapper.sh'
-  'disable-linux-self-update.patch'
+)
+sha256sums=(
+  'd877b57bd4c1b3d19c624f9ec7b1a45eb57dd8608f28504441b5b6af1a39dbcc'
+  '01f52e36f035af6393503f39941c0b03b553eae886cdab9e6d0d67e8a15f20df'
+  '888d2e76546a501aa0c49487eb203fd0f1f36170edd984e8cf3374378b37d60c'
 )
 
-sha256sums=('ff5d28c82027d3193cf75d9d0cc8eefa00a7f054234c7f164c29845580a1cccc'
-            '01f52e36f035af6393503f39941c0b03b553eae886cdab9e6d0d67e8a15f20df'
-            '888d2e76546a501aa0c49487eb203fd0f1f36170edd984e8cf3374378b37d60c'
-            'dbadbfec1d4b6341c21e14244f7d43b21c115ee056ac1edc843812b0bded41c3')
-
 _nvm_env() {
-  local _cache_root="${SRCDEST:-${srcdir}}"
-
-  export HOME="${_cache_root}/${pkgname}-node-home"
+  # Keep all Node/PNPM caches writable inside a clean makepkg chroot.
+  export HOME="${srcdir}/${pkgname}-node-home"
   export XDG_CACHE_HOME="${HOME}/.cache"
   export XDG_CONFIG_HOME="${HOME}/.config"
   export XDG_DATA_HOME="${HOME}/.local/share"
+  export NVM_DIR="${srcdir}/${pkgname}-node-nvm"
+  export COREPACK_HOME="${srcdir}/${pkgname}-corepack"
+  export JAVA_HOME='/usr/lib/jvm/java-21-openjdk'
+  mkdir -p "${HOME}"
 
-  export NVM_DIR="${_cache_root}/${pkgname}-node-nvm"
-  export ELECTRON_SKIP_BINARY_DOWNLOAD=1
-
-  source /usr/share/nvm/init-nvm.sh || [[ $? != 1 ]]
+  source /usr/share/nvm/init-nvm.sh
   nvm install "${_nodeversion}"
   nvm use "${_nodeversion}"
+  corepack enable
 }
 
-_fix_system_electron_cli_path() {
+_pnpm_env() {
+  # Use the version locked by upstream, not the system-wide pnpm version.
+  local _package_manager
+  _package_manager="$(node -p 'require("./package.json").packageManager')"
+  corepack prepare "${_package_manager}" --activate
+}
+
+_opam_env() {
+  # Opam's packages must be installed during prepare(), not by Electron Maker.
+  export OPAMROOT="${srcdir}/${pkgname}-opam-root"
+  export OPAMYES=1
+  export OPAMCOLOR=never
+
+  if [[ ! -f "${OPAMROOT}/config" ]]; then
+    opam init --bare --no-setup --disable-sandboxing --yes
+  fi
+
+  if ! opam switch list --short | grep -Fxq 'logseq-build'; then
+    # Use Arch's OCaml instead of compiling another OCaml compiler.
+    opam switch create logseq-build ocaml-system --yes
+  fi
+
+  eval "$(opam env --switch=logseq-build --set-switch --shell=bash)"
+}
+
+_scrub_srcdir_references() {
   local _root="$1"
-  local _files=()
-  local _file
-
   [[ -d "${_root}" ]] || return 0
+  grep -IlRZ -F "${srcdir}" "${_root}" 2>/dev/null |
+    xargs -0 -r sed -i "s#${srcdir}#/usr/src/debug/${pkgname}#g"
+}
 
-  mapfile -d '' _files < <(LC_ALL=C grep -IlRZ -F 'logseq-cli.js' "${_root}" 2>/dev/null || true)
-  ((${#_files[@]} == 0)) && return 0
-
-  for _file in "${_files[@]}"; do
-    python - "${_file}" <<'PYTHON_EOF'
-from pathlib import Path
-import sys
-
-path = Path(sys.argv[1])
-data = path.read_bytes()
-
-if b'logseq-cli.js' not in data:
-    raise SystemExit(0)
-
-old = b'process.resourcesPath'
-new = b'require("path").dirname(require("electron").app.getAppPath())'
-
-if old in data:
-    path.write_bytes(data.replace(old, new))
-PYTHON_EOF
+_remove_dugite_build_rpaths() {
+  local _base="$1" _gitcore _file
+  for _gitcore in \
+    "${_base}/resources/app.asar.unpacked/node_modules/dugite/git/libexec/git-core" \
+    "${_base}/resources/app/node_modules/dugite/git/libexec/git-core" \
+    "${_base}/node_modules/dugite/git/libexec/git-core"; do
+    [[ -d "${_gitcore}" ]] || continue
+    while IFS= read -r -d '' _file; do
+      if [[ "$(patchelf --print-rpath "${_file}" 2>/dev/null)" == '/tmp/build/curl/lib' ]]; then
+        patchelf --remove-rpath "${_file}"
+      fi
+    done < <(find "${_gitcore}" -type f -print0)
   done
 }
 
 _install_system_electron_app() {
-  local _bundle="$1"
-  local _app_dir="$2"
-
+  local _bundle="$1" _app_dir="$2"
   rm -rf "${_app_dir}"
   install -d "${_app_dir}"
 
@@ -103,10 +126,7 @@ _install_system_electron_app() {
   elif [[ -f "${_bundle}/resources/app.asar" ]]; then
     asar extract "${_bundle}/resources/app.asar" "${_app_dir}"
   else
-    printf '%s\n' "ERROR: could not locate Logseq Electron app payload."
-    printf 'Checked:\n  %s\n  %s\n' \
-      "${_bundle}/resources/app" \
-      "${_bundle}/resources/app.asar"
+    printf 'ERROR: no Electron app payload under %s/resources/\\n' "${_bundle}" >&2
     return 1
   fi
 
@@ -115,76 +135,95 @@ _install_system_electron_app() {
   fi
 }
 
+_fix_system_electron_resource_paths() {
+  # app.getAppPath() is /usr/lib/logseq/app in the system-Electron layout.
+  # process.resourcesPath points into /usr/lib/electron42 instead; references
+  # to Logseq-specific CLI and sidecar resources must use /usr/lib/logseq.
+  local _root="$1" _file
+  [[ -d "${_root}" ]] || return 0
+  while IFS= read -r -d '' _file; do
+    python - "${_file}" <<'PY_EOF'
+from pathlib import Path
+import sys
+p = Path(sys.argv[1])
+source = p.read_bytes()
+if b'process.resourcesPath' not in source:
+    raise SystemExit(0)
+if b'logseq-cli.js' not in source and b'sidecar' not in source:
+    raise SystemExit(0)
+replacement = b'require("path").dirname(require("electron").app.getAppPath())'
+p.write_bytes(source.replace(b'process.resourcesPath', replacement))
+PY_EOF
+  done < <(find "${_root}" -type f \
+    \( -name '*.js' -o -name '*.cjs' -o -name '*.mjs' \) \
+    ! -path '*/node_modules/*' -print0)
+}
+
+
 prepare() {
   _nvm_env
-
-  local _electron_version_full
-  _electron_version_full="$(<"/usr/lib/electron${_electron_version}/version")"
-
   cd "${srcdir}/${_pkgsrc}"
+  _pnpm_env
+  _opam_env
 
-  patch -Np1 -i "${srcdir}/disable-linux-self-update.patch"
-
+  export ELECTRON_SKIP_BINARY_DOWNLOAD=1
   export ELECTRON_OVERRIDE_DIST_PATH="/usr/lib/electron${_electron_version}"
+  local _electron_full
+  _electron_full="$(<"/usr/lib/electron${_electron_version}/version")"
+  # Sync a system Electron dependency into the generated static/package.json.
+  # This changes static's dependency manifest, so static install must re-resolve.
+  sed -E -i \
+    -e 's#("electron"): "[^"]+",#\1: "'"${_electron_full}"'",#' \
+    resources/package.json
 
-  sed -E \
-    -e 's#("electron"): "[^"]+",#\1: "'"${_electron_version_full}"'",#' \
-    -i resources/package.json
+  # Upstream's desktop workflow installs root, CLI, and static dependencies
+  # separately.  In particular, root node_modules does NOT satisfy cli/.
+  pnpm install --frozen-lockfile
+  pnpm --dir cli install --frozen-lockfile --ignore-workspace
+  ( cd cli && opam install . --deps-only --with-test --yes )
 
-  yarn install --force --production=false --non-interactive
-  yarn gulp:build
-
-  yarn --cwd static install --force --production=false --non-interactive
-
+  pnpm run gulp:build
+  pnpm --dir static install --ignore-workspace --no-frozen-lockfile
   clojure -P -M:cljs
 }
 
 build() {
   _nvm_env
-
   cd "${srcdir}/${_pkgsrc}"
+  _pnpm_env
+  _opam_env
 
+  export ELECTRON_SKIP_BINARY_DOWNLOAD=1
   export ELECTRON_OVERRIDE_DIST_PATH="/usr/lib/electron${_electron_version}"
 
-  yarn cljs:release-electron
-  cd static
-  ./node_modules/.bin/electron-forge package
+  # Gulp runs the CLJS / db-worker / webpack / OCaml CLI builds and then
+  # electron-builder.  The opam switch must remain active for child pnpm calls.
+  test -d static/node_modules
+  pnpm exec gulp electronMaker
+  test -f static/js/logseq-cli.js
+  test -d static/dist/linux-unpacked/resources
 }
 
 package() {
-  local _electron_version_full
   local _bundle="${srcdir}/${_out_path}"
   local _app_dir="${pkgdir}/usr/lib/logseq/app"
-  local _dugite_gitcore="${_app_dir}/node_modules/dugite/git/libexec/git-core"
-  local _file
-
+  local _electron_version_full
   _electron_version_full="$(<"/usr/lib/electron${_electron_version}/version")"
 
   _install_system_electron_app "${_bundle}" "${_app_dir}"
 
-  # Logseq's CLI launcher installer still checks the packaged app.asar path.
-  # The system-Electron package intentionally runs an unpacked app directory, so
-  # provide a compatibility path for code that probes resources/app.asar/js/...
-  # without changing the runtime entry point used by the wrapper.
-  rm -rf "${pkgdir}/usr/lib/logseq/app.asar"
-  ln -s app "${pkgdir}/usr/lib/logseq/app.asar"
-
-  rm -rf "${_app_dir}/node_modules/electron-deeplink/build"
-
-  find "${_app_dir}" -type f -name '*.map' -delete
-
-  grep -IlRZ -F "${srcdir}" "${_app_dir}" 2>/dev/null |
-    xargs -0 -r sed -i "s#${srcdir}#/usr/src/debug/${pkgname}#g"
-
-  _fix_system_electron_cli_path "${_app_dir}"
-
-  if [[ -d "${_dugite_gitcore}" ]]; then
-    while IFS= read -r -d '' _file; do
-      if [[ "$(patchelf --print-rpath "${_file}" 2>/dev/null)" == '/tmp/build/curl/lib' ]]; then
-        patchelf --remove-rpath "${_file}"
-      fi
-    done < <(find "${_dugite_gitcore}" -type f -print0)
+  # Electron 42's system resourcesPath does not include Logseq's extraResources.
+  # Preserve the embedding sidecar next to the unpacked app.
+  if [[ -d "${_bundle}/resources/sidecar" ]]; then
+    install -d "${pkgdir}/usr/lib/logseq/sidecar"
+    cp -a "${_bundle}/resources/sidecar/." "${pkgdir}/usr/lib/logseq/sidecar/"
   fi
+
+  ln -s app "${pkgdir}/usr/lib/logseq/app.asar"
+  rm -rf "${_app_dir}/node_modules/electron-deeplink/build"
+  _scrub_srcdir_references "${_app_dir}"
+  _fix_system_electron_resource_paths "${_app_dir}"
+  _remove_dugite_build_rpaths "${_app_dir}"
 
   install -Dm644 "${srcdir}/${_pkgsrc}/resources/icons/logseq.png" \
     "${pkgdir}/usr/share/pixmaps/logseq.png"
@@ -193,9 +232,13 @@ package() {
 
   sed \
     -e "s#@ELECTRON_CMD@#/usr/bin/electron${_electron_version}#g" \
-    -e "s#@LOGSEQ_APP@#/usr/lib/logseq/app#g" \
-    "${srcdir}/logseq-flags-wrapper.sh" >"${srcdir}/logseq"
-
+    -e 's#@LOGSEQ_APP@#/usr/lib/logseq/app#g' \
+    "${srcdir}/logseq-flags-wrapper.sh" > "${srcdir}/logseq"
+  if grep -qE '@[A-Z_]+@' "${srcdir}/logseq"; then
+    echo 'ERROR: unresolved system Electron wrapper placeholder' >&2
+    return 1
+  fi
   install -Dm755 "${srcdir}/logseq" "${pkgdir}/usr/bin/logseq"
-  install -Dm644 /dev/stdin "${pkgdir}/usr/lib/logseq/electron_version" <<<"${_electron_version_full}"
+  install -Dm644 /dev/stdin "${pkgdir}/usr/lib/logseq/electron_version" \
+    <<<"${_electron_version_full}"
 }

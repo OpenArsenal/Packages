@@ -1,21 +1,15 @@
+# Logseq 2.0.2 beta prebuilt ZIP package, x86_64 and aarch64.
 pkgname=logseq-bin
-pkgver=0.10.15
+pkgver=2.0.2
 pkgrel=1
-pkgdesc="Privacy-first, open-source platform for knowledge sharing and management (prebuilt release; bundled Electron)"
+pkgdesc='Privacy-first knowledge management (prebuilt release; bundled Electron)'
 arch=('x86_64' 'aarch64')
 url='https://github.com/logseq/logseq'
 license=('AGPL-3.0-or-later')
-
-provides=("logseq=${pkgver}")
-conflicts=(
-  'logseq'
-  'logseq-git'
-  'logseq-electron'
-  'logseq-electron-git'
-)
-
 options=('!debug' '!strip')
 install='logseq.install'
+provides=("logseq=${pkgver}")
+conflicts=('logseq' 'logseq-git' 'logseq-electron' 'logseq-electron-git')
 
 depends=(
   'alsa-lib'
@@ -28,6 +22,7 @@ depends=(
   'glib2'
   'gtk3'
   'libcups'
+  'libsecret'
   'libx11'
   'libxcb'
   'libxcomposite'
@@ -37,75 +32,90 @@ depends=(
   'libxkbcommon'
   'libxrandr'
   'mesa'
-  'nodejs'
   'nspr'
   'nss'
   'pango'
-  'perl'
+  'python'
   'systemd-libs'
   'zlib'
 )
+makedepends=('asar' 'libarchive')
 
-_pkgsrc='Logseq-linux-x64'
-[[ "${CARCH}" == 'aarch64' ]] && _pkgsrc='Logseq-linux-arm64'
-
-source=(
-  'logseq.desktop'
-  'logseq-flags-wrapper.sh'
-)
+source=('logseq.desktop' 'logseq-flags-wrapper.sh')
 source_x86_64=(
-  "${url}/releases/download/${pkgver}/Logseq-linux-x64-${pkgver}.zip"
+  "logseq-x86_64-${pkgver}.zip::${url}/releases/download/${pkgver}/Logseq-linux-x86_64-${pkgver}.zip"
 )
 source_aarch64=(
-  "${url}/releases/download/${pkgver}/Logseq-linux-arm64-${pkgver}.zip"
+  "logseq-aarch64-${pkgver}.zip::${url}/releases/download/${pkgver}/Logseq-linux-arm64-${pkgver}.zip"
 )
+# The ZIPs are explicitly extracted in prepare() to support either upstream
+# root-level or parent-directory archive layouts.
+noextract=("logseq-x86_64-${pkgver}.zip" "logseq-aarch64-${pkgver}.zip")
 
 sha256sums=(
   'SKIP'
   'SKIP'
 )
 sha256sums_x86_64=(
-  'cfa7afc2d4311efedb1d21508858ebeaff2f3eb896254c2b569a5dc8e2aa3803'
+  '289eadd4dfcbdd2ab71aeb6cf02a53d0b5d7340865c528b1434bef8001900a9a'
 )
 sha256sums_aarch64=(
-  'cc7e00e8cca676fd962640d7f50a2c7e05ab6a83ed2501df35cb91baf097f478'
+  '9f0404ea59f5af58874ed51c9291bde0ebd2b0ae65fe3259abfc42d3188904d5'
 )
 
-package() {
-  install -d "${pkgdir}/opt/logseq"
-  cp -a "${_pkgsrc}/." "${pkgdir}/opt/logseq/"
+prepare() {
+  rm -rf "${srcdir}/logseq-bin-extract"
+  install -d "${srcdir}/logseq-bin-extract"
+  bsdtar -xf "${srcdir}/logseq-${CARCH}-${pkgver}.zip" \
+    -C "${srcdir}/logseq-bin-extract"
+}
 
-  install -Dm644 "${_pkgsrc}/resources/app/icon.png" \
-    "${pkgdir}/usr/share/pixmaps/logseq.png"
+package() {
+  local _source_root="${srcdir}/logseq-bin-extract"
+  local _install_root="${pkgdir}/opt/logseq"
+  local _binary _app_exec='/opt/logseq/Logseq' _icon _electron_version
+  # Builder ZIPs may have their executable at the archive root or below it.
+  _binary="$(find "${_source_root}" -maxdepth 4 -type f \
+      \( -name Logseq -o -name logseq \) -print -quit)"
+  if [[ -z "${_binary}" ]]; then
+    echo 'ERROR: no Logseq executable found in release ZIP' >&2
+    return 1
+  fi
+  _source_root="${_binary%/*}"
+  install -d "${_install_root}"
+  cp -a "${_source_root}/." "${_install_root}/"
+
+  _icon="${srcdir}/logseq-2.0.2-icon.png"
+  if [[ -f "${_install_root}/resources/app/icons/logseq.png" ]]; then
+    cp "${_install_root}/resources/app/icons/logseq.png" "${_icon}"
+  elif [[ -f "${_install_root}/resources/app.asar" ]]; then
+    asar extract-file "${_install_root}/resources/app.asar" \
+      'icons/logseq.png' >"${_icon}"
+  else
+    echo 'ERROR: bundled Logseq icon not found' >&2
+    return 1
+  fi
+  test -s "${_icon}"
+  install -Dm644 "${_icon}" "${pkgdir}/usr/share/pixmaps/logseq.png"
   install -Dm644 "${srcdir}/logseq.desktop" \
     "${pkgdir}/usr/share/applications/logseq.desktop"
 
-  local _app_exec="/opt/logseq/Logseq"
-
-  if [[ -x "${pkgdir}/opt/logseq/logseq" ]]; then
-    _app_exec="/opt/logseq/logseq"
+  if [[ -x "${_install_root}/logseq" ]]; then
+    _app_exec='/opt/logseq/logseq'
   fi
-
   sed -e "s#@LOGSEQ_EXEC@#${_app_exec}#g" \
     "${srcdir}/logseq-flags-wrapper.sh" >"${srcdir}/logseq"
-
-  if grep -q '@[A-Z_][A-Z_]*@' "${srcdir}/logseq"; then
-    printf '%s\n' "ERROR: unresolved wrapper placeholder(s):"
-    grep -n '@[A-Z_][A-Z_]*@' "${srcdir}/logseq"
+  if grep -qE '@[A-Z_]+@' "${srcdir}/logseq"; then
+    echo 'ERROR: unresolved wrapper placeholder' >&2
     return 1
   fi
+  install -Dm755 "${srcdir}/logseq" "${pkgdir}/usr/bin/logseq"
 
-  install -Dm755 "${srcdir}/logseq" \
-    "${pkgdir}/usr/bin/logseq"
-
-  local electron_version
-  electron_version="$(strings "${pkgdir}/opt/logseq/Logseq" | grep -Pom1 'Electron/[0-9.]+' || true)"
-  electron_version="${electron_version#Electron/}"
-
-  if [[ -n "${electron_version}" ]]; then
-    install -Dm644 /dev/stdin \
-      "${pkgdir}/opt/logseq/electron_version" <<<"${electron_version}"
+  _electron_version="$(strings "${pkgdir}${_app_exec}" | grep -Pom1 'Electron/[0-9.]+' || true)"
+  _electron_version="${_electron_version#Electron/}"
+  if [[ -n "${_electron_version}" ]]; then
+    install -Dm644 /dev/stdin "${_install_root}/electron_version" \
+      <<<"${_electron_version}"
   fi
-
   chmod -R u=rwX,go=rX "${pkgdir}"
 }
