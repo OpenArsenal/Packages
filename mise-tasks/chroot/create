@@ -5,7 +5,7 @@
 #USAGE flag "--mirrorlist-v4 <file>" help="Optional mirrorlist v4 file to copy into chroot" env="CHROOT_MIRRORLIST_V4"
 #USAGE flag "--mirrorlist-v3 <file>" help="Optional mirrorlist file to copy into chroot" env="CHROOT_MIRRORLIST_V3"
 #USAGE flag "--mirrorlist <file>" help="Optional mirrorlist file to copy into chroot" env="CHROOT_MIRRORLIST"
-#USAGE flag "--arch-mirrorlist <file>" help="Optional arch mirrorlist file to copy into chroot" env="CHROOT_ARCH_MIRRORLIST"
+#USAGE flag "--arch-mirrorlist <file>" help="Optional arch mirrorlist file to copy into chroot" env="ARCH_MIRRORLIST"
 
 set -euo pipefail
 
@@ -14,14 +14,15 @@ CHROOT_PACMAN_CONF="${usage_pacman_conf:-${CHROOT_PACMAN_CONF:-}}"
 CHROOT_MIRRORLIST_V4="${usage_mirrorlist_v4:-${CHROOT_MIRRORLIST_V4:-}}"
 CHROOT_MIRRORLIST_V3="${usage_mirrorlist_v3:-${CHROOT_MIRRORLIST_V3:-}}"
 CHROOT_MIRRORLIST="${usage_mirrorlist:-${CHROOT_MIRRORLIST:-}}"
-CHROOT_ARCH_MIRRORLIST="${usage_arch_mirrorlist:-${CHROOT_ARCH_MIRRORLIST:-}}"
+CHROOT_ARCH_MIRRORLIST="${usage_arch_mirrorlist:-${ARCH_MIRRORLIST:-}}"
 
 [[ -n "${CHROOT_ROOT}" ]] || { echo "error: CHROOT_ROOT is required (or use --root)" >&2; exit 1; }
 [[ -n "${CHROOT_PACMAN_CONF}" ]] || { echo "error: CHROOT_PACMAN_CONF is required (or use --pacman-conf)" >&2; exit 1; }
 [[ -f "${CHROOT_PACMAN_CONF}" ]] || { echo "error: Pacman config does not exist: ${CHROOT_PACMAN_CONF}" >&2; exit 1; }
 
+CHROOT_ROOT="$(realpath -m -- "$CHROOT_ROOT")"
 case "${CHROOT_ROOT}" in
-  "/" | ".")
+  / | "$HOME" | "${PKGBUILDS_ROOT:?}" | "${CHROOT_BASE:?}" | "${CHROOT_DIR:?}")
     echo "error: Refusing to use CHROOT_ROOT=${CHROOT_ROOT}" >&2
     exit 1
     ;;
@@ -51,4 +52,4 @@ if [[ -n "${CHROOT_ARCH_MIRRORLIST}" ]]; then
 fi
 
 run0 mkdir -p -- "$(dirname -- "$CHROOT_ROOT")"
-run0 mkarchroot "${mkarchroot_args[@]}" "$CHROOT_ROOT" base-devel
+exec run0 mkarchroot "${mkarchroot_args[@]}" "$CHROOT_ROOT" base-devel
