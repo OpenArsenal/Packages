@@ -14,77 +14,46 @@ This repo provides:
 ## Prerequisites
 
 ```bash
-sudo pacman -S --needed base-devel git curl gnupg pacman-contrib direnv
+sudo pacman -S --needed base-devel devtools git gnupg jq mise nvchecker pacman-contrib
+mise trust
+mise run doctor
 ```
 
-Enable direnv in your shell if not already:
+## Repository environment
 
-```bash
-direnv allow
-```
+`mise.toml` defines defaults, `.env.repo` provides shared settings, and the
+ignored `.env` holds local overrides and credentials. Tasks load this environment
+automatically.
 
----
+Key paths:
 
-# Repository Environment
-
-This repo uses a **repo-local makepkg environment** loaded via `direnv`.
-
-Key exported paths:
-
-* `PKGDEST` → built packages
-* `SRCDEST` → downloaded sources
-* `BUILDDIR` → working build dirs
-* `LOGDEST` → build logs
-* `SRCPKGDEST` → source packages
+* `PKG_DIR` → package recipes
+* `REPO_DIR` → local pacman repository
+* `PKGDEST` → built packages (defaults to `REPO_DIR`)
+* `CHROOT_DIR` → build chroot directory containing `root/`
 * `GNUPGHOME` → repo-local GPG keyring
 
-Confirm:
+Repository, package, and chroot paths can be overridden in `.env`.
+`GNUPGHOME` stays repo-local to isolate signing keys. Optional makepkg settings
+such as `SRCDEST`, `BUILDDIR`, and `LOGDEST` can also be set in `.env`.
+`package:build` sets `SOURCE_DATE_EPOCH` from the latest repository commit unless
+you supply a value.
+
+## Build setup
 
 ```bash
-echo $GNUPGHOME
+mise run repo:create
+mise run chroot:create
 ```
 
----
+The chroot uses `/etc/pacman.conf` by default. Set `CHROOT_PACMAN_CONF` in `.env`
+to use a different configuration.
 
-# Creating Chroots
+Run builds from the desired package directory:
 
-```sh
-sudo install -d -m 0755 /etc/devtools
-sudo cp /etc/pacman.conf /etc/devtools/pacman-cachyos-chroot.conf
-```
-
-
-```sh
-sudo rm -rf "$CHROOT_BASE"
-sudo mkdir -p "$CHROOT_BASE"
-  
-sudo mkarchroot \
-  -C /etc/pacman.conf \
-  "$CHROOT_BASE/root" \
-  base-devel git \
-  archlinux-keyring cachyos-keyring \
-  cachyos-mirrorlist cachyos-v3-mirrorlist 
-```
-
-
-## If you also want your chroot to see *your* local repo
-
-The Arch-standard way is still the same: **edit the chroot pacman config** (the one you made above) and add your repo stanza at the bottom:
-
-```ini
-[openarsenal]
-SigLevel = Optional TrustAll
-Server = file:///home/okiki/Projects/Packages/repo/$arch
-```
-
-Build packages inside the chroot:
-
-```sh
-sudo --preserve-env=PKGDEST,SRCPKGDEST,SRCDEST,BUILDDIR,LOGDEST,GNUPGHOME,PACKAGER,SOURCE_DATE_EPOCH \
-  makechrootpkg -r "$CHROOT_BASE" \
-  -D $PKGBUILDS_ROOT/repo -c -u -- \
-  --syncdeps --noconfirm --log --holdver --skipinteg
-
+```bash
+cd packages/1password-cli-bin
+mise run package:build
 ```
 
 ---
@@ -203,78 +172,37 @@ gpg --homedir "$GNUPGHOME" --list-keys
 
 # Building Packages
 
+From the desired package directory:
+
 ```bash
-makepkg -Cfsri
+mise run package:build
 ```
 
-Artifacts output to:
+Artifacts go to `PKGDEST`, which defaults to
+`/srv/pacman/repos/openarsenal/x86_64_v3`. The build task does not install them.
 
-```
-repo/x86_64/
+After building, update the repository database:
+
+```bash
+mise run repo:update --prevent-downgrade
 ```
 
 ## Local repo permissions (pacman `DownloadUser`)
 
-When you add this repo to `pacman.conf` using a `file://...` URL, **pacman does not necessarily read the DB as root**.
-On modern Arch/pacman setups, downloads are performed by an unprivileged user (commonly `alpm`) via `DownloadUser`.
-If your repository lives under `/home/<you>/...` and your home directory is `0700` (common default),
-`alpm` cannot traverse the path, and you’ll see errors like:
+For a `file://` repository, pacman's download user (commonly `alpm`) needs
+traversal access to every parent directory and read access to the database and
+package files. This is particularly important if you move the repo under a
+private home directory.
 
-```
-
-openarsenal.db failed to download
-error: failed retrieving file 'openarsenal.db' from disk : Could not open file /home/<you>/.../openarsenal.db
-
-```
-
-### Fix (ACL) — allow `alpm` to traverse + read the repo
-
-Run once (adjust the path if your repo lives elsewhere):
+Check the configured location with:
 
 ```bash
-# Allow alpm to traverse the path (execute bit on directories)
-sudo setfacl -m u:alpm:--x /home/$USER
-sudo setfacl -m u:alpm:--x /home/$USER/Projects
-sudo setfacl -m u:alpm:--x /home/$USER/Projects/Packages
-sudo setfacl -m u:alpm:--x /home/$USER/Projects/Packages/repo
-sudo setfacl -m u:alpm:--x /home/$USER/Projects/Packages/repo/x86_64
-
-# Allow alpm to read repo contents (DB + packages)
-sudo setfacl -m u:alpm:r-- /home/$USER/Projects/Packages/repo/x86_64/openarsenal.db*
-sudo setfacl -m u:alpm:r-- /home/$USER/Projects/Packages/repo/x86_64/*.pkg.tar.*
+mise exec -- printenv REPO_DIR
 ```
 
-To ensure **future** DB/package files are readable without re-running ACLs every time:
-
-```bash
-sudo setfacl -m d:u:alpm:rx /home/$USER/Projects/Packages/repo/x86_64
-```
-
-Verify:
-
-```bash
-sudo -u alpm ls -l /home/$USER/Projects/Packages/repo/x86_64/
-sudo pacman -Sy
-```
-
-### Building Package
-
-```sh
-paru -B ./pkgs/{folder-name}
-
-# e.g. for 1Password CLI:
-paru -B ./pkgs/1password-cli-bin
-```
-
-### Adding Package to Repo
-
-After building, add the package to the repo:
-
-```sh
-repo-add --remove --prevent-downgrade \
-        "$PKGDEST/openarsenal.db.tar.zst" \
-        "$PKGDEST"/*.pkg.tar.*
-```
+If downloads report permission errors, inspect that path's parent permissions
+with `namei -l`, then grant only the necessary traversal/read access. Keep
+future files readable through appropriate directory permissions or default ACLs.
 
 ---
 
@@ -327,6 +255,85 @@ Features:
 * Bump `pkgrel` for packaging-only changes
 
 ---
+
+# Checking Installed Packages
+
+Run `mise run check-installed` (requires Bash, `pacman`, `nvchecker`, `jq`,
+`vercmp`, and GNU `timeout`). This is check-only: it does not install/build packages, edit
+PKGBUILDs or `.SRCINFO`, or update nvchecker version-state files. Upstream
+checks use the network and any credentials required by the local config.
+
+Mise loads shared settings from `.env.repo` and local overrides from the
+**git-ignored `.env`**. To authenticate GitHub checks, set `GITHUB_TOKEN` in `.env`.
+You can reuse your `gh` login with this one-time setup command from the repo root
+(run only if `.env` does not already define `GITHUB_TOKEN`):
+
+```sh
+sh -c 'umask 077; token=$(gh auth token --hostname github.com) || exit; printf "\nGITHUB_TOKEN=%s\n" "$token" >> .env'
+chmod 600 .env
+```
+
+The task does not call `gh` or parse credential stores. When `GITHUB_TOKEN` is
+set, it supplies NVChecker a private temporary keyfile containing only the
+`github.com` key (overriding configured keyfiles). Explicit per-entry tokens still
+take precedence. Without the environment token, NVChecker uses its own keyfile
+and netrc handling; use absolute keyfile paths because checks use temporary
+configs. Temporary files are removed after use, and the local token is redacted
+from diagnostics. Public checks work without a token, but have lower rate limits.
+
+Only installed names from `pacman -Q` that appear as `pkgname` in local
+`packages/*/.SRCINFO` are checked, including split packages. The checker reads
+`.nvchecker.toml` (preferred) or `nvchecker.toml`. Entries are selected by package
+name, then pkgbase, then a sole entry; ambiguous mappings are reported.
+
+Results compare **installed versions against upstream**, not against the local
+recipe version. Release comparisons use `vercmp` on pkgver, ignoring the installed
+Arch epoch and pkgrel. Numeric upstream `v` prefixes are normalized. For NCCL,
+the upstream tag revision is excluded, matching the recipe’s separate
+`_upstr_pkgrel` (revision-only updates cannot be detected from installed pkgver).
+Git sources without commit checking can also return comparable release tags.
+Unrecognized release formats are `unknown`. Git configs
+with `use_commit = true` compare the full upstream hash against an installed
+`.g<short hash>` or `+<short hash>` suffix (as generated by ntfsplus), or raw hash. A mismatch is `different-commit`, not a claim
+that the installed commit is older (ancestry is not checked).
+
+The final report groups `outdated`, `different-commit`, and `newer` packages into
+installed -> upstream rows, abbreviating long hashes to 12 characters. Current
+packages are counted without individual rows. Missing configs appear in a skipped
+list; failed checks (including config errors and unreachable upstreams) and
+`unknown` comparisons appear separately under warnings with concise reasons, never
+as current. Progress uses a single transient line on interactive stderr only;
+redirected/non-TTY output contains only the final report. Each upstream check has
+a 30-second timeout, with subprocess-group cleanup on timeout.
+
+By default, per-package warnings return exit status 0 so an unreachable upstream
+does not fail the whole task. Use `mise run check-installed --strict` to return 1
+if any check failed or is unknown. Inability to enumerate installed packages is
+always fatal (exit 1). Skipped, outdated, newer, and different-commit results do
+not themselves cause a nonzero exit, even in strict mode. “Newer” describes only
+the configured upstream result, not proof that its release channel is correct.
+No remediation is performed.
+
+## Other mise tasks
+
+- `mise run aur:import <package-or-url>...` imports packaging into `packages/`,
+  preserving upstream `.nvchecker.toml` files. It tries AUR, then Arch packaging;
+  use `--source aur` or `--source archlinux` to select one. Existing directories
+  require `--force` and are replaced only after a successful clone containing
+  `PKGBUILD`.
+- Run `mise run package:build` from the directory containing the desired
+  `PKGBUILD`. This builds in the configured chroot but does not install it.
+- `mise run repo:update` adds the newest local archive for each package to the
+  configured repository database, ignoring detached signature files.
+- `mise run cleanup` previews ignored files under `packages/` and `.cache/`.
+  Add `--force` to delete them. Credentials, signing keys, and untracked recipes
+  outside that ignored-artifact scope are preserved.
+- `mise run chroot:delete --force` explicitly confirms chroot deletion.
+- `mise run doctor` checks the tools needed by the tasks.
+
+All mise task files are Bash scripts. Use `check-installed` to inspect versions,
+then review and update recipes before building. The intentionally pinned
+ONNX Runtime CUDA 12 recipe stays pinned.
 
 # Update Workflow
 
