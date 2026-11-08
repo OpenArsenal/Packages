@@ -1,22 +1,20 @@
-_nodeversion=22
+# Updated for Logseq 2.0.2 beta / current master (2026-11-07).
+# Upstream desktop build uses Node 24, pnpm 10, OCaml/opam, and Electron 42.
+_nodeversion=24
 
 pkgname=logseq
-pkgver=0.10.15
+pkgver=2.0.2
 pkgrel=1
-pkgdesc="Privacy-first, open-source platform for knowledge sharing and management (bundled Electron)"
+pkgdesc="Privacy-first knowledge management (bundled Electron; source)"
 arch=('x86_64')
-url="https://github.com/logseq/logseq"
+url='https://github.com/logseq/logseq'
 license=('AGPL-3.0-or-later')
-options=('!debug')
+options=('!debug' '!strip')
 
 _pkgsrc="logseq-${pkgver}"
-_out_path="${_pkgsrc}/static/out/Logseq-linux-x64"
+_out_path="${_pkgsrc}/static/dist/linux-unpacked"
 
-conflicts=(
-  'logseq-git'
-  'logseq-electron'
-  'logseq-electron-git'
-)
+conflicts=('logseq-git' 'logseq-electron' 'logseq-electron-git')
 install='logseq.install'
 
 depends=(
@@ -30,6 +28,7 @@ depends=(
   'glib2'
   'gtk3'
   'libcups'
+  'libsecret'
   'libx11'
   'libxcb'
   'libxcomposite'
@@ -42,6 +41,7 @@ depends=(
   'nspr'
   'nss'
   'pango'
+  'python'
   'systemd-libs'
   'zlib'
 )
@@ -50,76 +50,122 @@ makedepends=(
   'asar'
   'clojure'
   'git'
+  'jdk21-openjdk'
+  'libsecret'
   'nvm'
+  'ocaml'
+  'opam'
   'patchelf'
+  'pkgconf'
   'python'
   'python-setuptools'
-  'yarn'
 )
 
 source=(
-  "logseq-${pkgver}.tar.gz::${url}/archive/refs/tags/${pkgver}.tar.gz"
+  "${_pkgsrc}.tar.gz::${url}/archive/refs/tags/${pkgver}.tar.gz"
   'logseq.desktop'
   'logseq-flags-wrapper.sh'
-  'disable-linux-self-update.patch'
+)
+sha256sums=(
+  'd877b57bd4c1b3d19c624f9ec7b1a45eb57dd8608f28504441b5b6af1a39dbcc'
+  '01f52e36f035af6393503f39941c0b03b553eae886cdab9e6d0d67e8a15f20df'
+  'f69f8bbc8a56381b7ad67dd4b7ba1479ef7586aa55893ddd60a0b247ef79a49b'
 )
 
-sha256sums=('ff5d28c82027d3193cf75d9d0cc8eefa00a7f054234c7f164c29845580a1cccc'
-            '01f52e36f035af6393503f39941c0b03b553eae886cdab9e6d0d67e8a15f20df'
-            'f69f8bbc8a56381b7ad67dd4b7ba1479ef7586aa55893ddd60a0b247ef79a49b'
-            'dbadbfec1d4b6341c21e14244f7d43b21c115ee056ac1edc843812b0bded41c3')
-
 _nvm_env() {
-  local _cache_root="${SRCDEST:-${srcdir}}"
-
-  export HOME="${_cache_root}/${pkgname}-node-home"
+  # Keep all Node/PNPM caches writable inside a clean makepkg chroot.
+  export HOME="${srcdir}/${pkgname}-node-home"
   export XDG_CACHE_HOME="${HOME}/.cache"
   export XDG_CONFIG_HOME="${HOME}/.config"
   export XDG_DATA_HOME="${HOME}/.local/share"
+  export NVM_DIR="${srcdir}/${pkgname}-node-nvm"
+  export COREPACK_HOME="${srcdir}/${pkgname}-corepack"
+  export JAVA_HOME='/usr/lib/jvm/java-21-openjdk'
+  mkdir -p "${HOME}"
 
-  export NVM_DIR="${_cache_root}/${pkgname}-node-nvm"
-
-  source /usr/share/nvm/init-nvm.sh || [[ $? != 1 ]]
+  source /usr/share/nvm/init-nvm.sh
   nvm install "${_nodeversion}"
   nvm use "${_nodeversion}"
+  corepack enable
+}
+
+_pnpm_env() {
+  # Use the version locked by upstream, not the system-wide pnpm version.
+  local _package_manager
+  _package_manager="$(node -p 'require("./package.json").packageManager')"
+  corepack prepare "${_package_manager}" --activate
+}
+
+_opam_env() {
+  # Opam's packages must be installed during prepare(), not by Electron Maker.
+  export OPAMROOT="${srcdir}/${pkgname}-opam-root"
+  export OPAMYES=1
+  export OPAMCOLOR=never
+
+  if [[ ! -f "${OPAMROOT}/config" ]]; then
+    opam init --bare --no-setup --disable-sandboxing --yes
+  fi
+
+  if ! opam switch list --short | grep -Fxq 'logseq-build'; then
+    # Use Arch's OCaml instead of compiling another OCaml compiler.
+    opam switch create logseq-build ocaml-system --yes
+  fi
+
+  eval "$(opam env --switch=logseq-build --set-switch --shell=bash)"
 }
 
 _scrub_srcdir_references() {
   local _root="$1"
-
   [[ -d "${_root}" ]] || return 0
-
   grep -IlRZ -F "${srcdir}" "${_root}" 2>/dev/null |
     xargs -0 -r sed -i "s#${srcdir}#/usr/src/debug/${pkgname}#g"
 }
 
+_remove_dugite_build_rpaths() {
+  local _base="$1" _gitcore _file
+  for _gitcore in \
+    "${_base}/resources/app.asar.unpacked/node_modules/dugite/git/libexec/git-core" \
+    "${_base}/resources/app/node_modules/dugite/git/libexec/git-core" \
+    "${_base}/node_modules/dugite/git/libexec/git-core"; do
+    [[ -d "${_gitcore}" ]] || continue
+    while IFS= read -r -d '' _file; do
+      if [[ "$(patchelf --print-rpath "${_file}" 2>/dev/null)" == '/tmp/build/curl/lib' ]]; then
+        patchelf --remove-rpath "${_file}"
+      fi
+    done < <(find "${_gitcore}" -type f -print0)
+  done
+}
+
+
 prepare() {
   _nvm_env
-
   cd "${srcdir}/${_pkgsrc}"
+  _pnpm_env
+  _opam_env
 
-  patch -Np1 -i "${srcdir}/disable-linux-self-update.patch"
+  # Upstream's desktop workflow installs root, CLI, and static dependencies
+  # separately.  In particular, root node_modules does NOT satisfy cli/.
+  pnpm install --frozen-lockfile
+  pnpm --dir cli install --frozen-lockfile --ignore-workspace
+  ( cd cli && opam install . --deps-only --with-test --yes )
 
-  yarn install --force --production=false --non-interactive
-  yarn gulp:build
-
-  cd static
-  yarn install --force --production=false --non-interactive
-
-  cd ..
+  pnpm run gulp:build
+  pnpm --dir static install --ignore-workspace --frozen-lockfile
   clojure -P -M:cljs
 }
 
 build() {
   _nvm_env
-
   cd "${srcdir}/${_pkgsrc}"
+  _pnpm_env
+  _opam_env
 
-  yarn cljs:release-electron
-
-  cd static
-  test -x node_modules/.bin/electron-forge
-  ./node_modules/.bin/electron-forge package
+  # Gulp runs the CLJS / db-worker / webpack / OCaml CLI builds and then
+  # electron-builder.  The opam switch must remain active for child pnpm calls.
+  test -d static/node_modules
+  pnpm exec gulp electronMaker
+  test -f static/js/logseq-cli.js
+  test -d static/dist/linux-unpacked/resources
 }
 
 package() {
@@ -127,18 +173,14 @@ package() {
   local _install_root="${pkgdir}/opt/logseq"
   local _app_asar="${_install_root}/resources/app.asar"
   local _app_asar_stage="${srcdir}/.app-asar-${pkgname}"
-  local _app_exec="/opt/logseq/Logseq"
-  local _electron_version=""
-  local _file _gitcore
+  local _app_exec='/opt/logseq/Logseq'
+  local _electron_version='' _file
 
   install -d "${_install_root}"
   cp -a "${_bundle}/." "${_install_root}/"
-
   rm -rf \
     "${_install_root}/resources/app/node_modules/electron-deeplink/build" \
     "${_install_root}/resources/app.asar.unpacked/node_modules/electron-deeplink/build"
-
-  find "${_install_root}/resources" -type f -name '*.map' -delete 2>/dev/null || true
 
   if [[ -f "${_app_asar}" ]]; then
     rm -rf "${_app_asar_stage}"
@@ -151,17 +193,7 @@ package() {
 
   _scrub_srcdir_references "${_install_root}/resources/app"
   _scrub_srcdir_references "${_install_root}/resources/app.asar.unpacked"
-
-  for _gitcore in \
-    "${_install_root}/resources/app.asar.unpacked/node_modules/dugite/git/libexec/git-core" \
-    "${_install_root}/resources/app/node_modules/dugite/git/libexec/git-core"; do
-    [[ -d "${_gitcore}" ]] || continue
-    while IFS= read -r -d '' _file; do
-      if [[ "$(patchelf --print-rpath "${_file}" 2>/dev/null)" == '/tmp/build/curl/lib' ]]; then
-        patchelf --remove-rpath "${_file}"
-      fi
-    done < <(find "${_gitcore}" -type f -print0)
-  done
+  _remove_dugite_build_rpaths "${_install_root}"
 
   install -Dm644 "${srcdir}/${_pkgsrc}/resources/icons/logseq.png" \
     "${pkgdir}/usr/share/pixmaps/logseq.png"
@@ -169,12 +201,14 @@ package() {
     "${pkgdir}/usr/share/applications/logseq.desktop"
 
   if [[ -x "${_install_root}/logseq" ]]; then
-    _app_exec="/opt/logseq/logseq"
+    _app_exec='/opt/logseq/logseq'
   fi
-
   sed -e "s#@LOGSEQ_EXEC@#${_app_exec}#g" \
-    "${srcdir}/logseq-flags-wrapper.sh" >"${srcdir}/logseq"
-
+    "${srcdir}/logseq-flags-wrapper.sh" > "${srcdir}/logseq"
+  if grep -qE '@[A-Z_]+@' "${srcdir}/logseq"; then
+    echo 'ERROR: unresolved bundled Electron wrapper placeholder' >&2
+    return 1
+  fi
   install -Dm755 "${srcdir}/logseq" "${pkgdir}/usr/bin/logseq"
 
   for _file in "${_install_root}/Logseq" "${_install_root}/logseq"; do
@@ -183,11 +217,10 @@ package() {
       [[ -n "${_electron_version}" ]] && break
     fi
   done
-
   _electron_version="${_electron_version#Electron/}"
   if [[ -n "${_electron_version}" ]]; then
-    install -Dm644 /dev/stdin "${_install_root}/electron_version" <<<"${_electron_version}"
+    install -Dm644 /dev/stdin "${_install_root}/electron_version" \
+      <<<"${_electron_version}"
   fi
-
   chmod -R u=rwX,go=rX "${pkgdir}"
 }
