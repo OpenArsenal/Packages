@@ -218,3 +218,9 @@ Use `pkg:plan` before a larger build to inspect the dependency order without cha
 - `.env` contains machine-local overrides; `.env.example` documents supported defaults.
 - Package-local `.nvchecker.toml` files are authoritative for update checks.
 - The repository is maintained locally; there is no GitHub Actions package publisher.
+
+## Additional tasks
+
+- `mise run aur:import <package>` imports AUR or Arch packaging.
+- `mise run check-installed` checks installed package versions.
+- `mise run check-installed --strict` fails on unknown or failed checks.
