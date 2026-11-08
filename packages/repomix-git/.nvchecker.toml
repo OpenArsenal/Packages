@@ -1,0 +1,4 @@
+[repomix-git]
+source = "git"
+git = "https://github.com/yamadashy/repomix.git"
+use_commit = true
