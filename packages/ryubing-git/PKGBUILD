@@ -1,5 +1,5 @@
 pkgname=ryubing-git
-pkgver=1.3.3.r302.gb23673271
+pkgver=1.3.3.r329.ga61a42681
 pkgrel=1
 pkgdesc='Experimental Nintendo Switch emulator written in C# (Ryubing fork of Ryujinx, git build)'
 arch=('x86_64' 'aarch64')
@@ -7,7 +7,7 @@ url='https://ryujinx.app'
 license=('MIT')
 
 depends=(
-  'dotnet-runtime'
+  'dotnet-runtime-10.0'
   'ffmpeg'
   'glew'
   'gtk3'
@@ -30,7 +30,7 @@ depends=(
 )
 
 makedepends=(
-  'dotnet-sdk'
+  'dotnet-sdk-10.0'
   'git'
 )
 
@@ -43,7 +43,7 @@ conflicts=('ryubing' 'ryujinx' 'ryujinx-git')
 options=('!strip')
 
 _pkgsrc='ryubing'
-source=("${_pkgsrc}::git+https://git.ryujinx.app/ryubing/ryujinx.git")
+source=("${_pkgsrc}::git+https://git.ryujinx.app/projects/Ryubing.git")
 sha256sums=('SKIP')
 b2sums=('SKIP')
 
@@ -83,6 +83,9 @@ prepare() {
       nuget.config
   fi
 
+  # Use Arch's installed .NET 10 SDK instead of demanding 10.0.301.
+  sed -i 's/10\.0\.301/10.0.100/' global.json
+
   export DOTNET_CLI_TELEMETRY_OPTOUT=1
   export DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
   export DOTNET_CLI_HOME="$srcdir/dotnet-home"
@@ -115,7 +118,7 @@ build() {
 }
 
 package() {
-  cd "$srcdir/$_pkgsrc" 2>/dev/null || cd "$(_srcdir)"
+  cd "$srcdir/$_pkgsrc"
 
   install -dm755 "$pkgdir/usr/lib/ryubing"
   cp -a "$srcdir/publish/." "$pkgdir/usr/lib/ryubing/"
