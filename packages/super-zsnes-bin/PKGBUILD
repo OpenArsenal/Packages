@@ -1,11 +1,11 @@
 pkgname=super-zsnes-bin
 _pkgname=super-zsnes
 _srcname=SuperZSNES
-pkgver=0.230
+pkgver=0.320
 pkgrel=1
 pkgdesc='GPU-powered Super Nintendo Entertainment System emulator'
 arch=('x86_64')
-url='https://www.zsnes.com/'
+url='https://zsnes.com/'
 license=('LicenseRef-SuperZSNES-Proprietary')
 depends=(
   'libglvnd'
@@ -22,19 +22,15 @@ optdepends=(
 provides=("${_pkgname}=${pkgver}")
 conflicts=("${_pkgname}")
 options=('!strip' '!debug')
-source=("${_srcname}_v${pkgver}.tar.gz::https://www.zsnes.com/files/${_srcname}_v${pkgver}.tar.gz")
-sha256sums=('11601cf4e709a5a68b10c9d4887a89413acee4b28a813e8564f143c2b53a82c2')
+source=("${_srcname}_v${pkgver}.tar.gz::https://zsnes.com/files/${_srcname}_v${pkgver}.tar.gz")
+sha256sums=('6ac3586ac6807c5a8bcd9ce8c9d688851a7ddcea0e1fc67f9d06137a2b73aa1f')
 
 package() {
-  local _srcroot
-  local _entries
-  local _exe
-  local _icon
-  local _license
+  local _srcroot _exe _icon _license
+  local -a _entries
 
   shopt -s dotglob nullglob
   _entries=("${srcdir}"/*)
-
   if ((${#_entries[@]} == 1)) && [[ -d "${_entries[0]}" ]]; then
     _srcroot="${_entries[0]}"
   else
@@ -45,20 +41,21 @@ package() {
   cp -a "${_srcroot}/." "${pkgdir}/opt/${_pkgname}/"
 
   # Unity Linux builds normally ship an executable next to *_Data/.
-  _exe="$({
-    find "${pkgdir}/opt/${_pkgname}" -maxdepth 2 -type f -perm -111 \
-      \( -iname 'SuperZSNES' -o -iname 'SuperZSNES.x86_64' -o -iname 'Super ZSNES' -o -iname 'Super ZSNES.x86_64' \) \
-      -printf '%P\n'
-    find "${pkgdir}/opt/${_pkgname}" -maxdepth 2 -type f -perm -111 \
-      \( -iname '*Super*ZSNES*' -o -iname '*zsnes*' \) \
-      -printf '%P\n'
-  } | head -n 1)"
+  _exe="$(find "${pkgdir}/opt/${_pkgname}" -maxdepth 4 -type f \
+    \( -iname 'SuperZSNES' -o -iname 'SuperZSNES.x86_64' -o -iname 'Super ZSNES' -o -iname 'Super ZSNES.x86_64' \) \
+    -printf '%P\n' -quit)"
+  if [[ -z "${_exe}" ]]; then
+    _exe="$(find "${pkgdir}/opt/${_pkgname}" -maxdepth 4 -type f \
+      \( -iname '*Super*ZSNES*.x86_64' -o -iname '*zsnes*.x86_64' \) \
+      -printf '%P\n' -quit)"
+  fi
 
   if [[ -z "${_exe}" ]]; then
     echo 'ERROR: Could not locate the Super ZSNES executable in the extracted archive.' >&2
     echo '       Inspect src/ and update the executable search pattern in package().' >&2
     return 1
   fi
+  chmod 0755 "${pkgdir}/opt/${_pkgname}/${_exe}"
 
   install -d "${pkgdir}/usr/bin"
   cat >"${pkgdir}/usr/bin/${_pkgname}" <<EOF_WRAPPER
@@ -68,24 +65,24 @@ exec "./${_exe}" "\$@"
 EOF_WRAPPER
   chmod 0755 "${pkgdir}/usr/bin/${_pkgname}"
 
-  _icon="$({
-    find "${pkgdir}/opt/${_pkgname}" -maxdepth 5 -type f \
+  _icon="$(find "${pkgdir}/opt/${_pkgname}" -maxdepth 5 -type f \
+    \( -iname '*.png' -o -iname '*.svg' \) \
+    \( -iname '*icon*' -o -iname '*zsnes*' -o -iname '*super*' \) \
+    -printf '%p\n' -quit)"
+  if [[ -z "${_icon}" ]]; then
+    _icon="$(find "${pkgdir}/opt/${_pkgname}" -maxdepth 5 -type f \
       \( -iname '*.png' -o -iname '*.svg' \) \
-      \( -iname '*icon*' -o -iname '*zsnes*' -o -iname '*super*' \) \
-      -printf '%p\n'
-    find "${pkgdir}/opt/${_pkgname}" -maxdepth 5 -type f \
-      \( -iname '*.png' -o -iname '*.svg' \) \
-      -printf '%p\n'
-  } | head -n 1)"
+      -printf '%p\n' -quit)"
+  fi
 
   if [[ -n "${_icon}" ]]; then
     case "${_icon##*.}" in
-    svg | SVG)
-      install -Dm644 "${_icon}" "${pkgdir}/usr/share/icons/hicolor/scalable/apps/${_pkgname}.svg"
-      ;;
-    *)
-      install -Dm644 "${_icon}" "${pkgdir}/usr/share/pixmaps/${_pkgname}.png"
-      ;;
+      svg | SVG)
+        install -Dm644 "${_icon}" "${pkgdir}/usr/share/icons/hicolor/scalable/apps/${_pkgname}.svg"
+        ;;
+      *)
+        install -Dm644 "${_icon}" "${pkgdir}/usr/share/pixmaps/${_pkgname}.png"
+        ;;
     esac
   fi
 
@@ -103,7 +100,7 @@ EOF_DESKTOP
 
   _license="$(find "${pkgdir}/opt/${_pkgname}" -maxdepth 5 -type f \
     \( -iname 'LICENSE*' -o -iname 'COPYING*' -o -iname 'EULA*' -o -iname 'LEGAL*' \) \
-    -printf '%p\n' | head -n 1)"
+    -printf '%p\n' -quit)"
 
   if [[ -n "${_license}" ]]; then
     install -Dm644 "${_license}" "${pkgdir}/usr/share/licenses/${pkgname}/${_license##*/}"
