@@ -1,6 +1,6 @@
 pkgbase = rgitui-git
 	pkgdesc = A GPU-accelerated desktop Git client built in Rust with GPUI (git version)
-	pkgver = 0.1.8.r27.ga8e403a
+	pkgver = 0.5.1.r0.gc0663e4
 	pkgrel = 1
 	url = https://github.com/noahbclarkson/rgitui
 	arch = x86_64
