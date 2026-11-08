@@ -1,5 +1,5 @@
 pkgname=libva-nvidia-driver-git
-pkgver=0.0.17.r54.g03bb5a0
+pkgver=0.0.18.r39.g4430507
 pkgrel=1
 pkgdesc='VA-API implementation that uses NVDEC as a backend'
 arch=('x86_64')

@@ -1,0 +1,4 @@
+[libva-nvidia-driver-git]
+source = "git"
+git = "https://github.com/elFarto/nvidia-vaapi-driver.git"
+use_commit = true
