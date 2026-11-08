@@ -41,11 +41,21 @@ FORCE_REASSIGN_PRIMARY_USERS="${usage_force_reassign_primary_users:-${FORCE_REAS
 [[ -n "${REPO_DB}" ]] || { echo "error: REPO_DB is required (or use --db)" >&2; exit 1; }
 [[ -n "${REPO_GROUP}" ]] || { echo "error: REPO_GROUP or REPO_NAME must be set" >&2; exit 1; }
 
-case "${REPO_DIR}" in
-  "" | "/" | ".")
-    echo "error: Refusing to operate on REPO_DIR=${REPO_DIR}" >&2
-    exit 1
-    ;;
+# Validate resolved directories without making rm follow DB symlinks.
+repo_dir_real="$(realpath -m -- "$REPO_DIR")"
+repo_root_real="$(realpath -m -- "$(dirname -- "$REPO_DB")")"
+
+for dir in "$repo_dir_real" "$repo_root_real"; do
+  case "$dir" in
+    "/" | "$(pwd -P)")
+      echo "error: Refusing to operate on repo directory: $dir" >&2
+      exit 1
+      ;;
+  esac
+done
+case "$repo_root_real/" in
+  "$repo_dir_real/"*) ;;
+  *) echo "error: REPO_DB must be inside REPO_DIR" >&2; exit 1 ;;
 esac
 
 is_homed_user() {
@@ -77,11 +87,6 @@ remove_user_from_group() {
   local group="$2"
 
   if is_homed_user "$user"; then
-    command -v homectl >/dev/null 2>&1 || {
-      echo "error: homectl is required for systemd-homed users but was not found." >&2
-      return 127
-    }
-
     local aux member_of
     if ! aux="$(homed_aux_groups "$user")"; then
       echo "error: systemd-homed user '$user' detected, but failed to parse Aux. Groups." >&2
@@ -90,68 +95,54 @@ remove_user_from_group() {
       return 1
     fi
 
-    member_of="$(
-      printf '%s\n' "$aux" \
-        | grep -vxF "$group" \
-        | paste -sd, - || true
-    )"
+    member_of="$(printf '%s\n' "$aux" | awk -v group="$group" 'NF && $0 != group' | paste -sd, -)" || return
 
     echo "Removing homed user '$user' from '$group' via homectl..."
     run0 homectl update "$user" --member-of="$member_of"
-    return 0
+    return $?
   fi
 
   if command -v gpasswd >/dev/null 2>&1; then
     echo "Removing user '$user' from '$group' via gpasswd..."
     run0 gpasswd -d "$user" "$group" >/dev/null
-    return 0
+    return $?
   fi
 
   local cur new
-  cur="$(id -nG "$user" | tr ' ' '\n' | sed '/^$/d' | sort -u)"
-  new="$(printf '%s\n' "$cur" | grep -vxF "$group" | paste -sd, - || true)"
+  cur="$(id -nG "$user" | tr ' ' '\n' | sed '/^$/d' | sort -u)" || return
+  new="$(printf '%s\n' "$cur" | awk -v group="$group" 'NF && $0 != group' | paste -sd, -)" || return
   echo "Removing user '$user' from '$group' via usermod -G..."
   run0 usermod -G "$new" "$user"
 }
 
 db_sidecars() {
-  local db="$1"
-  local -a c=()
+  local db="$1" base
 
-  c+=("${db}.old")
+  printf '%s\n' "$db"{.old,.sig,.old.sig}
+  case "$db" in
+    *.db.tar.*) base="${db%.db.tar.*}" ;;
+    *.db) base="${db%.db}" ;;
+    *) return ;;
+  esac
 
-  if [[ "$db" == *.db ]]; then
-    c+=(
-      "${db}.tar.gz" "${db}.tar.gz.old"
-      "${db}.tar.bz2" "${db}.tar.bz2.old"
-    )
-  fi
-
-  if [[ "$db" == *.db.tar.gz ]]; then
-    c+=("${db%.tar.gz}")
-  fi
-  if [[ "$db" == *.db.tar.bz2 ]]; then
-    c+=("${db%.tar.bz2}")
-  fi
-
-  printf '%s\n' "${c[@]}"
+  printf '%s\n' "$base".{db,files}{,.tar.gz,.tar.bz2,.tar.xz,.tar.zst}{,.old,.sig,.old.sig}
 }
 
 remove_db_files() {
   local db="$1"
 
-  if [[ -e "$db" ]]; then
+  if [[ -e "$db" || -L "$db" ]]; then
     echo "Removing repo DB: $db"
-    run0 rm -f "$db"
+    run0 rm -f -- "$db"
   else
     echo "Repo DB not found; skipping: $db"
   fi
 
   while IFS= read -r f; do
     [[ -z "$f" ]] && continue
-    if [[ -e "$f" ]]; then
+    if [[ -e "$f" || -L "$f" ]]; then
       echo "Removing DB sidecar: $f"
-      run0 rm -f "$f"
+      run0 rm -f -- "$f"
     fi
   done < <(db_sidecars "$db")
 }
@@ -160,31 +151,25 @@ remove_repo_root_and_maybe_parent() {
   local repo_dir="$1"
   local force="$2"
   local repo_root
-  repo_root="$(dirname "$REPO_DB")"
+  repo_root="$(dirname -- "$REPO_DB")"
 
-  if [[ -d "$repo_root" ]]; then
-    if [[ "$force" == "1" ]]; then
-      echo "FORCE_REMOVE_DIR=1 -> removing directory recursively: $repo_root"
-      run0 rm -rf --one-file-system "$repo_root"
-    else
-      if rmdir "$repo_root" 2>/dev/null; then
-        echo "Removed empty repo root: $repo_root"
-      else
-        echo "Repo root not empty; keeping: $repo_root"
-      fi
-    fi
-  else
+  if [[ ! -d "$repo_root" ]]; then
     echo "Repo root dir not found; skipping: $repo_root"
+  elif [[ "$force" == "1" ]]; then
+    echo "FORCE_REMOVE_DIR=1 -> removing directory recursively: $repo_root"
+    run0 rm -rf --one-file-system -- "$repo_root"
+  elif run0 rmdir -- "$repo_root"; then
+    echo "Removed empty repo root: $repo_root"
+  else
+    echo "Repo root could not be removed; keeping: $repo_root"
   fi
 
-  if [[ -d "$repo_dir" ]]; then
-    if rmdir "$repo_dir" 2>/dev/null; then
+  if [[ "$repo_dir" != "$repo_root" && -d "$repo_dir" ]]; then
+    if run0 rmdir -- "$repo_dir"; then
       echo "Removed empty parent repo dir: $repo_dir"
     else
-      echo "Parent repo dir not empty; keeping: $repo_dir"
+      echo "Parent repo dir could not be removed; keeping: $repo_dir"
     fi
-  else
-    echo "Parent repo dir not found; skipping: $repo_dir"
   fi
 }
 
@@ -231,7 +216,7 @@ delete_group_if_unused() {
 
   local prim_count supp
   prim_count="$(users_with_primary_group "$group" | wc -l | tr -d ' ')"
-  supp="$(group_members "$group" || true)"
+  supp="$(group_members "$group")"
 
   if [[ "$prim_count" -gt 0 ]]; then
     if [[ "$FORCE_REASSIGN_PRIMARY_USERS" != "1" ]]; then
