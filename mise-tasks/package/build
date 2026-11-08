@@ -2,7 +2,18 @@
 #MISE description="Build a package in a clean chroot"
 #MISE dir="{{cwd}}"
 
-export PKGDEST="${REPO_DIR}"
+set -euo pipefail
 
-makechrootpkg -r "$CHROOT_DIR" -c -u \
+[[ -f PKGBUILD ]] || { echo "error: Run this task from a package directory containing PKGBUILD." >&2; exit 1; }
+[[ -d "${CHROOT_DIR:?CHROOT_DIR not set}/root" ]] || { echo "error: Create the build chroot first: mise run chroot:create" >&2; exit 1; }
+export PKGDEST="${PKGDEST:-${REPO_DIR:?REPO_DIR not set}}"
+[[ -d "$PKGDEST" && -w "$PKGDEST" ]] || { echo "error: PKGDEST must be a writable directory: $PKGDEST (mise run repo:create)" >&2; exit 1; }
+
+# Only builds need a reproducible timestamp; honor an explicit local override.
+if [[ -z "${SOURCE_DATE_EPOCH:-}" ]]; then
+  SOURCE_DATE_EPOCH="$(git --no-pager -C "${PKGBUILDS_ROOT:?}" log -1 --format=%ct 2>/dev/null || date -u +%s)"
+fi
+export SOURCE_DATE_EPOCH
+
+exec makechrootpkg -r "$CHROOT_DIR" -c -u \
   -- --syncdeps --noconfirm --log
