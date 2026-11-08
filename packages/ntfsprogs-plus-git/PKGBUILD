@@ -4,7 +4,7 @@ pkgname=${_pkgname}-git
 _repo=ntfsprogs-plus/$_pkgname
 url="https://github.com/${_repo}"
 
-pkgver=1.0.0.r73.g0594d12
+pkgver=1.0.0.r212.gba6dd4e
 pkgrel=1
 epoch=1
 
