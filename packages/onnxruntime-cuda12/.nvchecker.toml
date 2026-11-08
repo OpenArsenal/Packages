@@ -1,4 +1,4 @@
+# CUDA 12 recipe is intentionally pinned; do not follow newer upstream releases.
 [onnxruntime]
-source = "git"
-git = "https://github.com/microsoft/onnxruntime.git"
-prefix = "v"
+source = "manual"
+manual = "1.30.0"

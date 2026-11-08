@@ -9,7 +9,7 @@ pkgname=(
   "python-${pkgbase}-cuda12"
   "python-${pkgbase}-opt-cuda12"
 )
-pkgver='1.26.0'
+pkgver=1.30.0
 _pkgdesc='Cross-platform, high performance scoring engine for ML models'
 pkgrel=1
 arch=('x86_64')
@@ -32,7 +32,7 @@ source=("git+https://github.com/microsoft/onnxruntime#tag=v${pkgver}"
         "${pkgbase}-system-flatbuffers.patch"
         "${pkgbase}-remove-pkg_resources.patch"
         fix-thrust-api.patch)
-b2sums=('5f7561e4758d96aae2d6d278f88b200df3ef23b3e909d756d538c45b34b5cb81514262521daa655a1e35bc67acd2f2ddacb2ae89a6415555c0c2b321b16af1e5'
+b2sums=('9930ee388e588c6205d3e22d9631c80e7494f7c918786d5f3284d8e369e95190c6bdeb53e1115fa72aec96e9e4e0e3a42f6802c263104bd8c5f43550752fb24e'
         'af5a5524dd9b5fe0052d2d0da232de7f219d4abffb37a7a321145b428d06fcb2901ab4e76b6754440146c223fc761bcbdfeee230167d33aa4434b82a1ebad5c0'
         '57c79382537f5bd25a891de3a99415a6dd8f490676df213016e897040c88e28fb5f5a5c3a8a98057e3f6630edb3ddcaeae36dcc47d5354abaafafc36e579f731'
         '207f020f310a7b447b4dc2fac74819f80099f088fdad6e42d67d0f01aa35bb5b9475bd006d9bec318127ae2db3d7ae3df33382fa16339d936c1dfb3832010837'
