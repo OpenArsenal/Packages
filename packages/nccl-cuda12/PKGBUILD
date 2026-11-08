@@ -1,6 +1,6 @@
 pkgname=nccl-cuda12
 _pkgname=nccl
-pkgver=2.29.7
+pkgver=2.32.3
 _upstr_pkgrel=1
 pkgrel=1
 pkgdesc='Library for NVIDIA multi-GPU and multi-node collective communication primitives (built against cuda12)'
@@ -29,7 +29,7 @@ makedepends=(
 )
 optdepends=('nccl-tests-cuda12: NCCL validation and performance tests')
 source=("git+https://github.com/NVIDIA/nccl.git#tag=v${pkgver}-${_upstr_pkgrel}")
-sha256sums=('SKIP')
+sha256sums=('ec2ff2ff71a38f3f50f38d8d808ab3ddebd4efd4c41c2e388c48d0c338907bf9')
 
 prepare() {
   cd "${srcdir}/${_pkgname}"
@@ -107,7 +107,7 @@ build() {
   export CUDARTLIB=cudart
 
   # Preserve usable static objects when global LTO is enabled.
-  export CXXFLAGS+=" -ffat-lto-objects"
+  export CXXFLAGS+=" -ffat-lto-objects -ffile-prefix-map=${srcdir}=."
 
   make \
     CUDA_HOME="${_cuda_root}" \
