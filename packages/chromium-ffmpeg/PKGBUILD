@@ -9,10 +9,10 @@ _chromium_ffmpeg_url=https://chromium.googlesource.com/chromium/third_party/ffmp
 license=('LGPL-2.1-or-later')
 _so=libffmpeg.so
 
-# Chromium 150.0.7871.46 third_party/ffmpeg submodule commit.
+# Chromium 156.0.8078.79 third_party/ffmpeg submodule commit.
 # For newer Chromium majors, use update-ffmpeg-ref.sh to update this commit and run updpkgsums.
-_chromium_version=150.0.7871.46
-_chromium_ffmpeg_ref=ad41607c61898cf7150e0fb20fe4bbabd44922a3
+_chromium_version=156.0.8078.79
+_chromium_ffmpeg_ref=9db86ce5b5b454dfc96c435f9f0723012980c37f
 
 pkgver=${_ffmpeg_pkgver}_${_chromium_version}
 
