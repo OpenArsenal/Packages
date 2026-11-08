@@ -1,0 +1,63 @@
+# Maintainer: (set your own maintainer line before AUR publication)
+# OpenSpec: unmodified, upstream-compiled glibc standalone binary.
+
+pkgname=openspec-bin
+pkgver=1.16.1
+pkgrel=1
+pkgdesc='Spec-driven development for AI coding assistants (official standalone binary)'
+arch=('x86_64' 'aarch64')
+url='https://github.com/Fission-AI/OpenSpec'
+license=('MIT')
+depends=('glibc' 'libgcc' 'libstdc++')
+provides=('openspec')
+conflicts=('openspec' 'openspec-git')
+# Bun executables embed data after the ELF image; stripping may corrupt them.
+options=('!strip' '!debug')
+
+source=("LICENSE-${pkgver}::https://raw.githubusercontent.com/Fission-AI/OpenSpec/v${pkgver}/LICENSE")
+source_x86_64=("openspec-${pkgver}-linux-x64.tar.gz::${url}/releases/download/v${pkgver}/openspec-linux-x64.tar.gz")
+source_aarch64=("openspec-${pkgver}-linux-arm64.tar.gz::${url}/releases/download/v${pkgver}/openspec-linux-arm64.tar.gz")
+
+# Pinned to the upstream v1.16.1 release asset SHA-256 digests on GitHub.
+sha256sums=('c3c7235bea1214ab62df643473975c2e8b8848f528901a976693f7d069713e64')
+sha256sums_x86_64=('9e5215b8f9a7024fa635f693a6a691d82220703868f1949927e675b87503c608')
+sha256sums_aarch64=('06d2a38a322b4da993500edd6726a3b554adfe565d7e4834d140f72102c5c0b3')
+
+build() {
+  # makepkg automatically extracts the release tarball to ${srcdir}/openspec.
+  local _exe="${srcdir}/openspec"
+  chmod +x "${_exe}"
+  install -d "${srcdir}/completions"
+  export OPENSPEC_TELEMETRY=0 OPENSPEC_NO_UPDATE_CHECK=1 CI=1 NO_COLOR=1
+  local _shell
+  for _shell in bash fish zsh; do
+    "${_exe}" completion generate "${_shell}" \
+      > "${srcdir}/completions/openspec.${_shell}"
+  done
+}
+
+check() {
+  local _exe="${srcdir}/openspec"
+  export OPENSPEC_TELEMETRY=0 OPENSPEC_NO_UPDATE_CHECK=1 CI=1 NO_COLOR=1
+
+  [[ "$("${_exe}" --version)" == "${pkgver}" ]]
+  "${_exe}" --help > /dev/null
+  local _shell
+  for _shell in bash fish zsh; do
+    [[ -s "${srcdir}/completions/openspec.${_shell}" ]]
+  done
+}
+
+package() {
+  install -Dm755 "${srcdir}/openspec" \
+    "${pkgdir}/usr/bin/openspec"
+  install -Dm644 "${srcdir}/LICENSE-${pkgver}" \
+    "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+
+  install -Dm644 "${srcdir}/completions/openspec.bash" \
+    "${pkgdir}/usr/share/bash-completion/completions/openspec"
+  install -Dm644 "${srcdir}/completions/openspec.fish" \
+    "${pkgdir}/usr/share/fish/vendor_completions.d/openspec.fish"
+  install -Dm644 "${srcdir}/completions/openspec.zsh" \
+    "${pkgdir}/usr/share/zsh/site-functions/_openspec"
+}
