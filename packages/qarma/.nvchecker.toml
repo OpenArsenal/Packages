@@ -1,0 +1,4 @@
+[qarma]
+source = "github"
+github = "luebking/qarma"
+use_max_tag = true
