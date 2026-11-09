@@ -309,14 +309,38 @@ MOCK
   echo 'PASS clean_db (failed reads abort; dry-run and valid stale removal preserved)'
 )
 
+electron_aliases() (
+  local major dir actual metadata
+  for major in 40 41; do
+    (
+      dir="$root/packages/electron${major}-castlab-bin"
+      source "$dir/PKGBUILD"
+      actual="$(printf '%s\n' "${provides[@]}" | LC_ALL=C sort)"
+      metadata="$(sed -n 's/^[[:space:]]*provides = //p' "$dir/.SRCINFO" | LC_ALL=C sort)"
+      [[ "$pkgrel" == 2 ]] || fail "electron $major pkgrel was not bumped"
+      [[ "$(sed -n 's/^[[:space:]]*pkgrel = //p' "$dir/.SRCINFO")" == "$pkgrel" ]] || fail "electron $major metadata pkgrel mismatch"
+      [[ "$actual" == "$metadata" ]] || fail "electron $major .SRCINFO does not match PKGBUILD"
+      [[ "$actual" != *electron42-castlab* ]] || fail "electron $major incorrectly provides Electron 42"
+      [[ "$actual" == *"electron-castlab=$pkgver"* ]] || fail "electron $major lost generic alias"
+      if [[ "$major" == 40 ]]; then
+        [[ ${#provides[@]} -eq 1 ]] || fail 'Electron 40 has extra provides aliases'
+      else
+        [[ ${#provides[@]} -eq 2 && "$actual" == *"electron41-castlab=$pkgver"* ]] || fail 'Electron 41 missing correct versioned alias'
+      fi
+    )
+  done
+  echo 'PASS electron aliases (correct runtime, updated release, .SRCINFO agrees)'
+)
+
 case "${1:-all}" in
   deps) deps ;;
   clean_sources) clean_sources ;;
   clean_db) clean_db ;;
+  electron_aliases) electron_aliases ;;
   prune) prune ;;
   metadata) metadata ;;
   publish) publish ;;
   build) build ;;
-  all) deps; clean_sources; clean_db; prune; metadata; publish; build ;;
+  all) deps; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases ;;
   *) fail "unknown test: $1" ;;
 esac

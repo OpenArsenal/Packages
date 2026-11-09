@@ -1,6 +1,6 @@
 pkgname=electron41-castlab-bin
 pkgver=41.10.7+wvcus
-pkgrel=1
+pkgrel=2
 pkgdesc='Electron 41 for Content Security by castLabs with Widevine CDM support - binary release'
 arch=('x86_64')
 url='https://github.com/castlabs/electron-releases'
@@ -36,7 +36,7 @@ optdepends=(
   'xdg-utils: open URLs with the desktop default handler'
 )
 provides=(
-  "electron42-castlab=${pkgver}"
+  "electron41-castlab=${pkgver}"
   "electron-castlab=${pkgver}"
 )
 conflicts=('electron-castlab')

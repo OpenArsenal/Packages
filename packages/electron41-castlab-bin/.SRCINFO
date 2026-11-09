@@ -1,7 +1,7 @@
 pkgbase = electron41-castlab-bin
 	pkgdesc = Electron 41 for Content Security by castLabs with Widevine CDM support - binary release
 	pkgver = 41.10.7+wvcus
-	pkgrel = 1
+	pkgrel = 2
 	url = https://github.com/castlabs/electron-releases
 	arch = x86_64
 	license = BSD-3-Clause
@@ -32,7 +32,7 @@ pkgbase = electron41-castlab-bin
 	optdepends = pipewire: WebRTC desktop sharing under Wayland
 	optdepends = trash-cli: file deletion support via trash-put
 	optdepends = xdg-utils: open URLs with the desktop default handler
-	provides = electron42-castlab=41.10.7+wvcus
+	provides = electron41-castlab=41.10.7+wvcus
 	provides = electron-castlab=41.10.7+wvcus
 	conflicts = electron-castlab
 	noextract = electron-v41.10.7+wvcus-linux-x64.zip
