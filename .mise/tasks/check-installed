@@ -54,7 +54,11 @@ compare() {
   # This recipe stores the NCCL tag revision separately from pkgver.
   [[ "$name" == nccl-cuda12 ]] && latest="${latest%-*}"
   if [[ "$current" =~ ^[0-9]+([._+][[:alnum:]]+)*$ && "$latest" =~ ^[0-9]+([._+][[:alnum:]]+)*$ && ! "$current" =~ \.r[0-9]+ ]]; then
-    order="$(vercmp "$current" "$latest")"
+    # A comparator error means the upstream status is unknown; it must not
+    # abort a read-only, non-strict report or suppress its warning summary.
+    if ! order="$(vercmp "$current" "$latest")"; then
+      return 0
+    fi
     case "$order" in
       -1) status=outdated ;;
       0) status=current ;;
