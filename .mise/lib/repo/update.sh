@@ -76,6 +76,7 @@ repo::select_newest_archives() {
   local outvar_name="$1"
   shift
   local -n outvar="$outvar_name"
+  outvar=()
 
   declare -A newest_file=()
   declare -A newest_ver=()
@@ -84,12 +85,16 @@ repo::select_newest_archives() {
 
   for pkg in "$@"; do
     if ! pkg_meta="$(pacman -Qp -- "$pkg" 2>/dev/null)"; then
-      echo "warning: unable to read package metadata; skipping: $pkg" >&2
-      continue
+      echo "error: unable to read package metadata: $pkg" >&2
+      return 1
     fi
 
-    pkg_name="${pkg_meta%% *}"
-    pkg_ver="${pkg_meta#* }"
+    if [[ ! "$pkg_meta" =~ ^([^[:space:]]+)[[:space:]]+([^[:space:]]+)$ ]]; then
+      echo "error: invalid package metadata for: $pkg" >&2
+      return 1
+    fi
+    pkg_name="${BASH_REMATCH[1]}"
+    pkg_ver="${BASH_REMATCH[2]}"
 
     if [[ -z "${newest_ver[$pkg_name]+x}" ]]; then
       newest_ver["$pkg_name"]="$pkg_ver"
