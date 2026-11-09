@@ -146,4 +146,4 @@ for status in skipped warning; do
     printf '\n%s (%s):\n%s' "$title" "${counts[$status]}" "${rows[$status]}"
   fi
 done
-if [[ "$strict" == true && ${counts[warning]:-0} -gt 0 ]]; then exit 1; fi
+if [[ "$strict" == true && ( ${counts[warning]:-0} -gt 0 || ${counts[skipped]:-0} -gt 0 ) ]]; then exit 1; fi

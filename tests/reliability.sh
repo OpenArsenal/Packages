@@ -262,7 +262,20 @@ MOCK
   PACKAGES_DIR="$tmp/empty" bash "$root/.mise/tasks/repo/clean" >"$tmp/log" 2>&1 || fail "valid cleanup failed: $(cat "$tmp/log")"
   [[ ! -e "$tmp/removed" ]] || fail 'cleanup removed a referenced package'
   grep -q 'already matches' "$tmp/log" || fail 'cleanup did not recognize a matching repository'
-  echo 'PASS clean_sources (missing/empty sources rejected; matching source kept)'
+
+  for mode in empty missing-pkgname; do
+    if [[ "$mode" == empty ]]; then
+      : >"$tmp/empty/kept/.SRCINFO"
+    else
+      printf 'pkgbase = kept\n\tpkgver = 1\n' >"$tmp/empty/kept/.SRCINFO"
+    fi
+    if PACKAGES_DIR="$tmp/empty" usage_dry_run=true bash "$root/.mise/tasks/repo/clean" >"$tmp/log" 2>&1; then
+      fail "cleanup accepted $mode .SRCINFO"
+    fi
+    grep -Fq "$tmp/empty/kept" "$tmp/log" || fail "missing offending path for $mode"
+    [[ ! -e "$tmp/removed" ]] || fail "cleanup modified repository with $mode metadata"
+  done
+  echo 'PASS clean_sources (missing source, empty metadata, valid source)'
 )
 
 clean_db() (
@@ -332,15 +345,51 @@ electron_aliases() (
   echo 'PASS electron aliases (correct runtime, updated release, .SRCINFO agrees)'
 )
 
+strict_skipped() (
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/bin" "$tmp/packages/sample"
+  export PKGBUILDS_ROOT="$root" PACKAGES_DIR="$tmp/packages" PATH="$tmp/bin:$PATH"
+  unset GITHUB_TOKEN
+  printf 'pkgbase = sample\n\tpkgname = sample\n' >"$tmp/packages/sample/.SRCINFO"
+  cat >"$tmp/bin/pacman" <<'MOCK'
+#!/usr/bin/env bash
+[[ "$1" == -Q ]] || exit 33
+printf '%s\n' 'sample 1-1'
+MOCK
+  for tool in nvchecker jq vercmp; do
+    printf '#!/usr/bin/env bash\nexit 88\n' >"$tmp/bin/$tool"
+  done
+  cat >"$tmp/bin/timeout" <<'MOCK'
+#!/usr/bin/env bash
+exit 124
+MOCK
+  chmod +x "$tmp/bin/"*
+  output="$(usage_strict=false bash "$root/.mise/tasks/check-installed")" || fail 'non-strict check failed on a skip'
+  [[ "$output" == *'Skipped (1)'* && "$output" == *'no nvchecker config'* ]] || fail 'missing skipped summary'
+  if output="$(usage_strict=true bash "$root/.mise/tasks/check-installed")"; then
+    fail 'strict check accepted a skipped package'
+  fi
+  [[ "$output" == *'Skipped (1)'* ]] || fail 'strict check omitted skipped package'
+  printf '[sample]\nsource = "github"\n' >"$tmp/packages/sample/.nvchecker.toml"
+  output="$(usage_strict=false bash "$root/.mise/tasks/check-installed")" || fail 'non-strict check failed on a warning'
+  [[ "$output" == *'Warnings (1)'* ]] || fail 'upstream timeout warning was not counted'
+  if usage_strict=true bash "$root/.mise/tasks/check-installed" >"$tmp/log" 2>&1; then
+    fail 'strict check accepted an upstream timeout'
+  fi
+  echo 'PASS strict_skipped (missing config and timeout only fail in strict mode)'
+)
+
 case "${1:-all}" in
   deps) deps ;;
   clean_sources) clean_sources ;;
   clean_db) clean_db ;;
   electron_aliases) electron_aliases ;;
+  strict_skipped) strict_skipped ;;
   prune) prune ;;
   metadata) metadata ;;
   publish) publish ;;
   build) build ;;
-  all) deps; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases ;;
+  all) deps; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases; strict_skipped ;;
   *) fail "unknown test: $1" ;;
 esac

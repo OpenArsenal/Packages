@@ -27,11 +27,14 @@ shopt -s nullglob
 for pkg_dir in "$PACKAGES_DIR"/*; do
   [[ -f "$pkg_dir/PKGBUILD" ]] || continue
   found_recipe=true
-  pkg::cache_srcinfo "$pkg_dir" || exit
+  if ! outputs="$(pkg::metadata_outputs "$pkg_dir")" || [[ -z "$outputs" ]]; then
+    echo "error: missing or unreadable package outputs: $pkg_dir" >&2
+    exit 1
+  fi
 
   while IFS= read -r output; do
     [[ -n "$output" ]] && desired["$output"]=1
-  done < <(pkg::metadata_outputs "$pkg_dir")
+  done <<<"$outputs"
 done
 
 shopt -u nullglob
