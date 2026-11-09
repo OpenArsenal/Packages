@@ -223,12 +223,32 @@ repo::refresh_sync_db() {
   local repo_name="$1"
   local db_path sync_dir
 
-  db_path="$(pacman-conf DBPath)"
-  sync_dir="${db_path%/}/sync"
+  db_path="$(pacman-conf DBPath)" || {
+    echo "error: unable to read pacman DBPath" >&2
+    return 1
+  }
+  # Never invalidate an unexpected /sync directory if pacman-conf returns
+  # empty, relative, or root-level paths.
+  [[ -n "$db_path" && "$db_path" == /* ]] || {
+    echo "error: invalid pacman DBPath: $db_path" >&2
+    return 1
+  }
+  db_path="$(realpath -m -- "$db_path")" || return 1
+  [[ "$db_path" != "/" ]] || {
+    echo "error: refusing root-level pacman DBPath" >&2
+    return 1
+  }
+  sync_dir="$db_path/sync"
 
   task::run_root rm -f \
     "${sync_dir}/${repo_name}.db"* \
-    "${sync_dir}/${repo_name}.files"*
+    "${sync_dir}/${repo_name}.files"* || {
+      echo "error: failed to invalidate pacman sync database for: $repo_name" >&2
+      return 1
+    }
 
-  task::run_root pacman -Sy --noconfirm
+  task::run_root pacman -Sy --noconfirm || {
+    echo "error: failed to refresh pacman sync database for: $repo_name" >&2
+    return 1
+  }
 }
