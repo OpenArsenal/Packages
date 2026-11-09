@@ -302,3 +302,67 @@ RECIPE
   )
 }
 
+@test "Installed version checks treat comparator errors as warnings" {
+  (
+  local tmp
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/bin" "$tmp/packages/sample"
+  export PKGBUILDS_ROOT="$root" PACKAGES_DIR="$tmp/packages" PATH="$tmp/bin:$PATH"
+  unset GITHUB_TOKEN
+
+  printf 'pkgbase = sample\n\tpkgname = sample\n' >"$PACKAGES_DIR/sample/.SRCINFO"
+  printf '[sample]\nsource = "github"\n' >"$PACKAGES_DIR/sample/.nvchecker.toml"
+
+  cat >"$tmp/bin/pacman" <<'MOCK'
+#!/usr/bin/env bash
+[[ "$1" == -Q ]] || exit 2
+printf 'sample 1.0-1\n'
+MOCK
+  cat >"$tmp/bin/timeout" <<'MOCK'
+#!/usr/bin/env bash
+[[ "$1" == --kill-after=1s && "$2" == 30s ]] || exit 2
+shift 2
+exec "$@"
+MOCK
+  cat >"$tmp/bin/nvchecker" <<'MOCK'
+#!/usr/bin/env bash
+printf '{"event":"updated","name":"sample","version":"2.0"}\n'
+MOCK
+  cat >"$tmp/bin/jq" <<'MOCK'
+#!/usr/bin/env bash
+[[ "$1" == -Rrs && "$2" == --arg ]] || exit 2
+printf '2.0\n'
+MOCK
+  cat >"$tmp/bin/vercmp" <<'MOCK'
+#!/usr/bin/env bash
+[[ "$1" == 1.0 && "$2" == 2.0 ]] || exit 2
+if [[ "${VERCMP_MODE:-ok}" == fail ]]; then
+  printf 'partial\n'
+  exit 43
+fi
+printf '%s\n' '-1'
+MOCK
+  chmod +x "$tmp/bin/"*
+
+  VERCMP_MODE=fail usage_strict=false bash "$root/.mise/tasks/check-installed" >"$tmp/log" 2>&1 ||
+    fail "non-strict check aborted after comparator failure: $(cat "$tmp/log")"
+  grep -Fq 'Warnings (1):' "$tmp/log" ||
+    fail 'failed version comparison was not reported as a warning'
+  grep -Fq 'unsupported comparison' "$tmp/log" ||
+    fail 'failed version comparison was not labeled unknown'
+
+  if VERCMP_MODE=fail usage_strict=true bash "$root/.mise/tasks/check-installed" >"$tmp/log" 2>&1; then
+    fail 'strict installed version check accepted unknown comparison'
+  else
+    [[ "$?" -eq 1 ]] || fail 'strict mode did not return its usual warning status'
+  fi
+  grep -Fq 'Warnings (1):' "$tmp/log" ||
+    fail 'strict mode lost the failed comparison warning'
+
+  VERCMP_MODE=ok usage_strict=true bash "$root/.mise/tasks/check-installed" >"$tmp/log" 2>&1 ||
+    fail "valid comparator was rejected: $(cat "$tmp/log")"
+  grep -Fq 'Outdated (1):' "$tmp/log" ||
+    fail 'valid version comparison no longer classified outdated packages'
+  )
+}
