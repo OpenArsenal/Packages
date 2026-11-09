@@ -10,37 +10,50 @@ chroot::repo_matches() {
   local repo_dir="$3"
   local sig_level="$4"
 
-  awk     -v section="[$repo_name]"     -v expected_sig="SigLevel = $sig_level"     -v expected_server="Server = file://$repo_dir" '
+  # Pacman should see exactly one repository stanza with one matching
+  # signature policy and server. A valid stanza alongside stale duplicates
+  # (or an extra Server in the same stanza) must be repaired.
+  awk -v section="[$repo_name]" \
+      -v expected_sig="SigLevel = $sig_level" \
+      -v expected_server="Server = file://$repo_dir" '
       function finish_section() {
-        if (in_section && sig_ok && server_ok) {
-          matched = 1
+        if (in_section && sig_ok && server_ok && sig_count == 1 && server_count == 1) {
+          matched++
         }
       }
 
       $0 == section {
         finish_section()
+        section_count++
         in_section = 1
         sig_ok = 0
         server_ok = 0
+        sig_count = 0
+        server_count = 0
         next
       }
 
       in_section && /^\[[^]]+\][[:space:]]*$/ {
         finish_section()
         in_section = 0
+        next
       }
 
-      in_section && $0 == expected_sig {
-        sig_ok = 1
+      in_section && /^[[:space:]]*SigLevel[[:space:]]*=/ {
+        sig_count++
+        if ($0 == expected_sig) sig_ok = 1
+        next
       }
 
-      in_section && $0 == expected_server {
-        server_ok = 1
+      in_section && /^[[:space:]]*Server[[:space:]]*=/ {
+        server_count++
+        if ($0 == expected_server) server_ok = 1
+        next
       }
 
       END {
         finish_section()
-        exit !matched
+        exit !(section_count == 1 && matched == 1)
       }
     ' "$pacman_conf"
 }

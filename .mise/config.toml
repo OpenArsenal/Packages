@@ -38,7 +38,7 @@ run = "bats tests/bats/unit.bats"
 
 [tasks."test:integration"]
 description = "Run package workflow integration tests with mocked tools"
-run = "bats tests/bats/build-planning.bats tests/bats/package-metadata.bats tests/bats/package-selection.bats tests/bats/repo-maintenance.bats"
+run = "bats tests/bats/build-planning.bats tests/bats/chroot-config.bats tests/bats/package-metadata.bats tests/bats/package-selection.bats tests/bats/repo-maintenance.bats"
 
 [tasks."repo:maintain"]
 description = "Update, reconcile, prune, and refresh the published repository"
