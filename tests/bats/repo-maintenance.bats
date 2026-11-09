@@ -509,3 +509,69 @@ MOCK
     fail 'valid database did not preserve published archives'
   )
 }
+
+@test "Pruning refuses missing and empty published repository indexes" {
+  (
+  local tmp archive
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/bin" "$tmp/repo"
+  export PKGBUILDS_ROOT="$root" REPO_DIR="$tmp/repo" REPO_DB="$tmp/repo/test.db"
+  export TEST_TMP="$tmp" PATH="$tmp/bin:$PATH"
+  archive="$REPO_DIR/orphan-1-1-x86_64.pkg.tar.zst"
+  touch "$archive" "$archive.sig"
+
+  cat >"$tmp/bin/bsdtar" <<'MOCK'
+#!/usr/bin/env bash
+case "$1" in
+  -tf)
+    if [[ "${DB_MODE:-empty}" == valid ]]; then
+      printf 'kept/desc\n'
+    fi
+    exit 0
+    ;;
+  -xOf)
+    [[ "${DB_MODE:-empty}" == valid ]] || exit 2
+    printf '%%FILENAME%%\nkept-1-1-x86_64.pkg.tar.zst\n%%NAME%%\nkept\n%%VERSION%%\n1-1\n'
+    ;;
+  *) exit 2 ;;
+esac
+MOCK
+  cat >"$tmp/bin/paccache" <<'MOCK'
+#!/usr/bin/env bash
+touch "$TEST_TMP/paccache-called"
+printf 'orphan-1-1-x86_64.pkg.tar.zst\n'
+MOCK
+  cat >"$tmp/bin/pacman" <<'MOCK'
+#!/usr/bin/env bash
+[[ "$1" == -Qp && "$2" == -- ]] || exit 2
+printf 'orphan 1-1\n'
+MOCK
+  chmod +x "$tmp/bin/"*
+
+  # A missing DB must not turn every candidate into an unindexed archive.
+  if bash "$root/.mise/tasks/repo/prune" >"$tmp/log" 2>&1; then
+    fail 'pruning accepted a missing repository database'
+  fi
+  grep -Fq 'refusing to prune without a readable repository database' "$tmp/log" ||
+    fail 'missing repository database had no useful diagnostic'
+  [[ -f "$archive" && -f "$archive.sig" && ! -e "$tmp/paccache-called" ]] ||
+    fail 'pruning touched archives or invoked paccache without a database'
+
+  # An existing but empty index provides no authority to delete archives.
+  touch "$REPO_DB"
+  if DB_MODE=empty bash "$root/.mise/tasks/repo/prune" >"$tmp/log" 2>&1; then
+    fail 'pruning accepted a database with no indexed packages'
+  fi
+  grep -Fq 'refusing to prune without indexed packages' "$tmp/log" ||
+    fail 'empty repository index had no useful diagnostic'
+  [[ -f "$archive" && -f "$archive.sig" && ! -e "$tmp/paccache-called" ]] ||
+    fail 'pruning touched archives or invoked paccache with an empty index'
+
+  # With usable metadata, pruning should still clean genuinely unindexed archives.
+  DB_MODE=valid bash "$root/.mise/tasks/repo/prune" >"$tmp/log" 2>&1 ||
+    fail "valid repository pruning failed: $(cat "$tmp/log")"
+  [[ -e "$tmp/paccache-called" && ! -e "$archive" && ! -e "$archive.sig" ]] ||
+    fail 'valid pruning did not remove the unindexed archive and signature'
+  )
+}
