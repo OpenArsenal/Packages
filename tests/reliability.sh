@@ -1010,6 +1010,64 @@ published_incompatible_provider() (
   echo 'PASS published_incompatible_provider (upper bound forces local build, including earlier skipped selection)'
 )
 
+
+planning_metadata_failures() (
+  local tmp stage
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  export PKGBUILDS_ROOT="$root" REPO_DIR="$tmp/repo" REPO_DB="$tmp/missing.db"
+  mkdir -p "$REPO_DIR" "$tmp/packages/app"
+  touch "$tmp/packages/app/PKGBUILD"
+  printf 'pkgbase = app\n\tpkgver = 1\n\tpkgrel = 1\n\npkgname = app\n' \
+    >"$tmp/packages/app/.SRCINFO"
+  source "$root/.mise/lib/repo.sh"
+  source "$root/.mise/lib/pkg.sh"
+
+  pkg::metadata_outputs() {
+    printf 'app\n'
+    [[ "${METADATA_STAGE:-ok}" != outputs ]] || return 47
+  }
+  pkg::metadata_provides() {
+    if [[ "${METADATA_STAGE:-ok}" == provides ]]; then
+      printf 'partial-alias=1\n'
+      return 48
+    fi
+  }
+  pkg::metadata_deps() {
+    printf 'external>=1\n'
+    [[ "${METADATA_STAGE:-ok}" != deps ]] || return 49
+  }
+  repo::is_dep_satisfied() { return 1; }
+  pkg::pacman_can_resolve() { return 0; }
+  pkg::build_plan() { touch "$tmp/build-ran"; }
+
+  # Partially successful metadata producers must stop planning rather than
+  # letting a truncated list silently reach a package build.
+  for stage in outputs provides deps; do
+    rm -f -- "$tmp/build-ran"
+    if METADATA_STAGE="$stage" pkg::build_selected "$tmp/packages" false app >"$tmp/log" 2>&1; then
+      fail "build proceeded after partially failed $stage metadata scan"
+    fi
+    [[ ! -e "$tmp/build-ran" ]] || fail "build started after failed $stage metadata scan"
+    grep -q 'error: unable to' "$tmp/log" ||
+      fail "missing error diagnostic for partially failed $stage metadata scan"
+  done
+
+  # If an incomplete output list starts with an already published package,
+  # even a direct skip check must reject it, not mark the recipe satisfied.
+  repo::is_dep_satisfied() { return 0; }
+  if METADATA_STAGE=outputs pkg::all_outputs_in_repo "$tmp/packages/app" >"$tmp/log" 2>&1; then
+    fail 'partial output list incorrectly marked the recipe as published'
+  fi
+  pkg::resolver_reset
+  if METADATA_STAGE=outputs pkg::plan_dir "$tmp/packages/app" >"$tmp/log" 2>&1; then
+    fail 'planning continued after incomplete published-output metadata'
+  fi
+  [[ "${#PKG_PLAN[@]}" -eq 0 ]] || fail 'incomplete output metadata added a recipe to the build plan'
+
+  echo 'PASS planning_metadata_failures (incomplete output, provider and dependency metadata abort planning)'
+)
+
 case "${1:-all}" in
   select_installed) select_installed ;;
   provider_versions) provider_versions ;;
@@ -1021,6 +1079,7 @@ case "${1:-all}" in
   partial_package_outputs) partial_package_outputs ;;
   chroot_setup_failures) chroot_setup_failures ;;
   planner_failures) planner_failures ;;
+  planning_metadata_failures) planning_metadata_failures ;;
   archive_selection_errors) archive_selection_errors ;;
   archive_enumeration_failure) archive_enumeration_failure ;;
   clean_sources) clean_sources ;;
@@ -1033,6 +1092,6 @@ case "${1:-all}" in
   metadata) metadata ;;
   publish) publish ;;
   build) build ;;
-  all) deps; versioned_local_providers; published_incompatible_provider; archive_metadata_failures; exact_archive_scan_failures; partial_package_outputs; chroot_setup_failures; planner_failures; archive_selection_errors; archive_enumeration_failure; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases; strict_skipped; srcinfo_consistency; onepassword_update; provider_versions; select_installed ;;
+  all) deps; planning_metadata_failures; versioned_local_providers; published_incompatible_provider; archive_metadata_failures; exact_archive_scan_failures; partial_package_outputs; chroot_setup_failures; planner_failures; archive_selection_errors; archive_enumeration_failure; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases; strict_skipped; srcinfo_consistency; onepassword_update; provider_versions; select_installed ;;
   *) fail "unknown test: $1" ;;
 esac
