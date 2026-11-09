@@ -851,12 +851,124 @@ archive_metadata_failures() (
   echo 'PASS archive_metadata_failures (unreadable metadata blocks publication)'
 )
 
+
+exact_archive_scan_failures() (
+  local tmp
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/repo"
+  touch "$tmp/repo/demo-1-1-x86_64.pkg.tar.zst" "$tmp/repo/demo-2-1-x86_64.pkg.tar.zst"
+  source "$root/.mise/lib/repo/update.sh"
+
+  pacman() {
+    [[ "$1" == -Qp && "$2" == -- ]] || return 2
+    case "${3##*/}" in
+      demo-1-1-*) printf 'demo 1-1\n' ;;
+      demo-2-1-*)
+        [[ "${ARCHIVE_META_MODE:-ok}" != fail ]] || return 47
+        printf 'demo 2-1\n'
+        ;;
+      *) return 2 ;;
+    esac
+  }
+  vercmp() {
+    [[ "$1:$2" == '2-1:1-1' ]] || return 48
+    printf '1\n'
+  }
+  repo::add_archives() { printf '%s\n' "${@:5}" >"$tmp/published"; }
+
+  if ARCHIVE_META_MODE=fail repo::update_db "$tmp/repo" "$tmp/db" demo false false false false >"$tmp/log" 2>&1; then
+    fail 'exact-name update published despite unreadable candidate archive'
+  fi
+  [[ ! -e "$tmp/published" ]] || fail 'partial exact-name archive set was published'
+  grep -q 'unable to enumerate package archives' "$tmp/log" ||
+    fail 'failed exact-name scan omitted its diagnostic'
+
+  ARCHIVE_META_MODE=ok repo::update_db "$tmp/repo" "$tmp/db" demo false false false false >"$tmp/log" 2>&1 ||
+    fail "valid exact-name scan rejected: $(cat "$tmp/log")"
+  [[ "$(cat "$tmp/published")" == "$tmp/repo/demo-2-1-x86_64.pkg.tar.zst" ]] ||
+    fail 'valid exact-name scan did not select the newest archive'
+  echo 'PASS exact_archive_scan_failures (unreadable candidates block updates)'
+)
+
+partial_package_outputs() (
+  local tmp
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  export REPO_DIR="$tmp/repo" REPO_DB="$tmp/repo/db"
+  mkdir -p "$REPO_DIR"
+  source "$root/.mise/lib/pkg/build.sh"
+  touch "$tmp/marker"
+  touch -t 200001010000.00 "$tmp/marker"
+  touch "$REPO_DIR/alpha-1-1-x86_64.pkg.tar.zst" "$REPO_DIR/beta-1-1-x86_64.pkg.tar.zst"
+
+  pkg::metadata_outputs() {
+    printf 'alpha\n'
+    if [[ "${OUTPUT_MODE:-complete}" == partial ]]; then return 47; fi
+    printf 'beta\n'
+  }
+  repo::match_package_archives() {
+    printf '%s/%s-1-1-x86_64.pkg.tar.zst\n' "$REPO_DIR" "$2"
+  }
+  repo::add_archives() { printf '%s\n' "${@:5}" >"$tmp/published"; }
+
+  if OUTPUT_MODE=partial pkg::publish_outputs "$tmp/demo" "$tmp/marker" >"$tmp/log" 2>&1; then
+    fail 'partial package output metadata was accepted'
+  fi
+  [[ ! -e "$tmp/published" ]] || fail 'partial package output metadata reached publication'
+
+  OUTPUT_MODE=complete pkg::publish_outputs "$tmp/demo" "$tmp/marker" >"$tmp/log" 2>&1 ||
+    fail "complete package output metadata rejected: $(cat "$tmp/log")"
+  [[ "$(wc -l <"$tmp/published")" -eq 2 ]] || fail 'complete package output list was not published'
+  grep -q '/alpha-1-1-x86_64.pkg.tar.zst' "$tmp/published" || fail 'missing alpha output'
+  grep -q '/beta-1-1-x86_64.pkg.tar.zst' "$tmp/published" || fail 'missing beta output'
+  echo 'PASS partial_package_outputs (partial output list blocks publication)'
+)
+
+chroot_setup_failures() (
+  local tmp
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  export TMPDIR="$tmp" REPO_NAME=test
+  source "$root/.mise/lib/pkg/resolver.sh"
+  PKG_PLAN=("$tmp/first" "$tmp/second")
+  chroot_calls=0
+
+  chroot::enable_repo() {
+    chroot_calls=$((chroot_calls + 1))
+    case "${CHROOT_MODE:-ok}" in
+      initial) return 47 ;;
+      refresh) (( chroot_calls < 2 )) || return 48 ;;
+    esac
+    return 0
+  }
+  pkg::build_dir() { printf '%s\n' "$1" >>"$tmp/built"; }
+  pkg::publish_outputs() { printf '%s\n' "$1" >>"$tmp/published"; }
+
+  if CHROOT_MODE=initial pkg::build_plan >"$tmp/log" 2>&1; then
+    fail 'build continued after initial chroot repository configuration failed'
+  fi
+  [[ ! -e "$tmp/built" && ! -e "$tmp/published" ]] ||
+    fail 'build or publication began after initial chroot setup failure'
+
+  chroot_calls=0
+  if CHROOT_MODE=refresh pkg::build_plan >"$tmp/log" 2>&1; then
+    fail 'build continued after chroot repository refresh failed'
+  fi
+  [[ "$(cat "$tmp/built")" == "$tmp/first" ]] || fail 'build continued past failing chroot refresh'
+  [[ "$(cat "$tmp/published")" == "$tmp/first" ]] || fail 'unexpected publication after failing chroot refresh'
+  echo 'PASS chroot_setup_failures (configuration errors stop later builds)'
+)
+
 case "${1:-all}" in
   select_installed) select_installed ;;
   provider_versions) provider_versions ;;
   deps) deps ;;
   versioned_local_providers) versioned_local_providers ;;
   archive_metadata_failures) archive_metadata_failures ;;
+  exact_archive_scan_failures) exact_archive_scan_failures ;;
+  partial_package_outputs) partial_package_outputs ;;
+  chroot_setup_failures) chroot_setup_failures ;;
   planner_failures) planner_failures ;;
   archive_selection_errors) archive_selection_errors ;;
   archive_enumeration_failure) archive_enumeration_failure ;;
@@ -870,6 +982,6 @@ case "${1:-all}" in
   metadata) metadata ;;
   publish) publish ;;
   build) build ;;
-  all) deps; versioned_local_providers; archive_metadata_failures; planner_failures; archive_selection_errors; archive_enumeration_failure; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases; strict_skipped; srcinfo_consistency; onepassword_update; provider_versions; select_installed ;;
+  all) deps; versioned_local_providers; archive_metadata_failures; exact_archive_scan_failures; partial_package_outputs; chroot_setup_failures; planner_failures; archive_selection_errors; archive_enumeration_failure; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases; strict_skipped; srcinfo_consistency; onepassword_update; provider_versions; select_installed ;;
   *) fail "unknown test: $1" ;;
 esac
