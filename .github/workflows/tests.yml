@@ -1,0 +1,21 @@
+name: Bash tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Bash syntax
+        run: bash -n tests/unit.sh tests/reliability.sh tests/check-srcinfo.sh
+      - name: Unit tests
+        run: bash tests/unit.sh
+      - name: Workflow integration tests (mocked external tools)
+        run: bash tests/reliability.sh
