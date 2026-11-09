@@ -155,3 +155,46 @@ MOCK
   )
 }
 
+@test "Ambiguous installed outputs only select recipes that actually provide them" {
+  (
+  local tmp packages dir
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  packages="$tmp/packages"
+  mkdir -p "$packages/shared-alt" "$packages/shared-extra" "$packages/shared"
+  for dir in "$packages"/*; do
+    touch "$dir/PKGBUILD"
+  done
+  printf 'pkgbase = shared-alt\n\tpkgname = shared\n' >"$packages/shared-alt/.SRCINFO"
+  printf 'pkgbase = shared-extra\n\tpkgname = shared\n' >"$packages/shared-extra/.SRCINFO"
+  printf 'pkgbase = unrelated\n\tpkgname = unrelated\n' >"$packages/shared/.SRCINFO"
+
+  source "$root/.mise/lib/pkg/metadata.sh"
+  source "$root/.mise/lib/pkg/list.sh"
+
+  pacman() {
+    case "$1" in
+      -Sl) return 0 ;;
+      -Qq) printf 'shared\n' ;;
+      -Qi|-Si) printf 'Packager : Fixture Packager\n' ;;
+      *) return 2 ;;
+    esac
+  }
+
+  local -a selected=(sentinel)
+  pkg::installed_selected "$packages" test selected >"$tmp/log" 2>&1 ||
+    fail "ambiguous installed-package lookup failed: $(cat "$tmp/log")"
+  [[ "${#selected[@]}" -eq 0 ]] ||
+    fail "unrelated exact-name recipe selected: ${selected[*]}"
+  grep -Fq "ambiguous installed package 'shared'" "$tmp/log" ||
+    fail 'ambiguous output did not produce a warning'
+
+  # When the exact-name directory actually provides the output, prefer it.
+  printf 'pkgbase = shared\n\tpkgname = shared\n' >"$packages/shared/.SRCINFO"
+  pkg::metadata_cache_reset
+  pkg::installed_selected "$packages" test selected >"$tmp/log" 2>&1 ||
+    fail "exact-name provider lookup failed: $(cat "$tmp/log")"
+  [[ "${selected[*]}" == shared ]] ||
+    fail "valid exact-name provider was not preferred: ${selected[*]}"
+  )
+}
