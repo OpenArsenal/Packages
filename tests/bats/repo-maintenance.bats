@@ -525,7 +525,10 @@ MOCK
 #!/usr/bin/env bash
 case "$1" in
   -tf)
-    [[ "${DB_MODE:-empty}" == valid ]] && printf 'kept/desc\n'
+    if [[ "${DB_MODE:-empty}" == valid ]]; then
+      printf 'kept/desc\n'
+    fi
+    exit 0
     ;;
   -xOf)
     [[ "${DB_MODE:-empty}" == valid ]] || exit 2
