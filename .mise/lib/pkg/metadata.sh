@@ -8,18 +8,22 @@ pkg::metadata_cache_reset() {
 
 pkg::cache_srcinfo() {
   local pkg_dir="$1"
+  local srcinfo
 
   [[ -n "${PKG_SRCINFO_CACHE[$pkg_dir]+x}" ]] && return 0
 
   if [[ -f "$pkg_dir/.SRCINFO" ]]; then
-    PKG_SRCINFO_CACHE["$pkg_dir"]="$(<"$pkg_dir/.SRCINFO")"
-    return 0
+    srcinfo="$(<"$pkg_dir/.SRCINFO")" || return 1
+  else
+    # A failed makepkg can emit partial output. Cache only after success,
+    # otherwise a later read could treat the incomplete data as valid.
+    srcinfo="$(
+      cd "$pkg_dir" || exit 1
+      makepkg --printsrcinfo
+    )" || return 1
   fi
 
-  PKG_SRCINFO_CACHE["$pkg_dir"]="$(
-    cd "$pkg_dir" || exit 1
-    makepkg --printsrcinfo
-  )"
+  PKG_SRCINFO_CACHE["$pkg_dir"]="$srcinfo"
 }
 
 pkg::srcinfo() {
@@ -48,41 +52,53 @@ pkg::metadata_values() {
 }
 
 pkg::metadata_pkgbase() {
-  pkg::metadata_values "$1" pkgbase | head -n1
+  local values
+  values="$(pkg::metadata_values "$1" pkgbase)" || return 1
+  printf '%s\n' "${values%%$'\n'*}"
 }
 
 pkg::metadata_outputs() {
-  pkg::metadata_values "$1" pkgname | awk 'NF' | sort -u
+  local values
+  values="$(pkg::metadata_values "$1" pkgname)" || return 1
+  printf '%s\n' "$values" | awk 'NF' | sort -u
 }
 
 pkg::metadata_provides() {
   local pkg_dir="$1"
   local arch="${CARCH:-$(uname -m)}"
+  local generic arch_specific
 
-  {
-    pkg::metadata_values "$pkg_dir" provides
-    pkg::metadata_values "$pkg_dir" "provides_$arch"
-  } | awk 'NF' | sort -u
+  generic="$(pkg::metadata_values "$pkg_dir" provides)" || return 1
+  arch_specific="$(pkg::metadata_values "$pkg_dir" "provides_$arch")" || return 1
+  printf '%s\n%s\n' "$generic" "$arch_specific" | awk 'NF' | sort -u
 }
 
 pkg::metadata_deps() {
   local pkg_dir="$1"
   local arch="${CARCH:-$(uname -m)}"
-  local key
+  local key values collected=""
 
+  # Check every field read. A failed early read must not be concealed by
+  # successful reads of later dependency categories.
   for key in depends makedepends checkdepends; do
-    pkg::metadata_values "$pkg_dir" "$key"
-    pkg::metadata_values "$pkg_dir" "${key}_$arch"
-  done | awk 'NF' | sort -u
+    values="$(pkg::metadata_values "$pkg_dir" "$key")" || return 1
+    collected+="$values"$'\n'
+    values="$(pkg::metadata_values "$pkg_dir" "${key}_$arch")" || return 1
+    collected+="$values"$'\n'
+  done
+  printf '%s' "$collected" | awk 'NF' | sort -u
 }
 
 pkg::metadata_version() {
   local pkg_dir="$1"
   local epoch pkgver pkgrel
 
-  epoch="$(pkg::metadata_values "$pkg_dir" epoch | head -n1)"
-  pkgver="$(pkg::metadata_values "$pkg_dir" pkgver | head -n1)"
-  pkgrel="$(pkg::metadata_values "$pkg_dir" pkgrel | head -n1)"
+  epoch="$(pkg::metadata_values "$pkg_dir" epoch)" || return 1
+  pkgver="$(pkg::metadata_values "$pkg_dir" pkgver)" || return 1
+  pkgrel="$(pkg::metadata_values "$pkg_dir" pkgrel)" || return 1
+  epoch="${epoch%%$'\n'*}"
+  pkgver="${pkgver%%$'\n'*}"
+  pkgrel="${pkgrel%%$'\n'*}"
 
   [[ -n "$pkgver" && -n "$pkgrel" ]] || return 1
 
