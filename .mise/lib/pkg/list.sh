@@ -25,9 +25,7 @@ pkg::pacman_info_value() {
   local field="$3"
   local info
 
-  if ! info="$(LC_ALL=C pacman "-${mode}i" "$target" 2>/dev/null)"; then
-    return 0
-  fi
+  info="$(LC_ALL=C pacman "-${mode}i" "$target" 2>/dev/null)" || return 1
 
   awk -F ':' -v field="$field" '
     {
@@ -48,6 +46,11 @@ pkg::installed_selected() {
   local repo_name="$2"
   local outvar_name="$3"
   local -n outvar="$outvar_name"
+
+  [[ -d "$packages_dir" && -r "$packages_dir" && -x "$packages_dir" ]] || {
+    echo "error: package source directory missing or unreadable: $packages_dir" >&2
+    return 1
+  }
 
   LC_ALL=C pacman -Sl "$repo_name" >/dev/null 2>&1 || {
     echo "error: pacman repository unavailable: $repo_name" >&2
@@ -90,11 +93,18 @@ pkg::installed_selected() {
   for output in "${!output_dirs[@]}"; do
     [[ -n "${installed[$output]+x}" ]] || continue
 
-    repo_packager="$(pkg::pacman_info_value S "$repo_name/$output" Packager)"
-    [[ -n "$repo_packager" ]] || continue
+    installed_packager="$(pkg::pacman_info_value Q "$output" Packager)" || {
+      echo "error: unable to read installed package metadata: $output" >&2
+      return 1
+    }
+    [[ -n "$installed_packager" ]] || {
+      echo "error: missing packager in installed package metadata: $output" >&2
+      return 1
+    }
 
-    installed_packager="$(pkg::pacman_info_value Q "$output" Packager)"
-    [[ -n "$installed_packager" ]] || continue
+    # A local recipe may not have a published entry in this repository.
+    repo_packager="$(pkg::pacman_info_value S "$repo_name/$output" Packager)" || continue
+    [[ -n "$repo_packager" ]] || continue
     [[ "$installed_packager" == "$repo_packager" ]] || continue
 
     repo_installed["$output"]=1

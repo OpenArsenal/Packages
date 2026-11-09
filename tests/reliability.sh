@@ -558,7 +558,14 @@ case "$1" in
     [[ "${QUERY_MODE:-ok}" == ok ]] || exit 37
     printf 'demo\n'
     ;;
-  -Si|-Qi) printf 'Packager : Fixture Packager\n' ;;
+  -Si) printf 'Packager : Fixture Packager\n' ;;
+  -Qi)
+    case "${INFO_MODE:-ok}" in
+      fail) printf 'Packager : partial\n'; exit 48 ;;
+      missing) printf 'Name : demo\n' ;;
+      *) printf 'Packager : Fixture Packager\n' ;;
+    esac
+    ;;
   *) exit 2 ;;
 esac
 MOCK
@@ -577,13 +584,35 @@ MOCK
   fi
   cmp -s "$PACKAGES_FILE" "$tmp/original" || fail 'failed dry-run changed saved selection'
 
+  : >"$tmp/not-a-directory"
+  for invalid_dir in "$tmp/missing" "$tmp/not-a-directory"; do
+    if PACKAGES_DIR="$invalid_dir" QUERY_MODE=ok bash "$root/.mise/tasks/pkg/select-installed" >"$tmp/log" 2>&1; then
+      fail "selection accepted invalid source directory: $invalid_dir"
+    fi
+    cmp -s "$PACKAGES_FILE" "$tmp/original" || fail 'invalid source directory modified saved selection'
+    grep -Fq "$invalid_dir" "$tmp/log" || fail 'invalid directory diagnostic omitted path'
+  done
+
+  for mode in fail missing; do
+    if INFO_MODE="$mode" QUERY_MODE=ok bash "$root/.mise/tasks/pkg/select-installed" >"$tmp/log" 2>&1; then
+      fail "selection accepted invalid installed metadata: $mode"
+    fi
+    cmp -s "$PACKAGES_FILE" "$tmp/original" || fail "invalid $mode metadata modified saved selection"
+    grep -Fq 'demo' "$tmp/log" || fail "metadata error did not identify package: $mode"
+  done
+
+  if INFO_MODE=fail QUERY_MODE=ok usage_dry_run=true bash "$root/.mise/tasks/pkg/select-installed" >"$tmp/log" 2>&1; then
+    fail 'selection dry-run accepted failed installed metadata'
+  fi
+  cmp -s "$PACKAGES_FILE" "$tmp/original" || fail 'failed metadata dry-run changed saved selection'
+
   QUERY_MODE=ok usage_dry_run=true bash "$root/.mise/tasks/pkg/select-installed" >"$tmp/log" 2>&1 || fail 'valid selection dry-run failed'
   [[ "$(cat "$tmp/log")" == demo ]] || fail 'dry-run did not list selected package'
   cmp -s "$PACKAGES_FILE" "$tmp/original" || fail 'successful dry-run changed saved selection'
 
   QUERY_MODE=ok bash "$root/.mise/tasks/pkg/select-installed" >"$tmp/log" 2>&1 || fail "successful selection failed: $(cat "$tmp/log")"
   [[ "$(cat "$PACKAGES_FILE")" == demo ]] || fail 'successful selection did not update saved list'
-  echo 'PASS select_installed (failed discovery preserves saved list, dry-run and success unchanged)'
+  echo 'PASS select_installed (failed queries and invalid source paths preserve saved list)'
 )
 
 case "${1:-all}" in
