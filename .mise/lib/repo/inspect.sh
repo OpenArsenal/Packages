@@ -148,7 +148,120 @@ repo::db_records() {
   # There must be one complete NAME/VERSION record for each archive desc.
   # Otherwise partial or corrupt metadata could make published archives look
   # orphaned to repo:prune or absent to the dependency planner.
-  while IFS=\t' read -r kind first second; do
+  while IFS=
+    if [[ "$kind" == "P" ]]; then
+      (( record_count += 1 ))
+    fi
+  done <<<"$records"
+  if (( record_count != ${#entries[@]} )); then
+    echo "error: incomplete repository package metadata in: $repo_db" >&2
+    return 1
+  fi
+
+  [[ -z "$records" ]] || printf '%s\n' "$records"
+}
+
+repo::index_build() {
+  local repo_dir="$1"
+  local repo_db="${REPO_DB:-}"
+  local records kind first second
+  local raw provide_name provide_op provide_ver
+
+  repo::index_reset
+
+  if [[ -z "$repo_db" || ! -e "$repo_db" ]]; then
+    REPO_INDEX_DIR="$repo_dir"
+    return 0
+  fi
+
+  if ! records="$(repo::db_records "$repo_db")"; then
+    echo "error: unable to inspect repository database: $repo_db" >&2
+    return 1
+  fi
+
+  while IFS=$'\t' read -r kind first second; do
+    case "$kind" in
+      P)
+        if [[ -n "$first" && -n "$second" ]]; then
+          if ! repo::remember_max_version REPO_PACKAGE_VERSION "$first" "$second"; then
+            echo "error: unable to compare repository package versions: $first" >&2
+            repo::index_reset
+            return 1
+          fi
+        fi
+        ;;
+      R)
+        raw="$first"
+        [[ -n "$raw" ]] || continue
+
+        provide_name=""
+        provide_op=""
+        provide_ver=""
+        spec::parse "$raw" provide_name provide_op provide_ver
+        [[ -n "$provide_name" ]] || continue
+
+        REPO_PROVIDE_PRESENT["$provide_name"]=1
+        if [[ -n "$provide_ver" ]]; then
+          REPO_PROVIDE_VERSIONS["$provide_name"]+="${provide_ver}"$'\n'
+        fi
+        ;;
+    esac
+  done <<<"$records"
+
+  REPO_INDEX_DIR="$repo_dir"
+}
+
+repo::ensure_index() {
+  local repo_dir="$1"
+  [[ "$REPO_INDEX_DIR" == "$repo_dir" ]] || repo::index_build "$repo_dir"
+}
+
+repo::is_dep_satisfied() {
+  local repo_dir="$1"
+  local dep="$2"
+  local op="$3"
+  local ver="$4"
+
+  repo::ensure_index "$repo_dir" || return 1
+
+  if [[ -n "${REPO_PACKAGE_VERSION[$dep]+x}" ]] \
+    && repo::version_satisfies "${REPO_PACKAGE_VERSION[$dep]}" "$op" "$ver"; then
+    return 0
+  fi
+
+  [[ -n "${REPO_PROVIDE_PRESENT[$dep]+x}" ]] || return 1
+
+  if [[ -z "$op" || -z "$ver" ]]; then
+    return 0
+  fi
+
+  local provided
+  while IFS= read -r provided; do
+    if [[ -n "$provided" ]] && repo::version_satisfies "$provided" "$op" "$ver"; then
+      return 0
+    fi
+  done <<< "${REPO_PROVIDE_VERSIONS[$dep]-}"
+  return 1
+}
+
+repo::has_built_pkg() {
+  repo::is_dep_satisfied "$1" "$2" "" ""
+}
+
+repo::db_packages() {
+  local repo_db="$1"
+  local records kind name version
+
+  [[ -e "$repo_db" ]] || return 0
+
+  records="$(repo::db_records "$repo_db")" || return 1
+
+  while IFS=$'\t' read -r kind name version; do
+    [[ "$kind" == "P" && -n "$name" ]] && printf '%s\n' "$name"
+  done <<<"$records"
+  return 0
+}
+\t' read -r kind first second; do
     if [[ "$kind" == "P" ]]; then
       (( record_count += 1 ))
     fi
