@@ -20,7 +20,11 @@ repo::version_satisfies() {
   [[ -z "$op" || -z "$wanted" ]] && return 0
 
   local cmp
-  cmp="$(vercmp "$actual" "$wanted")"
+  cmp="$(vercmp "$actual" "$wanted")" || return 1
+  case "$cmp" in
+    -1|0|1) ;;
+    *) return 1 ;;
+  esac
 
   case "$op" in
     '=')  (( cmp == 0 )) ;;
