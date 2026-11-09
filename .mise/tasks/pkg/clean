@@ -8,9 +8,16 @@ source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
 task::bootstrap
 task::require_env PACKAGES_DIR
 
-mapfile -d '' logs < <(
-  find "$PACKAGES_DIR"     -mindepth 2     -maxdepth 2     -type d     -name logs     -print0
-)
+# A process substitution hides a failed find (and may report a partial list).
+# Finish discovery successfully before deleting any log directory.
+log_listing="$(mktemp)" || exit 1
+if ! find "$PACKAGES_DIR" -mindepth 2 -maxdepth 2 -type d -name logs -print0 >"$log_listing"; then
+  rm -f -- "$log_listing"
+  echo "error: unable to enumerate package build logs in: $PACKAGES_DIR" >&2
+  exit 1
+fi
+mapfile -d '' -t logs <"$log_listing"
+rm -f -- "$log_listing"
 
 if [[ "${#logs[@]}" -eq 0 ]]; then
   echo "No package build logs found."

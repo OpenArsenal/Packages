@@ -55,12 +55,18 @@ if [[ "${#requested[@]}" -gt 0 ]]; then
     package_dirs+=("$dir")
   done
 else
+  # Do not silently upgrade a partial set when find or sort fails.
+  config_listing="$(mktemp)" || exit 1
+  if ! find "$PACKAGES_DIR" -mindepth 2 -maxdepth 2 -type f -name .nvchecker.toml -print0 |
+    sort -z >"$config_listing"; then
+    rm -f -- "$config_listing"
+    echo "error: unable to enumerate nvchecker configurations in: $PACKAGES_DIR" >&2
+    exit 1
+  fi
   while IFS= read -r -d '' config; do
     package_dirs+=("${config%/.nvchecker.toml}")
-  done < <(
-    find "$PACKAGES_DIR"       -mindepth 2       -maxdepth 2       -type f       -name .nvchecker.toml       -print0 |
-      sort -z
-  )
+  done <"$config_listing"
+  rm -f -- "$config_listing"
 fi
 
 if [[ "${#package_dirs[@]}" -eq 0 ]]; then
