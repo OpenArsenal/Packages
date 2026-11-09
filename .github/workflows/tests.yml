@@ -1,4 +1,4 @@
-name: Bash tests
+name: Bats tests
 
 on:
   pull_request:
@@ -13,9 +13,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check Bash syntax
-        run: bash -n tests/unit.sh tests/reliability.sh tests/check-srcinfo.sh
+      - name: Install pinned bats-core with mise
+        uses: jdx/mise-action@v5
+      - name: Check Bash helper syntax
+        run: bash -n tests/check-srcinfo.sh tests/bats/test_helper/common.bash
       - name: Unit tests
-        run: bash tests/unit.sh
+        run: mise run test:unit
       - name: Workflow integration tests (mocked external tools)
-        run: bash tests/reliability.sh
+        run: mise run test:integration
