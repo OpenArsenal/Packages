@@ -46,14 +46,11 @@ args=()
 read_flags "$XDG_CONFIG_HOME/gg-flags.conf" gg_flags
 
 for flag in "${gg_flags[@]}"; do
-  case "$flag" in
-    *=*)
-      set_env_default "$flag" || true
-      ;;
-    *)
-      gg_args+=("$flag")
-      ;;
-  esac
+  if [[ "$flag" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; then
+    set_env_default "$flag"
+  else
+    gg_args+=("$flag")
+  fi
 done
 
 if is_wayland; then
