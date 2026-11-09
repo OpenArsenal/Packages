@@ -121,7 +121,7 @@ pkg::plan_deps() {
         continue
       fi
 
-      pkg::plan_dir "$provider_dir"
+      pkg::plan_dir "$provider_dir" || return 1
       continue
     fi
 
@@ -157,7 +157,10 @@ pkg::plan_dir() {
     return 0
   fi
 
-  pkg::plan_deps "$pkg_dir" "$key"
+  if ! pkg::plan_deps "$pkg_dir" "$key"; then
+    unset "PKG_STATE[$key]"
+    return 1
+  fi
   PKG_PLAN+=("$pkg_dir")
   PKG_STATE["$key"]="done"
 }
@@ -177,14 +180,14 @@ pkg::plan_selected() {
       ;;
   esac
 
-  pkg::index_packages "$packages_dir"
+  pkg::index_packages "$packages_dir" || return 1
 
   # Resolve and mark every explicit selection before traversing dependencies.
   # This guarantees --force applies even when one selected package is visited
   # first as another selected package's dependency.
   for entry in "$@"; do
     if [[ -d "$entry" || ( "$entry" != */* && -d "$packages_dir/$entry" ) ]]; then
-      pkg_dir="$(pkg::resolve_dir "$entry" "$packages_dir")"
+      pkg_dir="$(pkg::resolve_dir "$entry" "$packages_dir")" || return 1
     else
       pkg_dir="${PKG_PROVIDER_DIR[$entry]-}"
       [[ -n "$pkg_dir" ]] || {
@@ -201,7 +204,7 @@ pkg::plan_selected() {
   done
 
   for pkg_dir in "${selected_dirs[@]}"; do
-    pkg::plan_dir "$pkg_dir"
+    pkg::plan_dir "$pkg_dir" || return 1
   done
 }
 
@@ -251,6 +254,6 @@ pkg::build_selected() {
   local force_selected="$2"
   shift 2
 
-  pkg::plan_selected "$packages_dir" "$force_selected" "$@"
+  pkg::plan_selected "$packages_dir" "$force_selected" "$@" || return 1
   pkg::build_plan
 }

@@ -91,11 +91,29 @@ repo::select_newest_archives() {
     pkg_name="${pkg_meta%% *}"
     pkg_ver="${pkg_meta#* }"
 
-    if [[ -z "${newest_ver[$pkg_name]+x}" ]] \
-      || (( $(vercmp "$pkg_ver" "${newest_ver[$pkg_name]}") > 0 )); then
+    if [[ -z "${newest_ver[$pkg_name]+x}" ]]; then
       newest_ver["$pkg_name"]="$pkg_ver"
       newest_file["$pkg_name"]="$pkg"
+      continue
     fi
+
+    local cmp
+    cmp="$(vercmp "$pkg_ver" "${newest_ver[$pkg_name]}")" || {
+      echo "error: failed to compare versions for $pkg_name" >&2
+      return 1
+    }
+
+    case "$cmp" in
+      1)
+        newest_ver["$pkg_name"]="$pkg_ver"
+        newest_file["$pkg_name"]="$pkg"
+        ;;
+      0|-1) ;;
+      *)
+        echo "error: invalid version comparison result for $pkg_name" >&2
+        return 1
+        ;;
+    esac
   done
 
   [[ "${#newest_file[@]}" -gt 0 ]] || {

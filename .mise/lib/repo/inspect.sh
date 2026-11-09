@@ -42,9 +42,16 @@ repo::remember_max_version() {
   local version="$3"
   local -n map="$map_name"
 
-  if [[ -z "${map[$key]+x}" ]] || (( $(vercmp "$version" "${map[$key]}") > 0 )); then
-    map["$key"]="$version"
+  if [[ -n "${map[$key]+x}" ]]; then
+    local cmp
+    cmp="$(vercmp "$version" "${map[$key]}")" || return 1
+    case "$cmp" in
+      1) ;;
+      -1|0) return 0 ;;
+      *) return 1 ;;
+    esac
   fi
+  map["$key"]="$version"
 }
 
 repo::db_records() {
@@ -153,8 +160,13 @@ repo::index_build() {
   while IFS=$'\t' read -r kind first second; do
     case "$kind" in
       P)
-        [[ -n "$first" && -n "$second" ]] &&
-          repo::remember_max_version REPO_PACKAGE_VERSION "$first" "$second"
+        if [[ -n "$first" && -n "$second" ]]; then
+          if ! repo::remember_max_version REPO_PACKAGE_VERSION "$first" "$second"; then
+            echo "error: unable to compare repository package versions: $first" >&2
+            repo::index_reset
+            return 1
+          fi
+        fi
         ;;
       R)
         raw="$first"
@@ -188,7 +200,7 @@ repo::is_dep_satisfied() {
   local op="$3"
   local ver="$4"
 
-  repo::ensure_index "$repo_dir"
+  repo::ensure_index "$repo_dir" || return 1
 
   if [[ -n "${REPO_PACKAGE_VERSION[$dep]+x}" ]] \
     && repo::version_satisfies "${REPO_PACKAGE_VERSION[$dep]}" "$op" "$ver"; then

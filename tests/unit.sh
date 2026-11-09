@@ -64,3 +64,19 @@ VERCMP_MODE=fail assert_version false 1 '<=' 1
 VERCMP_MODE=malformed assert_version false 1 '=' 1
 VERCMP_MODE=fail assert_version true 1 '' ''
 printf 'PASS unit version constraints (including failed comparisons)\n'
+
+# Keep only the highest version; a failed comparison must not update the index.
+declare -A versions=()
+repo::remember_max_version versions demo 1 || fail 'could not initialize version index'
+repo::remember_max_version versions demo 0 || fail 'could not compare older version'
+[[ "${versions[demo]}" == 1 ]] || fail 'older version replaced indexed version'
+repo::remember_max_version versions demo 2 || fail 'could not compare newer version'
+[[ "${versions[demo]}" == 2 ]] || fail 'newer version not indexed'
+versions[demo]=1
+for mode in fail malformed; do
+  if VERCMP_MODE="$mode" repo::remember_max_version versions demo 2; then
+    fail "accepted $mode comparison when indexing versions"
+  fi
+  [[ "${versions[demo]}" == 1 ]] || fail "index changed after $mode comparison"
+done
+printf 'PASS unit indexed version selection (including comparator failures)\n'

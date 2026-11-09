@@ -608,10 +608,111 @@ MOCK
   echo 'PASS select_installed (failed queries and invalid source paths preserve saved list)'
 )
 
+
+planner_failures() (
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  export PKGBUILDS_ROOT="$root" REPO_DIR="$tmp/repo"
+  mkdir -p "$REPO_DIR" "$tmp/packages"
+  source "$root/.mise/lib/pkg.sh"
+
+  recipe() {
+    local name="$1" dependency="${2:-}"
+    local dir="$tmp/packages/$name"
+    mkdir -p "$dir"
+    printf 'pkgname=%s\npkgver=1\npkgrel=1\n' "$name" >"$dir/PKGBUILD"
+    printf 'pkgbase = %s\n\tpkgver = 1\n\tpkgrel = 1\n\npkgname = %s\n' \
+      "$name" "$name" >"$dir/.SRCINFO"
+    [[ -z "$dependency" ]] || printf '\tdepends = %s\n' "$dependency" >>"$dir/.SRCINFO"
+  }
+
+  recipe missing missing-dep
+  recipe good
+  recipe cycle-a cycle-b
+  recipe cycle-b cycle-a
+
+  # Exercise the entire plan/build boundary without Arch or a real chroot.
+  repo::is_dep_satisfied() { return 1; }
+  pkg::pacman_can_resolve() { return 1; }
+  pkg::build_plan() { touch "$tmp/build-ran"; }
+
+  if pkg::build_selected "$tmp/packages" false missing good >"$tmp/log" 2>&1; then
+    fail 'build proceeded after unresolved dependency'
+  fi
+  grep -q 'unresolved dependency' "$tmp/log" || fail 'missing dependency diagnostic disappeared'
+  [[ ! -e "$tmp/build-ran" ]] || fail 'build started after an unresolved dependency'
+
+  if pkg::build_selected "$tmp/packages" false cycle-a >"$tmp/log" 2>&1; then
+    fail 'build proceeded after dependency cycle'
+  fi
+  grep -q 'dependency cycle detected' "$tmp/log" || fail 'cycle diagnostic disappeared'
+  [[ ! -e "$tmp/build-ran" ]] || fail 'build started after a cycle'
+
+  pkg::cache_srcinfo() { return 47; }
+  if pkg::build_selected "$tmp/packages" false good >"$tmp/log" 2>&1; then
+    fail 'build proceeded after metadata indexing failed'
+  fi
+  [[ ! -e "$tmp/build-ran" ]] || fail 'build started after metadata indexing failed'
+  echo 'PASS planner_failures (unresolved deps, cycles, and metadata errors stop builds)'
+)
+
+archive_selection_errors() (
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  source "$root/.mise/lib/spec.sh"
+  source "$root/.mise/lib/repo/inspect.sh"
+  source "$root/.mise/lib/repo/update.sh"
+
+  pacman() {
+    [[ "$1" == -Qp && "$2" == -- ]] || return 2
+    case "$3" in
+      "$tmp/demo-1.pkg") printf 'demo 1-1\n' ;;
+      "$tmp/demo-2.pkg") printf 'demo 2-1\n' ;;
+      *) return 3 ;;
+    esac
+  }
+  vercmp() {
+    case "${VERCMP_MODE:-ok}" in
+      fail) return 47 ;;
+      malformed) printf 'invalid\n'; return 0 ;;
+    esac
+    [[ "$1:$2" == '2-1:1-1' || "$1:$2" == '2:1' ]] || return 48
+    printf '1\n'
+  }
+
+  local -a selected=()
+  repo::select_newest_archives selected "$tmp/demo-1.pkg" "$tmp/demo-2.pkg" ||
+    fail 'valid version selection failed'
+  [[ "${selected[*]}" == "$tmp/demo-2.pkg" ]] || fail 'newest archive not selected'
+
+  local mode
+  for mode in fail malformed; do
+    if VERCMP_MODE="$mode" repo::select_newest_archives selected \
+      "$tmp/demo-1.pkg" "$tmp/demo-2.pkg" >"$tmp/log" 2>&1; then
+      fail "archive selection accepted $mode comparison"
+    fi
+  done
+
+  REPO_DB="$tmp/db"
+  touch "$REPO_DB"
+  repo::db_records() { printf 'P\tdemo\t1\nP\tdemo\t2\n'; }
+  if VERCMP_MODE=fail repo::index_build "$tmp/repo" >"$tmp/log" 2>&1; then
+    fail 'repository index accepted a failed version comparison'
+  fi
+  [[ -z "$REPO_INDEX_DIR" && -z "${REPO_PACKAGE_VERSION[demo]+x}" ]] ||
+    fail 'failed index retained partially parsed versions'
+  if VERCMP_MODE=fail repo::is_dep_satisfied "$tmp/repo" demo '=' 1 >"$tmp/log" 2>&1; then
+    fail 'partially built index satisfied a dependency'
+  fi
+  echo 'PASS archive_selection_errors (newest archive and failed comparisons)'
+)
+
 case "${1:-all}" in
   select_installed) select_installed ;;
   provider_versions) provider_versions ;;
   deps) deps ;;
+  planner_failures) planner_failures ;;
+  archive_selection_errors) archive_selection_errors ;;
   clean_sources) clean_sources ;;
   clean_db) clean_db ;;
   electron_aliases) electron_aliases ;;
@@ -622,6 +723,6 @@ case "${1:-all}" in
   metadata) metadata ;;
   publish) publish ;;
   build) build ;;
-  all) deps; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases; strict_skipped; srcinfo_consistency; onepassword_update; provider_versions; select_installed ;;
+  all) deps; planner_failures; archive_selection_errors; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases; strict_skipped; srcinfo_consistency; onepassword_update; provider_versions; select_installed ;;
   *) fail "unknown test: $1" ;;
 esac
