@@ -277,7 +277,10 @@ pkg::build_plan() {
   local published=false
 
   if declare -F chroot::enable_repo >/dev/null 2>&1; then
-    chroot::enable_repo
+    chroot::enable_repo || {
+      echo "error: unable to configure the build chroot repository" >&2
+      return 1
+    }
   fi
 
   for pkg_dir in "${PKG_PLAN[@]}"; do
@@ -291,7 +294,10 @@ pkg::build_plan() {
     published=true
 
     if declare -F chroot::enable_repo >/dev/null 2>&1; then
-      chroot::enable_repo
+      chroot::enable_repo || {
+        echo "error: unable to refresh the build chroot repository" >&2
+        return 1
+      }
     fi
   done
 
