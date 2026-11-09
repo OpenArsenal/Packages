@@ -3,6 +3,7 @@ pkgbase = google-chrome-canary-ffmpeg
 	pkgver = 154.0.8024.0
 	pkgrel = 1
 	url = https://www.google.com/chrome
+	install = google-chrome-canary-ffmpeg.install
 	arch = x86_64
 	license = custom:chrome
 	license = LGPL-2.1-or-later
@@ -36,4 +37,3 @@ pkgbase = google-chrome-canary-ffmpeg
 	sha512sums_x86_64 = SKIP
 
 pkgname = google-chrome-canary-ffmpeg
-	install = google-chrome-canary-ffmpeg.install
