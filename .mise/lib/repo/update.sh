@@ -55,9 +55,16 @@ repo::match_package_archives() {
       [[ -f "$pkg" ]] || continue
 
       if [[ "$exact_name" == "true" ]]; then
-        pkg_meta="$(pacman -Qp -- "$pkg" 2>/dev/null)" || continue
-        pkg_name="${pkg_meta%% *}"
-        pkg_ver="${pkg_meta#* }"
+        pkg_meta="$(pacman -Qp -- "$pkg" 2>/dev/null)" || {
+          echo "error: unable to inspect matching archive: $pkg" >&2
+          return 1
+        }
+        if [[ ! "$pkg_meta" =~ ^([^[:space:]]+)[[:space:]]+([^[:space:]]+)$ ]]; then
+          echo "error: invalid metadata for matching archive: $pkg" >&2
+          return 1
+        fi
+        pkg_name="${BASH_REMATCH[1]}"
+        pkg_ver="${BASH_REMATCH[2]}"
 
         [[ "$pkg_name" == "$pkg_filter" ]] || continue
         [[ -z "$pkg_version" || "$pkg_ver" == "$pkg_version" ]] || continue
