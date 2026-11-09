@@ -225,6 +225,26 @@ Use `pkg:plan` before a larger build to inspect the dependency order without cha
 - Package-local `.nvchecker.toml` files are authoritative for update checks.
 - The repository is maintained locally; there is no GitHub Actions package publisher.
 
+## Tests
+
+Run fast, isolated dependency-logic tests with Bash (no Arch tools or repository database required):
+
+```sh
+bash tests/unit.sh
+```
+
+Run the existing workflow/reliability integration tests, which use temporary
+directories and mocked external tools:
+
+```sh
+bash tests/reliability.sh
+```
+
+Keep new tests at the lowest level that can detect the behavior: pure parsing
+and comparison rules belong in `tests/unit.sh`; package-building, metadata,
+filesystem, and repository workflows belong in `tests/reliability.sh`.
+Avoid duplicating the same scenario at both levels.
+
 ## Additional tasks
 
 - `mise run aur:import <package>` imports AUR or Arch packaging.

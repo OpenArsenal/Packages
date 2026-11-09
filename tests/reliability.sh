@@ -210,13 +210,6 @@ build() (
 deps() (
   source "$root/.mise/lib/spec.sh"
   source "$root/.mise/lib/pkg/resolver.sh"
-  local dep op ver
-
-  spec::parse 'nodejs>=22.12.0' dep op ver
-  [[ "$dep" == nodejs && "$op" == '>=' && "$ver" == 22.12.0 ]] || fail 'dependency version requirement was lost'
-  spec::parse 'nodejs' dep op ver
-  [[ "$dep" == nodejs && -z "$op" && -z "$ver" ]] || fail 'unversioned dependency changed'
-
   tmp="$(mktemp -d)"
   trap 'rm -rf -- "$tmp"' EXIT
   REPO_DIR="$tmp/repo"
@@ -225,7 +218,7 @@ deps() (
   repo::is_dep_satisfied() { printf '%s|%s|%s\n' "$2" "$3" "$4" >"$tmp/check"; }
   pkg::plan_deps "$tmp/demo" demo || fail 'dependency planning failed'
   [[ "$(cat "$tmp/check")" == 'nodejs|>=|22.12.0' ]] || fail 'planner omitted dependency constraint'
-  echo 'PASS deps (versioned and unversioned parsing, planner preserves constraints)'
+  echo 'PASS deps (planner preserves dependency constraints)'
 )
 
 clean_sources() (
