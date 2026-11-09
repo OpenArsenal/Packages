@@ -760,7 +760,7 @@ archive_enumeration_failure() (
 versioned_local_providers() (
   tmp="$(mktemp -d)"
   trap 'rm -rf -- "$tmp"' EXIT
-  export REPO_DIR="$tmp/repo" REPO_DB="$tmp/missing.db"
+  export PKGBUILDS_ROOT="$root" REPO_DIR="$tmp/repo" REPO_DB="$tmp/missing.db"
   mkdir -p "$REPO_DIR" "$tmp/packages"
   source "$root/.mise/lib/repo.sh"
   source "$root/.mise/lib/pkg.sh"
