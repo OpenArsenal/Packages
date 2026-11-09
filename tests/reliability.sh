@@ -330,8 +330,8 @@ electron_aliases() (
       source "$dir/PKGBUILD"
       actual="$(printf '%s\n' "${provides[@]}" | LC_ALL=C sort)"
       metadata="$(sed -n 's/^[[:space:]]*provides = //p' "$dir/.SRCINFO" | LC_ALL=C sort)"
-      [[ "$pkgrel" == 2 ]] || fail "electron $major pkgrel was not bumped"
       [[ "$(sed -n 's/^[[:space:]]*pkgrel = //p' "$dir/.SRCINFO")" == "$pkgrel" ]] || fail "electron $major metadata pkgrel mismatch"
+      [[ "$(sed -n 's/^[[:space:]]*pkgver = //p' "$dir/.SRCINFO")" == "$pkgver" ]] || fail "electron $major metadata pkgver mismatch"
       [[ "$actual" == "$metadata" ]] || fail "electron $major .SRCINFO does not match PKGBUILD"
       [[ "$actual" != *electron42-castlab* ]] || fail "electron $major incorrectly provides Electron 42"
       [[ "$actual" == *"electron-castlab=$pkgver"* ]] || fail "electron $major lost generic alias"
@@ -380,16 +380,116 @@ MOCK
   echo 'PASS strict_skipped (missing config and timeout only fail in strict mode)'
 )
 
+srcinfo_consistency() (
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/bin" "$tmp/sample"
+  printf 'pkgname=sample\npkgver=1\npkgrel=1\n' >"$tmp/sample/PKGBUILD"
+  printf 'pkgbase = sample\n\tpkgver = 1\n\tpkgrel = 1\n\npkgname = sample\n\n' >"$tmp/sample/.SRCINFO"
+  cat >"$tmp/bin/makepkg" <<'MOCK'
+#!/usr/bin/env bash
+[[ "$1" == --printsrcinfo ]] || exit 2
+[[ "${MOCK_MAKEPKG_FAIL:-false}" != true ]] || { printf 'partial\n'; exit 17; }
+version="$(sed -n 's/^pkgver=//p' PKGBUILD)"
+printf 'pkgbase = sample\n\tpkgver = %s\n\tpkgrel = 1\n\npkgname = sample\n\n' "$version"
+MOCK
+  chmod +x "$tmp/bin/makepkg"
+  PATH="$tmp/bin:$PATH" bash "$root/tests/check-srcinfo.sh" "$tmp/sample" || fail 'consistent metadata rejected'
+  sed -i 's/pkgver=1/pkgver=2/' "$tmp/sample/PKGBUILD"
+  if PATH="$tmp/bin:$PATH" bash "$root/tests/check-srcinfo.sh" "$tmp/sample" >"$tmp/log" 2>&1; then
+    fail 'stale metadata accepted'
+  fi
+  if MOCK_MAKEPKG_FAIL=true PATH="$tmp/bin:$PATH" bash "$root/tests/check-srcinfo.sh" "$tmp/sample" >"$tmp/log" 2>&1; then
+    fail 'failed metadata generation accepted'
+  fi
+  rm -f -- "$tmp/sample/.SRCINFO"
+  if PATH="$tmp/bin:$PATH" bash "$root/tests/check-srcinfo.sh" "$tmp/sample" >"$tmp/log" 2>&1; then
+    fail 'missing metadata accepted'
+  fi
+  echo 'PASS srcinfo_consistency (matching, stale, generation failure, missing metadata)'
+)
+
+onepassword_update() (
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/bin" "$tmp/pkg"
+  cat >"$tmp/bin/wget" <<'MOCK'
+#!/usr/bin/env bash
+[[ "$1" == -q && "$2" == -O ]] || exit 12
+[[ "$4" != *"op_linux_${FAIL_WGET:-unlikely}_"* ]] || exit 42
+printf 'fake zip data for %s' "$4" >"$3"
+MOCK
+  cat >"$tmp/bin/unzip" <<'MOCK'
+#!/usr/bin/env bash
+[[ "$1" == -p && -f "$2" ]] || exit 12
+[[ "$2" != *"op_linux_${FAIL_UNZIP:-unlikely}_"* ]] || exit 43
+case "$3" in
+  op) printf binary ;;
+  op.sig) printf signature ;;
+  *) exit 44 ;;
+esac
+MOCK
+  cat >"$tmp/bin/gpgv" <<'MOCK'
+#!/usr/bin/env bash
+[[ "$1" == -q && -s "$2" && -s "$3" ]] || exit 12
+[[ "${FAIL_SIG:-0}" != 1 ]] || exit 45
+MOCK
+  chmod +x "$tmp/bin/"*
+  cat >"$tmp/pkg/PKGBUILD" <<'RECIPE'
+pkgname=1password-cli-bin
+pkgver=2.42.0
+pkgrel=1
+sha256sums_x86_64=('old')
+sha256sums_i686=('old')
+sha256sums_arm=('old')
+sha256sums_armv6h=('old')
+sha256sums_aarch64=('old')
+RECIPE
+  printf precious >"$tmp/pkg/operations-notes.txt"
+  printf precious2 >"$tmp/pkg/op-cache.txt"
+  cp "$tmp/pkg/PKGBUILD" "$tmp/initial"
+
+  for failure in wget unzip sig; do
+    if (
+      cd "$tmp/pkg"
+      export PATH="$tmp/bin:$PATH" PKGVER=2.43.0
+      case "$failure" in
+        wget) export FAIL_WGET=arm ;;
+        unzip) export FAIL_UNZIP=amd64 ;;
+        sig) export FAIL_SIG=1 ;;
+      esac
+      bash "$root/packages/1password-cli-bin/package-update.sh" >"$tmp/log" 2>&1
+    ); then
+      fail "updater succeeded after $failure failure"
+    fi
+    cmp -s "$tmp/initial" "$tmp/pkg/PKGBUILD" || fail "updater changed recipe after $failure failure"
+    [[ "$(cat "$tmp/pkg/operations-notes.txt")" == precious && "$(cat "$tmp/pkg/op-cache.txt")" == precious2 ]] || fail 'updater deleted unrelated files'
+  done
+
+  (
+    cd "$tmp/pkg"
+    PATH="$tmp/bin:$PATH" PKGVER=2.43.0 bash "$root/packages/1password-cli-bin/package-update.sh"
+  ) || fail 'successful updater run failed'
+  grep -qx 'pkgver=2.43.0' "$tmp/pkg/PKGBUILD" || fail 'pkgver not updated'
+  for arch in x86_64 i686 arm armv6h aarch64; do
+    grep -Eq "^sha256sums_$arch=\('[0-9a-f]{64}'\)$" "$tmp/pkg/PKGBUILD" || fail "checksum not updated: $arch"
+  done
+  [[ "$(cat "$tmp/pkg/operations-notes.txt")" == precious && "$(cat "$tmp/pkg/op-cache.txt")" == precious2 ]] || fail 'updater deleted unrelated files on success'
+  echo 'PASS onepassword_update (failures preserve files; success updates checksums)'
+)
+
 case "${1:-all}" in
   deps) deps ;;
   clean_sources) clean_sources ;;
   clean_db) clean_db ;;
   electron_aliases) electron_aliases ;;
+  srcinfo_consistency) srcinfo_consistency ;;
+  onepassword_update) onepassword_update ;;
   strict_skipped) strict_skipped ;;
   prune) prune ;;
   metadata) metadata ;;
   publish) publish ;;
   build) build ;;
-  all) deps; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases; strict_skipped ;;
+  all) deps; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases; strict_skipped; srcinfo_consistency; onepassword_update ;;
   *) fail "unknown test: $1" ;;
 esac

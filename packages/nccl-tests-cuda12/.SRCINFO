@@ -1,0 +1,17 @@
+pkgbase = nccl-tests-cuda12
+	pkgdesc = NVIDIA NCCL test and benchmark binaries built against cuda12
+	pkgver = 2.18.3
+	pkgrel = 1
+	url = https://github.com/NVIDIA/nccl-tests
+	arch = x86_64
+	license = BSD-3-Clause
+	makedepends = gcc14
+	makedepends = git
+	depends = glibc
+	depends = libstdc++
+	depends = cuda12
+	depends = nccl-cuda12
+	source = git+https://github.com/NVIDIA/nccl-tests.git#tag=v2.18.3
+	sha256sums = SKIP
+
+pkgname = nccl-tests-cuda12

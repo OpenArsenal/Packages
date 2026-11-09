@@ -132,6 +132,12 @@ Apply detected updates and refresh `.SRCINFO`:
 mise run pkg:update --apply <package>
 ```
 
+After editing a `PKGBUILD`, check that `.SRCINFO` is current:
+
+```sh
+bash tests/check-srcinfo.sh packages/<package>
+```
+
 ## Repository database maintenance
 
 ### Add/update package archives

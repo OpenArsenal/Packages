@@ -1,6 +1,6 @@
 pkgbase = libva-nvidia-driver-git
 	pkgdesc = VA-API implementation that uses NVDEC as a backend
-	pkgver = 0.0.17.r54.g03bb5a0
+	pkgver = 0.0.18.r39.g4430507
 	pkgrel = 1
 	url = https://github.com/elFarto/nvidia-vaapi-driver/
 	arch = x86_64

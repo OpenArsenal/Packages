@@ -1,7 +1,7 @@
 pkgbase = ion-git
 	pkgdesc = The Ion Shell. Compatible with Redox and Linux.
-	pkgver = 1.0.5.r1511.gb1b9475
-	pkgrel = 2
+	pkgver = 1.0.5.r1534.g1440704
+	pkgrel = 1
 	url = https://gitlab.redox-os.org/redox-os/ion
 	install = ion.install
 	arch = x86_64

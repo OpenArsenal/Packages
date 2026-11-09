@@ -1,7 +1,7 @@
 pkgbase = cuda12
 	pkgdesc = NVIDIA's GPU programming toolkit version 12 (Maxwell/Pascal/Volta support)
 	pkgver = 12.9.1
-	pkgrel = 2
+	pkgrel = 1
 	url = https://developer.nvidia.com/cuda-zone
 	arch = x86_64
 	license = custom

@@ -1,6 +1,6 @@
 pkgbase = geesefs-git
 	pkgdesc = High-performance, POSIX-ish FUSE filesystem for S3-compatible object storage (git version)
-	pkgver = 0.43.7.r0.g8da9c52
+	pkgver = 0.43.7.r2.g8ba4075
 	pkgrel = 1
 	url = https://github.com/yandex-cloud/geesefs
 	arch = x86_64

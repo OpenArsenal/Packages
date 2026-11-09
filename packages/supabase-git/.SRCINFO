@@ -1,6 +1,6 @@
 pkgbase = supabase-git
 	pkgdesc = CLI for Supabase, an open source Firebase alternative
-	pkgver = 893960a6e9fae412eb0215afae05f1348e356e62
+	pkgver = 2.108.0.beta.13.r0.g893960a6e
 	pkgrel = 1
 	url = https://supabase.com/docs/reference/cli/about
 	arch = x86_64
@@ -14,7 +14,7 @@ pkgbase = supabase-git
 	depends = gcc-libs
 	depends = glibc
 	optdepends = docker: run the local Supabase stack
-	provides = supabase=893960a6e9fae412eb0215afae05f1348e356e62
+	provides = supabase=2.108.0.beta.13.r0.g893960a6e
 	conflicts = supabase
 	conflicts = supabase-bin
 	options = debug
