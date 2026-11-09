@@ -1053,6 +1053,28 @@ planning_metadata_failures() (
       fail "missing error diagnostic for partially failed $stage metadata scan"
   done
 
+  # Check the helper boundaries too: a partial result must never count as
+  # a matching output or as a usable versioned virtual provider.
+  if METADATA_STAGE=outputs pkg::dir_outputs_name "$tmp/packages/app" app; then
+    fail 'partial output metadata was accepted as a matching output'
+  else
+    [[ "$?" -eq 2 ]] || fail 'output metadata failure status was lost'
+  fi
+  pkg::resolver_reset
+  PKG_PROVIDER_CANDIDATES[partial-alias]="$tmp/packages/app"$'\\n'
+  repo::version_satisfies() { return 0; }
+  if METADATA_STAGE=provides pkg::find_local_provider partial-alias '>=' 1 >"$tmp/log"; then
+    fail 'partial provides metadata was accepted as a compatible provider'
+  else
+    [[ "$?" -eq 2 ]] || fail 'provider metadata failure status was lost'
+  fi
+
+  # Valid metadata should still allow the normal build plan to run.
+  rm -f -- "$tmp/build-ran"
+  METADATA_STAGE=ok pkg::build_selected "$tmp/packages" false app >"$tmp/log" 2>&1 ||
+    fail "valid metadata was rejected: $(cat "$tmp/log")"
+  [[ -f "$tmp/build-ran" ]] || fail 'valid metadata did not reach the build step'
+
   # If an incomplete output list starts with an already published package,
   # even a direct skip check must reject it, not mark the recipe satisfied.
   repo::is_dep_satisfied() { return 0; }
