@@ -478,7 +478,69 @@ RECIPE
   echo 'PASS onepassword_update (failures preserve files; success updates checksums)'
 )
 
+provider_versions() (
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/repo"
+  export REPO_DB="$tmp/repo/test.db"
+  touch "$REPO_DB"
+  source "$root/.mise/lib/spec.sh"
+  source "$root/.mise/lib/repo/inspect.sh"
+
+  bsdtar() {
+    case "$1" in
+      -tf) printf 'electron40/desc\nelectron41/desc\n' ;;
+      -xOf) cat <<'MOCK'
+%NAME%
+electron40-castlab
+%VERSION%
+40.10.6+wvcus
+%PROVIDES%
+electron-castlab=40.10.6+wvcus
+plain-capability
+
+%NAME%
+electron41-castlab
+%VERSION%
+41.10.7+wvcus
+%PROVIDES%
+electron-castlab=41.10.7+wvcus
+MOCK
+      ;;
+      *) return 2 ;;
+    esac
+  }
+  vercmp() {
+    [[ "$1" == "$2" ]] && { echo 0; return 0; }
+    case "$1:$2" in
+      40.*:41.*|40.*:42.*) echo -1 ;;
+      41.*:40.*|41.*:39.*|40.*:39.*) echo 1 ;;
+      *) echo "unexpected vercmp: $1 vs $2" >&2; return 3 ;;
+    esac
+  }
+
+  repo::index_build "$tmp/repo" || fail 'provider index failed'
+  repo::is_dep_satisfied "$tmp/repo" electron-castlab '=' '40.10.6+wvcus' || fail 'older exact provider rejected'
+  repo::is_dep_satisfied "$tmp/repo" electron-castlab '<' '41.10.7+wvcus' || fail 'older provider failed upper bound'
+  repo::is_dep_satisfied "$tmp/repo" electron-castlab '<=' '40.10.6+wvcus' || fail 'older provider failed inclusive upper bound'
+  repo::is_dep_satisfied "$tmp/repo" electron-castlab '=' '41.10.7+wvcus' || fail 'newer exact provider rejected'
+  repo::is_dep_satisfied "$tmp/repo" electron-castlab '>=' '41.10.7+wvcus' || fail 'newer provider failed lower bound'
+  if repo::is_dep_satisfied "$tmp/repo" electron-castlab '<' '40.10.6+wvcus'; then
+    fail 'accepted unsatisfied upper bound'
+  fi
+  if repo::is_dep_satisfied "$tmp/repo" electron-castlab '=' '39.0.0'; then
+    fail 'accepted nonexistent provider version'
+  fi
+  repo::is_dep_satisfied "$tmp/repo" plain-capability '' '' || fail 'unversioned provider disappeared'
+  if repo::is_dep_satisfied "$tmp/repo" plain-capability '>=' '40.10.6+wvcus'; then
+    fail 'unversioned provider satisfied versioned requirement'
+  fi
+  repo::is_dep_satisfied "$tmp/repo" electron40-castlab '=' '40.10.6+wvcus' || fail 'package identity lookup changed'
+  echo 'PASS provider_versions (multiple providers, exact and upper bounds)'
+)
+
 case "${1:-all}" in
+  provider_versions) provider_versions ;;
   deps) deps ;;
   clean_sources) clean_sources ;;
   clean_db) clean_db ;;
@@ -490,6 +552,6 @@ case "${1:-all}" in
   metadata) metadata ;;
   publish) publish ;;
   build) build ;;
-  all) deps; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases; strict_skipped; srcinfo_consistency; onepassword_update ;;
+  all) deps; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases; strict_skipped; srcinfo_consistency; onepassword_update; provider_versions ;;
   *) fail "unknown test: $1" ;;
 esac

@@ -1,13 +1,13 @@
 # shellcheck shell=bash
 
 declare -Ag REPO_PACKAGE_VERSION=()
-declare -Ag REPO_PROVIDE_VERSION=()
+declare -Ag REPO_PROVIDE_VERSIONS=()
 declare -Ag REPO_PROVIDE_PRESENT=()
 declare -g REPO_INDEX_DIR=""
 
 repo::index_reset() {
   REPO_PACKAGE_VERSION=()
-  REPO_PROVIDE_VERSION=()
+  REPO_PROVIDE_VERSIONS=()
   REPO_PROVIDE_PRESENT=()
   REPO_INDEX_DIR=""
 }
@@ -164,7 +164,7 @@ repo::index_build() {
 
         REPO_PROVIDE_PRESENT["$provide_name"]=1
         if [[ -n "$provide_ver" ]]; then
-          repo::remember_max_version REPO_PROVIDE_VERSION "$provide_name" "$provide_ver"
+          REPO_PROVIDE_VERSIONS["$provide_name"]+="${provide_ver}"$'\n'
         fi
         ;;
     esac
@@ -197,8 +197,13 @@ repo::is_dep_satisfied() {
     return 0
   fi
 
-  [[ -n "${REPO_PROVIDE_VERSION[$dep]+x}" ]] \
-    && repo::version_satisfies "${REPO_PROVIDE_VERSION[$dep]}" "$op" "$ver"
+  local provided
+  while IFS= read -r provided; do
+    if [[ -n "$provided" ]] && repo::version_satisfies "$provided" "$op" "$ver"; then
+      return 0
+    fi
+  done <<< "${REPO_PROVIDE_VERSIONS[$dep]-}"
+  return 1
 }
 
 repo::has_built_pkg() {
