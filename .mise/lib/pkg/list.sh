@@ -156,7 +156,8 @@ pkg::installed_selected() {
     [[ "$covered" == "true" ]] && continue
 
     exact_dir="$packages_dir/$output"
-    if [[ "$candidates" == *" $exact_dir"* && -f "$exact_dir/PKGBUILD" ]]; then
+    # Require a whole-path match; shared-alt must not match shared.
+    if [[ "$candidates " == *" $exact_dir "* && -f "$exact_dir/PKGBUILD" ]]; then
       selected_dirs["$exact_dir"]=1
       continue
     fi
