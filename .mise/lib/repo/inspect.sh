@@ -60,16 +60,23 @@ repo::db_records() {
 
   [[ -e "$repo_db" ]] || return 0
 
-  local listing contents
+  local listing contents records entry kind first second
+  local record_count=0
   listing="$(bsdtar -tf "$repo_db" 2>/dev/null)" || return 1
-  mapfile -t entries < <(printf '%s\n' "$listing" | awk '/\/desc$/')
+  # Check the listing directly; a process substitution would silently hide a
+  # failed filter and could omit published packages from the index.
+  while IFS= read -r entry; do
+    if [[ "$entry" == */desc ]]; then
+      entries+=("$entry")
+    fi
+  done <<<"$listing"
 
   (( ${#entries[@]} > 0 )) || return 0
 
   # Extract all desc members in one bsdtar invocation. Emit compact records:
   # P <name> <version>, R <provide>, and F <archive filename>.
   contents="$(bsdtar -xOf "$repo_db" "${entries[@]}" 2>/dev/null)" || return 1
-  awk '
+  records="$(awk '
       function flush_package() {
         if (name != "" && version != "") {
           printf "P\t%s\t%s\n", name, version
@@ -136,7 +143,22 @@ repo::db_records() {
       END {
         flush_package()
       }
-    ' <<<"$contents"
+    ' <<<"$contents")" || return 1
+
+  # There must be one complete NAME/VERSION record for each archive desc.
+  # Otherwise partial or corrupt metadata could make published archives look
+  # orphaned to repo:prune or absent to the dependency planner.
+  while IFS=\t' read -r kind first second; do
+    if [[ "$kind" == "P" ]]; then
+      (( record_count += 1 ))
+    fi
+  done <<<"$records"
+  if (( record_count != ${#entries[@]} )); then
+    echo "error: incomplete repository package metadata in: $repo_db" >&2
+    return 1
+  fi
+
+  [[ -z "$records" ]] || printf '%s\n' "$records"
 }
 
 repo::index_build() {
