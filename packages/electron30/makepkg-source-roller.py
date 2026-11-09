@@ -243,14 +243,19 @@ case "$CARCH" in
 esac
 
 """
+    originals = []
+    copies = []
     for path, (url, rev) in deps.items():
         source_path, deduplicated = get_source_path(path, url, pkgname, reverse_map)
         if deduplicated:
             shortest = reverse_map[url][0][1]
-            script += f"place_subproject_into_tree {shortest} {path} true\n"
-            script += f"git -C {path} checkout --detach {rev}\n"
+            copies.append(f"place_subproject_into_tree {shortest} {path} true\n")
+            copies.append(f"git -C {path} checkout --detach {rev}\n")
         else:
-            script += f"place_subproject_into_tree {source_path} {path} false\n"
+            originals.append(f"place_subproject_into_tree {source_path} {path} false\n")
+    # Copying a duplicate requires its original destination to exist first.
+    script += "".join(originals)
+    script += "".join(copies)
     # Additional Commands
     script += "\n".join(extra_cmds)
     filename = "prepare-electron-source-tree.sh"
