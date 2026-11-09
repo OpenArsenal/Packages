@@ -1,6 +1,6 @@
 pkgname=vite-plus
 pkgver=0.2.1
-pkgrel=2
+pkgrel=1
 pkgdesc='Unified toolchain and entry point for web development'
 arch=('x86_64' 'aarch64')
 url='https://github.com/voidzero-dev/vite-plus'

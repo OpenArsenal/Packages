@@ -2,7 +2,7 @@
 
 pkgname=ladybird
 pkgver=20260320
-pkgrel=2
+pkgrel=1
 pkgdesc='Truly independent web browser'
 arch=(x86_64)
 url='https://github.com/LadybirdBrowser/ladybird'

@@ -1,7 +1,7 @@
 pkgname=gitbutler-bin
 _name=${pkgname%-bin}
 pkgver=0.21.0
-pkgrel=2
+pkgrel=1
 # The upstream release build ID is distinct from pkgver (0.21.0 -> 3133).
 # Keep the immutable release URL pinned to the version whose hashes are below.
 _release_build=3133

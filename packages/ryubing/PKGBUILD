@@ -1,6 +1,6 @@
 pkgname=ryubing
 pkgver=1.3.3
-pkgrel=2
+pkgrel=1
 pkgdesc='Experimental Nintendo Switch emulator written in C# (Ryubing fork of Ryujinx)'
 arch=('x86_64' 'aarch64')
 url='https://ryujinx.app'
