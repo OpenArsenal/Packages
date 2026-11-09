@@ -97,8 +97,8 @@ if [[ "${usage_apply:-false}" == "true" ]]; then
   srcinfo_rc=0
   for dir in "${package_dirs[@]}"; do
     if (
-      cd "$dir"
-      makepkg --printsrcinfo > .SRCINFO.tmp
+      cd "$dir" || exit 1
+      makepkg --printsrcinfo > .SRCINFO.tmp || exit 1
       mv .SRCINFO.tmp .SRCINFO
     ); then
       :

@@ -82,13 +82,14 @@ pkg::build_dir() {
 
 pkg::publish_outputs() {
   local pkg_dir="$1"
-  local version output matched
+  local marker="${2:-}"
+  local output matched archive
   local -a archives=()
   local -a matches=()
   local found=false
 
-  version="$(pkg::metadata_version "$pkg_dir")" || {
-    echo "error: unable to determine package version for: ${pkg_dir##*/}" >&2
+  [[ -f "$marker" ]] || {
+    echo "error: missing build marker for: ${pkg_dir##*/}" >&2
     return 1
   }
 
@@ -96,23 +97,25 @@ pkg::publish_outputs() {
     [[ -n "$output" ]] || continue
     found=true
 
-    if ! matched="$(repo::match_package_archives "$REPO_DIR" "$output" "$version")"; then
+    if ! matched="$(repo::match_package_archives "$REPO_DIR" "$output")"; then
       echo "error: unable to inspect built package archives for: $output" >&2
       return 1
     fi
 
     matches=()
-    if [[ -n "$matched" ]]; then
-      mapfile -t matches <<<"$matched"
-    fi
+    while IFS= read -r archive; do
+      if [[ -n "$archive" && "$archive" -nt "$marker" ]]; then
+        matches+=("$archive")
+      fi
+    done <<<"$matched"
 
     if (( ${#matches[@]} == 0 )); then
-      echo "error: build completed but no $version archive found for: $output" >&2
+      echo "error: build completed but no new archive found for: $output" >&2
       return 1
     fi
 
     if (( ${#matches[@]} > 1 )); then
-      echo "error: multiple $version archives found for: $output" >&2
+      echo "error: multiple newly built archives found for: $output" >&2
       printf '  %s\n' "${matches[@]}" >&2
       return 1
     fi

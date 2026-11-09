@@ -14,9 +14,14 @@ task::require_env REPO_DIR REPO_DB
 if [[ -e "$REPO_DB" ]]; then
   declare -A indexed=()
 
+  indexed_names="$(repo::db_packages "$REPO_DB" | sort -u)" || {
+    echo "error: unable to read repository database: $REPO_DB" >&2
+    exit 1
+  }
+
   while IFS= read -r pkg_name; do
     [[ -n "$pkg_name" ]] && indexed["$pkg_name"]=1
-  done < <(repo::db_packages "$REPO_DB" | sort -u)
+  done <<<"$indexed_names"
 
   while IFS= read -r -d '' archive; do
     meta="$(pacman -Qp -- "$archive" 2>/dev/null)" || {

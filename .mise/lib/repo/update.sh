@@ -139,7 +139,7 @@ repo::add_archives() {
     update_args
   args+=("${update_args[@]}")
 
-  repo-add "${args[@]}" "$repo_db" "$@"
+  repo-add "${args[@]}" "$repo_db" "$@" || return
 
   if declare -F repo::index_reset >/dev/null 2>&1; then
     repo::index_reset

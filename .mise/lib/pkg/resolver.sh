@@ -214,7 +214,7 @@ pkg::print_plan() {
 }
 
 pkg::build_plan() {
-  local pkg_dir
+  local pkg_dir marker
   local published=false
 
   if declare -F chroot::enable_repo >/dev/null 2>&1; then
@@ -222,8 +222,13 @@ pkg::build_plan() {
   fi
 
   for pkg_dir in "${PKG_PLAN[@]}"; do
-    pkg::build_dir "$pkg_dir"
-    pkg::publish_outputs "$pkg_dir"
+    # shortcut: assumes one writer to REPO_DIR; use staged outputs for parallel builds.
+    marker="$(mktemp)" || return 1
+    if ! pkg::build_dir "$pkg_dir" || ! pkg::publish_outputs "$pkg_dir" "$marker"; then
+      rm -f -- "$marker"
+      return 1
+    fi
+    rm -f -- "$marker" || return 1
     published=true
 
     if declare -F chroot::enable_repo >/dev/null 2>&1; then

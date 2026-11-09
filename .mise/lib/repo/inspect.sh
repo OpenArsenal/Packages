@@ -49,18 +49,16 @@ repo::db_records() {
 
   [[ -e "$repo_db" ]] || return 0
 
-  if ! mapfile -t entries < <(
-    bsdtar -tf "$repo_db" 2>/dev/null | awk '/\/desc$/'
-  ); then
-    return 1
-  fi
+  local listing contents
+  listing="$(bsdtar -tf "$repo_db" 2>/dev/null)" || return 1
+  mapfile -t entries < <(printf '%s\n' "$listing" | awk '/\/desc$/')
 
   (( ${#entries[@]} > 0 )) || return 0
 
   # Extract all desc members in one bsdtar invocation. Emit compact records:
   # P <name> <version> for packages and R <provide> for provides entries.
-  bsdtar -xOf "$repo_db" "${entries[@]}" 2>/dev/null |
-    awk '
+  contents="$(bsdtar -xOf "$repo_db" "${entries[@]}" 2>/dev/null)" || return 1
+  awk '
       function flush_package() {
         if (name != "" && version != "") {
           printf "P\t%s\t%s\n", name, version
@@ -116,7 +114,7 @@ repo::db_records() {
       END {
         flush_package()
       }
-    '
+    ' <<<"$contents"
 }
 
 repo::index_build() {
@@ -207,4 +205,5 @@ repo::db_packages() {
   while IFS=$'\t' read -r kind name version; do
     [[ "$kind" == "P" && -n "$name" ]] && printf '%s\n' "$name"
   done <<<"$records"
+  return 0
 }
