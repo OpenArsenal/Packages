@@ -60,7 +60,7 @@ repo::db_records() {
 
   [[ -e "$repo_db" ]] || return 0
 
-  local listing contents records entry kind first second
+  local listing contents records entry record
   local record_count=0
   listing="$(bsdtar -tf "$repo_db" 2>/dev/null)" || return 1
   # Check the listing directly; a process substitution would silently hide a
@@ -148,8 +148,8 @@ repo::db_records() {
   # There must be one complete NAME/VERSION record for each archive desc.
   # Otherwise partial or corrupt metadata could make published archives look
   # orphaned to repo:prune or absent to the dependency planner.
-  while IFS=
-    if [[ "$kind" == "P" ]]; then
+  while IFS= read -r record; do
+    if [[ "$record" == P* ]]; then
       (( record_count += 1 ))
     fi
   done <<<"$records"
