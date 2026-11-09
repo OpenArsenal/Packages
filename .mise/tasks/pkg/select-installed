@@ -9,7 +9,7 @@ task::bootstrap
 task::require_env PACKAGES_DIR PACKAGES_FILE REPO_NAME
 
 declare -a selected=()
-pkg::installed_selected "$PACKAGES_DIR" "$REPO_NAME" selected
+pkg::installed_selected "$PACKAGES_DIR" "$REPO_NAME" selected || exit 1
 
 if [[ "${usage_dry_run:-false}" == "true" ]]; then
   printf '%s\n' "${selected[@]}"

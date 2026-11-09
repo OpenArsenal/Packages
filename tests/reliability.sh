@@ -539,7 +539,55 @@ MOCK
   echo 'PASS provider_versions (multiple providers, exact and upper bounds)'
 )
 
+select_installed() (
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/bin" "$tmp/packages/demo"
+  export PKGBUILDS_ROOT="$root" PACKAGES_DIR="$tmp/packages" PACKAGES_FILE="$tmp/.packages" REPO_NAME=test PATH="$tmp/bin:$PATH"
+  touch "$PACKAGES_DIR/demo/PKGBUILD"
+  printf 'pkgbase = demo\n\tpkgname = demo\n' >"$PACKAGES_DIR/demo/.SRCINFO"
+  printf 'existing-package\n# keep this comment\n' >"$PACKAGES_FILE"
+  cp "$PACKAGES_FILE" "$tmp/original"
+
+  cat >"$tmp/bin/pacman" <<'MOCK'
+#!/usr/bin/env bash
+case "$1" in
+  -Sl) exit 0 ;;
+  -Qq)
+    [[ "${QUERY_MODE:-ok}" != partial ]] || printf 'demo\n'
+    [[ "${QUERY_MODE:-ok}" == ok ]] || exit 37
+    printf 'demo\n'
+    ;;
+  -Si|-Qi) printf 'Packager : Fixture Packager\n' ;;
+  *) exit 2 ;;
+esac
+MOCK
+  chmod +x "$tmp/bin/pacman"
+
+  for mode in empty partial; do
+    if QUERY_MODE="$mode" bash "$root/.mise/tasks/pkg/select-installed" >"$tmp/log" 2>&1; then
+      fail "selection succeeded after $mode installed-package query failure"
+    fi
+    cmp -s "$PACKAGES_FILE" "$tmp/original" || fail "selection changed after $mode query failure"
+    ! grep -q '^Wrote' "$tmp/log" || fail 'failed selection reported a write'
+  done
+
+  if QUERY_MODE=partial usage_dry_run=true bash "$root/.mise/tasks/pkg/select-installed" >"$tmp/log" 2>&1; then
+    fail 'selection dry-run accepted a failed installed-package query'
+  fi
+  cmp -s "$PACKAGES_FILE" "$tmp/original" || fail 'failed dry-run changed saved selection'
+
+  QUERY_MODE=ok usage_dry_run=true bash "$root/.mise/tasks/pkg/select-installed" >"$tmp/log" 2>&1 || fail 'valid selection dry-run failed'
+  [[ "$(cat "$tmp/log")" == demo ]] || fail 'dry-run did not list selected package'
+  cmp -s "$PACKAGES_FILE" "$tmp/original" || fail 'successful dry-run changed saved selection'
+
+  QUERY_MODE=ok bash "$root/.mise/tasks/pkg/select-installed" >"$tmp/log" 2>&1 || fail "successful selection failed: $(cat "$tmp/log")"
+  [[ "$(cat "$PACKAGES_FILE")" == demo ]] || fail 'successful selection did not update saved list'
+  echo 'PASS select_installed (failed discovery preserves saved list, dry-run and success unchanged)'
+)
+
 case "${1:-all}" in
+  select_installed) select_installed ;;
   provider_versions) provider_versions ;;
   deps) deps ;;
   clean_sources) clean_sources ;;
@@ -552,6 +600,6 @@ case "${1:-all}" in
   metadata) metadata ;;
   publish) publish ;;
   build) build ;;
-  all) deps; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases; strict_skipped; srcinfo_consistency; onepassword_update; provider_versions ;;
+  all) deps; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases; strict_skipped; srcinfo_consistency; onepassword_update; provider_versions; select_installed ;;
   *) fail "unknown test: $1" ;;
 esac

@@ -63,11 +63,16 @@ pkg::installed_selected() {
 
   local name pkg_dir output candidate candidates exact_dir
   local installed_packager repo_packager
-  local covered
+  local covered installed_names
+
+  installed_names="$(pacman -Qq)" || {
+    echo "error: unable to list installed packages" >&2
+    return 1
+  }
 
   while IFS= read -r name; do
     [[ -n "$name" ]] && installed["$name"]=1
-  done < <(pacman -Qq)
+  done <<<"$installed_names"
 
   shopt -s nullglob
 
