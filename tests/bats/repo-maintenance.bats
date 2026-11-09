@@ -456,3 +456,56 @@ MOCK
   )
 }
 
+@test "Pruning rejects repository databases with missing package records" {
+  (
+  local tmp kept damaged
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/bin" "$tmp/repo"
+  export PKGBUILDS_ROOT="$root" REPO_DIR="$tmp/repo" REPO_DB="$tmp/repo/openarsenal.db"
+  export TEST_TMP="$tmp" PATH="$tmp/bin:$PATH"
+  kept="$REPO_DIR/kept-1-1-x86_64.pkg.tar.zst"
+  damaged="$REPO_DIR/damaged-1-1-x86_64.pkg.tar.zst"
+  touch "$REPO_DB" "$kept" "$damaged" "$damaged.sig"
+
+  cat >"$tmp/bin/bsdtar" <<'MOCK'
+#!/usr/bin/env bash
+case "$1" in
+  -tf) printf 'kept/desc\ndamaged/desc\n' ;;
+  -xOf)
+    printf '%%NAME%%\nkept\n%%VERSION%%\n1-1\n%%FILENAME%%\nkept-1-1-x86_64.pkg.tar.zst\n'
+    printf '%%NAME%%\ndamaged\n'
+    if [[ "${DB_MODE:-ok}" == ok ]]; then
+      printf '%%VERSION%%\n1-1\n%%FILENAME%%\ndamaged-1-1-x86_64.pkg.tar.zst\n'
+    fi
+    ;;
+  *) exit 2 ;;
+esac
+MOCK
+  cat >"$tmp/bin/paccache" <<'MOCK'
+#!/usr/bin/env bash
+touch "$TEST_TMP/paccache-called"
+MOCK
+  cat >"$tmp/bin/pacman" <<'MOCK'
+#!/usr/bin/env bash
+[[ "$1" == -Qp && "$2" == -- ]] || exit 2
+printf 'damaged 1-1\n'
+MOCK
+  chmod +x "$tmp/bin/"*
+
+  if DB_MODE=incomplete bash "$root/.mise/tasks/repo/prune" >"$tmp/log" 2>&1; then
+    fail 'pruning accepted a repository database with a missing version record'
+  fi
+  grep -Fq 'incomplete repository package metadata' "$tmp/log" ||
+    fail 'incomplete repository database had no useful diagnostic'
+  [[ ! -e "$tmp/paccache-called" ]] ||
+    fail 'pruning began before validating all database package records'
+  [[ -f "$kept" && -f "$damaged" && -f "$damaged.sig" ]] ||
+    fail 'pruning deleted an archive after seeing incomplete database metadata'
+
+  DB_MODE=ok bash "$root/.mise/tasks/repo/prune" >"$tmp/log" 2>&1 ||
+    fail "complete repository database was rejected: $(cat "$tmp/log")"
+  [[ -f "$tmp/paccache-called" && -f "$kept" && -f "$damaged" && -f "$damaged.sig" ]] ||
+    fail 'valid database did not preserve published archives'
+  )
+}
