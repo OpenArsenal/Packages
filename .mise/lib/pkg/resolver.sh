@@ -89,11 +89,12 @@ pkg::index_packages() {
 pkg::dir_outputs_name() {
   local pkg_dir="$1"
   local wanted="$2"
-  local output
+  local output outputs
 
+  outputs="$(pkg::metadata_outputs "$pkg_dir")" || return 2
   while IFS= read -r output; do
     [[ "$output" == "$wanted" ]] && return 0
-  done < <(pkg::metadata_outputs "$pkg_dir")
+  done <<<"$outputs"
 
   return 1
 }
@@ -102,15 +103,19 @@ pkg::dir_outputs_name() {
 # an explicitly versioned provides= entry that meets the constraint.
 pkg::provider_matches_version() {
   local pkg_dir="$1" wanted="$2" op="$3" ver="$4"
-  local actual raw provide_name provide_op provide_ver
+  local actual raw provide_name provide_op provide_ver provides
 
   if pkg::dir_outputs_name "$pkg_dir" "$wanted"; then
-    actual="$(pkg::metadata_version "$pkg_dir")" || return 1
+    actual="$(pkg::metadata_version "$pkg_dir")" || return 2
     if repo::version_satisfies "$actual" "$op" "$ver"; then
       return 0
     fi
+  else
+    local rc=$?
+    (( rc == 1 )) || return "$rc"
   fi
 
+  provides="$(pkg::metadata_provides "$pkg_dir")" || return 2
   while IFS= read -r raw; do
     provide_name=""
     provide_op=""
@@ -120,7 +125,7 @@ pkg::provider_matches_version() {
       repo::version_satisfies "$provide_ver" "$op" "$ver"; then
       return 0
     fi
-  done < <(pkg::metadata_provides "$pkg_dir")
+  done <<<"$provides"
 
   return 1
 }
@@ -140,6 +145,9 @@ pkg::find_local_provider() {
     if pkg::provider_matches_version "$candidate" "$dep" "$op" "$ver"; then
       printf '%s\n' "$candidate"
       return 0
+    else
+      local rc=$?
+      (( rc == 1 )) || return "$rc"
     fi
   done <<<"${PKG_PROVIDER_CANDIDATES[$dep]-}"
 
@@ -192,13 +200,28 @@ pkg::plan_deps() {
 
     if pkg::dir_outputs_name "$pkg_dir" "$dep"; then
       continue
+    else
+      local rc=$?
+      if (( rc != 1 )); then
+        echo "error: unable to inspect outputs for: $pkg_dir" >&2
+        return 1
+      fi
     fi
 
     if repo::is_dep_satisfied "$REPO_DIR" "$dep" "$op" "$ver"; then
       continue
     fi
 
-    provider_dir="$(pkg::find_local_provider "$dep" "$op" "$ver")" || provider_dir=""
+    if provider_dir="$(pkg::find_local_provider "$dep" "$op" "$ver")"; then
+      :
+    else
+      local rc=$?
+      if (( rc != 1 )); then
+        echo "error: unable to inspect local providers for: $raw" >&2
+        return 1
+      fi
+      provider_dir=""
+    fi
     if [[ -n "$provider_dir" ]]; then
       if [[ "$provider_dir" == "$pkg_dir" ]]; then
         continue
