@@ -1,6 +1,6 @@
 pkgname=electron40-castlab
 pkgver=40.10.6+wvcus
-pkgrel=1
+pkgrel=2
 pkgdesc='Electron 40 for Content Security by castLabs with Widevine CDM support'
 arch=('x86_64')
 url='https://github.com/castlabs/electron-releases'
