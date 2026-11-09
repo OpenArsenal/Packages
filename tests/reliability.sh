@@ -661,6 +661,8 @@ planner_failures() (
     fail 'repository index failure diagnostic disappeared'
   [[ ! -e "$tmp/build-ran" ]] || fail 'build started with unreadable repository index'
 
+  REPO_DB="$tmp/missing.db"
+  repo::index_reset
   pkg::cache_srcinfo() { return 47; }
   if pkg::build_selected "$tmp/packages" false good >"$tmp/log" 2>&1; then
     fail 'build proceeded after metadata indexing failed'
