@@ -174,6 +174,10 @@ pkg::plan_deps() {
         continue
       fi
 
+      # The repository did not satisfy this dependency's constraint. The
+      # compatible local recipe must be built, even if a newer but
+      # incompatible output already exists in the repository.
+      PKG_FORCE_DIR["$provider_dir"]="true"
       pkg::plan_dir "$provider_dir" || return 1
       continue
     fi
@@ -197,6 +201,11 @@ pkg::plan_dir() {
 
   case "${PKG_STATE[$key]-}" in
     done) return 0 ;;
+    # A previously satisfied selection can become necessary when a later
+    # dependency requires a version not available from the repository.
+    satisfied)
+      [[ "${PKG_FORCE_DIR[$key]-false}" == "true" ]] || return 0
+      ;;
     visiting)
       echo "error: dependency cycle detected at package: ${pkg_dir##*/}" >&2
       return 1
@@ -206,7 +215,7 @@ pkg::plan_dir() {
   PKG_STATE["$key"]="visiting"
 
   if [[ "${PKG_FORCE_DIR[$key]-false}" != "true" ]] && pkg::all_outputs_in_repo "$pkg_dir"; then
-    PKG_STATE["$key"]="done"
+    PKG_STATE["$key"]="satisfied"
     return 0
   fi
 
