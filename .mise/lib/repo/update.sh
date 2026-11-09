@@ -173,13 +173,20 @@ repo::update_db() {
   local include_sigs="$6"
   local dry_run="${7:-false}"
 
-  local -a candidates=()
-  if ! mapfile -t candidates < <(
-    repo::match_package_archives "$repo_dir" "$pkg_filter"
-  ) || [[ "${#candidates[@]}" -eq 0 ]]; then
+  # A process substitution hides the producer's exit status. Capture its
+  # output first so a partial/failed archive scan can never reach repo-add.
+  local listing
+  listing="$(repo::match_package_archives "$repo_dir" "$pkg_filter")" || {
+    echo "error: unable to enumerate package archives in $repo_dir" >&2
+    return 1
+  }
+  [[ -n "$listing" ]] || {
     echo "No matching package archives found in $repo_dir for: ${pkg_filter:-<all>}" >&2
     return 1
-  fi
+  }
+
+  local -a candidates=()
+  mapfile -t candidates <<<"$listing"
 
   local -a selected=()
   if ! repo::select_newest_archives selected "${candidates[@]}"; then
