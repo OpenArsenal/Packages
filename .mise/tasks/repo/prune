@@ -11,6 +11,13 @@ source "${PKGBUILDS_ROOT}/.mise/lib/repo.sh"
 task::bootstrap
 task::require_env REPO_DIR REPO_DB
 
+# Missing or invalid repository metadata must not turn published archives into
+# apparent orphans. Pruning requires a usable index before any deletion.
+[[ -f "$REPO_DB" && -r "$REPO_DB" ]] || {
+  echo "error: refusing to prune without a readable repository database: $REPO_DB" >&2
+  exit 1
+}
+
 declare -A published=()
 if [[ -e "$REPO_DB" ]]; then
   declare -A indexed=()
@@ -40,6 +47,11 @@ if [[ -e "$REPO_DB" ]]; then
 
   (( package_count == filename_count )) || {
     echo "error: incomplete archive filenames in repository database: $REPO_DB" >&2
+    exit 1
+  }
+
+  (( package_count > 0 )) || {
+    echo "error: refusing to prune without indexed packages in: $REPO_DB" >&2
     exit 1
   }
 fi
