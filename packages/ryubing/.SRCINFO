@@ -36,5 +36,6 @@ pkgbase = ryubing
 	options = !strip
 	source = ryubing-1.3.3.tar.gz::https://git.ryujinx.app/ryubing/ryujinx/archive/1.3.3.tar.gz
 	sha256sums = d3bbd9f9f00b09d4e40b498c44ad4b6dac606be8be33814051478dc785206387
+	b2sums = SKIP
 
 pkgname = ryubing

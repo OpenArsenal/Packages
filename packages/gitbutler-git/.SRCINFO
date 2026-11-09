@@ -22,15 +22,15 @@ pkgbase = gitbutler-git
 	depends = openssl
 	depends = webkit2gtk-4.1
 	depends = xdg-utils
-	provides = gitbutler
+	provides = gitbutler=0.21.0.r172.gec521d3
 	conflicts = gitbutler
 	conflicts = gitbutler-bin
 	options = !lto
 	source = gitbutler::git+https://github.com/gitbutlerapp/gitbutler.git
 	source = gitbutler-flags-wrapper.sh
 	sha256sums = SKIP
-	sha256sums = 9a34df546f30e5aa0e0c3309d0f4ce0b95af456936b2ef79223f6602d235e3bc
+	sha256sums = 821db8bc26b590648936c3ee2fefd5a6ba3378048e899e638c2627e7c450d30b
 	b2sums = SKIP
-	b2sums = af6a176a6430a292c158f55573ac17fb543bed5af71a814d0ff0e34cf2c1fbc1892e477261b2150c51e1c89021b5e01b103700e4cc845ff143f6e9b80b3bed44
+	b2sums = cda6648d63b0f85d3df982a55b3c9c0fb7c6313bf67c43bb8b01626493d95a00ecf35a16b2a4ef0c4033c2ba0e797b929a484b7299a5226346384bcdd16840d9
 
 pkgname = gitbutler-git

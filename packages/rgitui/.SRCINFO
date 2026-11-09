@@ -41,6 +41,7 @@ pkgbase = rgitui
 	depends = zlib
 	conflicts = rgitui-bin
 	conflicts = rgitui-git
+	options = !lto
 	source = rgitui-0.1.8.tar.gz::https://github.com/noahbclarkson/rgitui/archive/refs/tags/v0.1.8.tar.gz
 	sha256sums = 83225dc85abdd3e8935df9834dab3b478f0d17cbed263f9fcab72f1783ba4a40
 	b2sums = 256d7a8b29e3f55de89a6a0190ffce10a33b0defca3c6f70a53c7b7bc525b47d8f0ffc51452a2eb09cc52fd8d88b1685e703b9302c7bb3e87701a307f70de5cb

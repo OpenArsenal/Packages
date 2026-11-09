@@ -21,10 +21,10 @@ pkgbase = gitbutler-bin
 	source = gitbutler-0.21.0.LICENSE.md::https://github.com/gitbutlerapp/gitbutler/raw/refs/tags/release/0.21.0/LICENSE.md
 	source = gitbutler-flags-wrapper.sh
 	sha256sums = 2a3154bf44e0b219014291b96249082f3305844a1d73796741468c8128c2829e
-	sha256sums = 9a34df546f30e5aa0e0c3309d0f4ce0b95af456936b2ef79223f6602d235e3bc
+	sha256sums = 821db8bc26b590648936c3ee2fefd5a6ba3378048e899e638c2627e7c450d30b
 	b2sums = 36777381aa01f14ac466a5bdad0603e5e1f15c8f7ab134ded4c1a827aedc6f7c192640e2321454ad0c206c57efb32d7e717c1268bb001098fba27202db1e53f0
-	b2sums = af6a176a6430a292c158f55573ac17fb543bed5af71a814d0ff0e34cf2c1fbc1892e477261b2150c51e1c89021b5e01b103700e4cc845ff143f6e9b80b3bed44
-	source_x86_64 = GitButler-0.21.0-1.x86_64.rpm::https://app.gitbutler.com/downloads/release/linux/x86_64/rpm
+	b2sums = cda6648d63b0f85d3df982a55b3c9c0fb7c6313bf67c43bb8b01626493d95a00ecf35a16b2a4ef0c4033c2ba0e797b929a484b7299a5226346384bcdd16840d9
+	source_x86_64 = GitButler-0.21.0-1.x86_64.rpm::https://releases.gitbutler.com/releases/release/0.21.0-3133/linux/x86_64/GitButler-0.21.0-1.x86_64.rpm
 	sha256sums_x86_64 = 8239ef907d5dba545ea0c066c25c05b9c60de770d8ca2668725ae73a5d97913e
 	b2sums_x86_64 = 11435306781a772b7036cdfa24d86b8b5f4647297fae2b2c554655e82e0b9c63bbef14175f8843d91787df229fafd0dd80423b089f0feb266f31a6f5db6f23bf
 

@@ -13,7 +13,7 @@ pkgbase = pupu-git
 	depends = electron30
 	depends = ollama
 	depends = python
-	provides = pupu=0.0.5.r0.ga37a5d0
+	provides = pupu=0.0.5
 	conflicts = pupu
 	replaces = pupu
 	options = debug

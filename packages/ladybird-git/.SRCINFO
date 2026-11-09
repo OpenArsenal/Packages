@@ -37,7 +37,6 @@ pkgbase = ladybird-git
 	depends = sqlite
 	depends = ttf-liberation
 	depends = woff2
-	depends = libpng-apng
 	depends = angle
 	depends = simdutf-git
 	depends = cpptrace

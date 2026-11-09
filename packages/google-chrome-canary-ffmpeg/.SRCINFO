@@ -22,6 +22,7 @@ pkgbase = google-chrome-canary-ffmpeg
 	provides = google-chrome-canary=154.0.8024.0
 	provides = google-chrome
 	conflicts = google-chrome-canary
+	noextract = ffmpeg-53fa34a23be9054d25ac2500dbdae9a0e570bb5c.tar.gz
 	options = !emptydirs
 	options = !strip
 	options = !lto
