@@ -31,7 +31,7 @@ pkg::index_register() {
 
 pkg::index_packages() {
   local packages_dir="$1"
-  local pkg_dir name raw provide_name provide_op provide_ver
+  local pkg_dir name raw provide_name provide_op provide_ver pkgbase outputs provides
 
   pkg::resolver_reset
   shopt -s nullglob
@@ -39,7 +39,7 @@ pkg::index_packages() {
   # Repository directory names are explicit identities and always win.
   for pkg_dir in "$packages_dir"/*; do
     [[ -f "$pkg_dir/PKGBUILD" ]] || continue
-    pkg::cache_srcinfo "$pkg_dir" || return
+    pkg::cache_srcinfo "$pkg_dir" || { shopt -u nullglob; return 1; }
     pkg::index_register "${pkg_dir##*/}" "$pkg_dir" true
   done
 
@@ -47,16 +47,32 @@ pkg::index_packages() {
   for pkg_dir in "$packages_dir"/*; do
     [[ -f "$pkg_dir/PKGBUILD" ]] || continue
 
-    pkg::index_register "$(pkg::metadata_pkgbase "$pkg_dir")" "$pkg_dir"
+    pkgbase="$(pkg::metadata_pkgbase "$pkg_dir")" || {
+      echo "error: unable to read pkgbase for: $pkg_dir" >&2
+      shopt -u nullglob
+      return 1
+    }
+    outputs="$(pkg::metadata_outputs "$pkg_dir")" || {
+      echo "error: unable to list package outputs for: $pkg_dir" >&2
+      shopt -u nullglob
+      return 1
+    }
 
+    pkg::index_register "$pkgbase" "$pkg_dir"
     while IFS= read -r name; do
       pkg::index_register "$name" "$pkg_dir"
-    done < <(pkg::metadata_outputs "$pkg_dir")
+    done <<<"$outputs"
   done
 
   # provides= entries are lowest-priority aliases.
   for pkg_dir in "$packages_dir"/*; do
     [[ -f "$pkg_dir/PKGBUILD" ]] || continue
+
+    provides="$(pkg::metadata_provides "$pkg_dir")" || {
+      echo "error: unable to list package providers for: $pkg_dir" >&2
+      shopt -u nullglob
+      return 1
+    }
 
     while IFS= read -r raw; do
       provide_name=""
@@ -64,7 +80,7 @@ pkg::index_packages() {
       provide_ver=""
       spec::parse "$raw" provide_name provide_op provide_ver
       pkg::index_register "$provide_name" "$pkg_dir"
-    done < <(pkg::metadata_provides "$pkg_dir")
+    done <<<"$provides"
   done
 
   shopt -u nullglob
@@ -73,11 +89,12 @@ pkg::index_packages() {
 pkg::dir_outputs_name() {
   local pkg_dir="$1"
   local wanted="$2"
-  local output
+  local output outputs
 
+  outputs="$(pkg::metadata_outputs "$pkg_dir")" || return 2
   while IFS= read -r output; do
     [[ "$output" == "$wanted" ]] && return 0
-  done < <(pkg::metadata_outputs "$pkg_dir")
+  done <<<"$outputs"
 
   return 1
 }
@@ -86,15 +103,19 @@ pkg::dir_outputs_name() {
 # an explicitly versioned provides= entry that meets the constraint.
 pkg::provider_matches_version() {
   local pkg_dir="$1" wanted="$2" op="$3" ver="$4"
-  local actual raw provide_name provide_op provide_ver
+  local actual raw provide_name provide_op provide_ver provides
 
   if pkg::dir_outputs_name "$pkg_dir" "$wanted"; then
-    actual="$(pkg::metadata_version "$pkg_dir")" || return 1
+    actual="$(pkg::metadata_version "$pkg_dir")" || return 2
     if repo::version_satisfies "$actual" "$op" "$ver"; then
       return 0
     fi
+  else
+    local rc=$?
+    (( rc == 1 )) || return "$rc"
   fi
 
+  provides="$(pkg::metadata_provides "$pkg_dir")" || return 2
   while IFS= read -r raw; do
     provide_name=""
     provide_op=""
@@ -104,7 +125,7 @@ pkg::provider_matches_version() {
       repo::version_satisfies "$provide_ver" "$op" "$ver"; then
       return 0
     fi
-  done < <(pkg::metadata_provides "$pkg_dir")
+  done <<<"$provides"
 
   return 1
 }
@@ -124,6 +145,9 @@ pkg::find_local_provider() {
     if pkg::provider_matches_version "$candidate" "$dep" "$op" "$ver"; then
       printf '%s\n' "$candidate"
       return 0
+    else
+      local rc=$?
+      (( rc == 1 )) || return "$rc"
     fi
   done <<<"${PKG_PROVIDER_CANDIDATES[$dep]-}"
 
@@ -132,25 +156,39 @@ pkg::find_local_provider() {
 
 pkg::all_outputs_in_repo() {
   local pkg_dir="$1"
-  local version output
+  local version output outputs
   local found=false
 
-  version="$(pkg::metadata_version "$pkg_dir")" || return 1
+  version="$(pkg::metadata_version "$pkg_dir")" || {
+    echo "error: unable to determine package version for: $pkg_dir" >&2
+    return 2
+  }
+  outputs="$(pkg::metadata_outputs "$pkg_dir")" || {
+    echo "error: unable to list package outputs for: $pkg_dir" >&2
+    return 2
+  }
 
   while IFS= read -r output; do
     [[ -n "$output" ]] || continue
     found=true
     repo::is_dep_satisfied "$REPO_DIR" "$output" ">=" "$version" || return 1
-  done < <(pkg::metadata_outputs "$pkg_dir")
+  done <<<"$outputs"
 
-  [[ "$found" == true ]]
+  if [[ "$found" != true ]]; then
+    echo "error: package declares no outputs: $pkg_dir" >&2
+    return 2
+  fi
 }
 
 pkg::plan_deps() {
   local pkg_dir="$1"
   local pkg_label="$2"
-  local raw dep op ver provider_dir
+  local raw dep op ver provider_dir dependencies
 
+  dependencies="$(pkg::metadata_deps "$pkg_dir")" || {
+    echo "error: unable to list dependencies for: $pkg_label" >&2
+    return 1
+  }
   while IFS= read -r raw; do
     [[ -n "$raw" ]] || continue
 
@@ -162,13 +200,28 @@ pkg::plan_deps() {
 
     if pkg::dir_outputs_name "$pkg_dir" "$dep"; then
       continue
+    else
+      local rc=$?
+      if (( rc != 1 )); then
+        echo "error: unable to inspect outputs for: $pkg_dir" >&2
+        return 1
+      fi
     fi
 
     if repo::is_dep_satisfied "$REPO_DIR" "$dep" "$op" "$ver"; then
       continue
     fi
 
-    provider_dir="$(pkg::find_local_provider "$dep" "$op" "$ver")" || provider_dir=""
+    if provider_dir="$(pkg::find_local_provider "$dep" "$op" "$ver")"; then
+      :
+    else
+      local rc=$?
+      if (( rc != 1 )); then
+        echo "error: unable to inspect local providers for: $raw" >&2
+        return 1
+      fi
+      provider_dir=""
+    fi
     if [[ -n "$provider_dir" ]]; then
       if [[ "$provider_dir" == "$pkg_dir" ]]; then
         continue
@@ -188,7 +241,7 @@ pkg::plan_deps() {
 
     echo "error: unresolved dependency for $pkg_label: $raw" >&2
     return 1
-  done < <(pkg::metadata_deps "$pkg_dir")
+  done <<<"$dependencies"
 }
 
 pkg::plan_dir() {
@@ -214,9 +267,17 @@ pkg::plan_dir() {
 
   PKG_STATE["$key"]="visiting"
 
-  if [[ "${PKG_FORCE_DIR[$key]-false}" != "true" ]] && pkg::all_outputs_in_repo "$pkg_dir"; then
-    PKG_STATE["$key"]="satisfied"
-    return 0
+  if [[ "${PKG_FORCE_DIR[$key]-false}" != "true" ]]; then
+    if pkg::all_outputs_in_repo "$pkg_dir"; then
+      PKG_STATE["$key"]="satisfied"
+      return 0
+    else
+      local rc=$?
+      if (( rc != 1 )); then
+        unset "PKG_STATE[$key]"
+        return "$rc"
+      fi
+    fi
   fi
 
   if ! pkg::plan_deps "$pkg_dir" "$key"; then
