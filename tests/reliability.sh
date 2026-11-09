@@ -1181,6 +1181,72 @@ metadata_cache_integrity() (
   echo 'PASS metadata field reads (all reader failures propagate; valid aggregation preserved)'
 )
 
+
+sync_dbpath_failures() (
+  local tmp mode calls
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  source "$root/.mise/lib/repo/update.sh"
+
+  pacman-conf() {
+    [[ "$1" == DBPath ]] || return 2
+    case "${DBPATH_MODE:-ok}" in
+      fail) printf '%s\n' "$tmp/db"; return 47 ;;
+      empty) printf '\n' ;;
+      relative) printf 'var/lib/pacman/\n' ;;
+      root) printf '/\n' ;;
+      slashes) printf '////\n' ;;
+      ok) printf '%s/db/../db///\n' "$tmp" ;;
+      *) return 2 ;;
+    esac
+  }
+  task::run_root() {
+    printf '%s\n' "$*" >>"$tmp/calls"
+    case "$1" in
+      rm) [[ "${RUN_ROOT_MODE:-ok}" != rm-fail ]] ;;
+      pacman) [[ "${RUN_ROOT_MODE:-ok}" != sync-fail ]] ;;
+      *) return 2 ;;
+    esac
+  }
+
+  for mode in fail empty relative root slashes; do
+    rm -f -- "$tmp/calls"
+    if DBPATH_MODE="$mode" repo::refresh_sync_db demo >"$tmp/log" 2>&1; then
+      fail "sync refresh accepted unsafe or failed DBPath: $mode"
+    fi
+    [[ ! -e "$tmp/calls" ]] || fail "sync cleanup ran after $mode DBPath"
+  done
+
+  rm -f -- "$tmp/calls"
+  if RUN_ROOT_MODE=rm-fail repo::refresh_sync_db demo >"$tmp/log" 2>&1; then
+    fail 'sync refresh reported success after failed cleanup'
+  fi
+  [[ "$(wc -l <"$tmp/calls")" -eq 1 ]] ||
+    fail 'pacman sync started after cleanup failure'
+  ! grep -q '^pacman ' "$tmp/calls" ||
+    fail 'pacman sync ran after cleanup failure'
+
+  rm -f -- "$tmp/calls"
+  if RUN_ROOT_MODE=sync-fail repo::refresh_sync_db demo >"$tmp/log" 2>&1; then
+    fail 'sync refresh reported success after pacman -Sy failed'
+  fi
+  [[ "$(wc -l <"$tmp/calls")" -eq 2 ]] ||
+    fail 'sync failure did not run expected cleanup and sync steps'
+
+  rm -f -- "$tmp/calls"
+  repo::refresh_sync_db demo >"$tmp/log" 2>&1 ||
+    fail "valid sync refresh failed: $(cat "$tmp/log")"
+  [[ "$(wc -l <"$tmp/calls")" -eq 2 ]] || fail 'valid sync refresh missed a step'
+  grep -Fq "rm -f $tmp/db/sync/demo.db" "$tmp/calls" ||
+    fail 'sync cleanup used the wrong pacman DBPath'
+  grep -Fq "$tmp/db/sync/demo.files" "$tmp/calls" ||
+    fail 'sync cleanup missed repository file index'
+  grep -qx 'pacman -Sy --noconfirm' "$tmp/calls" ||
+    fail 'valid sync refresh did not invoke pacman -Sy'
+
+  echo 'PASS sync_dbpath_failures (failed and unsafe DBPath, cleanup failures, sync failures)'
+)
+
 case "${1:-all}" in
   select_installed) select_installed ;;
   provider_versions) provider_versions ;;
@@ -1205,7 +1271,8 @@ case "${1:-all}" in
   metadata) metadata ;;
   metadata_cache_integrity) metadata_cache_integrity ;;
   publish) publish ;;
+  sync_dbpath_failures) sync_dbpath_failures ;;
   build) build ;;
-  all) deps; metadata_cache_integrity; planning_metadata_failures; versioned_local_providers; published_incompatible_provider; archive_metadata_failures; exact_archive_scan_failures; partial_package_outputs; chroot_setup_failures; planner_failures; archive_selection_errors; archive_enumeration_failure; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases; strict_skipped; srcinfo_consistency; onepassword_update; provider_versions; select_installed ;;
+  all) sync_dbpath_failures; deps; metadata_cache_integrity; planning_metadata_failures; versioned_local_providers; published_incompatible_provider; archive_metadata_failures; exact_archive_scan_failures; partial_package_outputs; chroot_setup_failures; planner_failures; archive_selection_errors; archive_enumeration_failure; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases; strict_skipped; srcinfo_consistency; onepassword_update; provider_versions; select_installed ;;
   *) fail "unknown test: $1" ;;
 esac
