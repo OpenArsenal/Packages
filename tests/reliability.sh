@@ -1247,8 +1247,77 @@ sync_dbpath_failures() (
   echo 'PASS sync_dbpath_failures (failed and unsafe DBPath, cleanup failures, sync failures)'
 )
 
+
+selection_input_failures() (
+  local tmp
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/packages/demo"
+  touch "$tmp/packages/demo/PKGBUILD"
+  printf 'pkgbase = demo\n\tpkgname = demo\n' >"$tmp/packages/demo/.SRCINFO"
+  source "$root/.mise/lib/pkg/list.sh"
+  source "$root/.mise/lib/pkg/metadata.sh"
+
+  printf '  # comment\r\n  demo  # selected\r\n\nother\n' >"$tmp/.packages"
+  local -a selected=(sentinel)
+  pkg::load_requested "$tmp/.packages" selected || fail 'valid selection list rejected'
+  [[ "${selected[*]}" == 'demo other' ]] ||
+    fail 'valid selection comments and whitespace parsed incorrectly'
+
+  # Simulate tools that emit a partial list before failing. These failures
+  # must not mutate the caller's selection even when some lines were printed.
+  sed() { printf 'demo\n'; return 47; }
+  selected=(sentinel)
+  if pkg::load_requested "$tmp/.packages" selected >"$tmp/log" 2>&1; then
+    fail 'selection accepted partial output from failed sed'
+  fi
+  [[ "${selected[*]}" == sentinel ]] || fail 'failed sed changed loaded selection'
+  unset -f sed
+
+  awk() { printf 'demo\n'; return 48; }
+  if pkg::load_requested "$tmp/.packages" selected >"$tmp/log" 2>&1; then
+    fail 'selection accepted partial output from failed awk'
+  fi
+  [[ "${selected[*]}" == sentinel ]] || fail 'failed awk changed loaded selection'
+  unset -f awk
+
+  : >"$tmp/.packages"
+  pkg::load_requested "$tmp/.packages" selected || fail 'empty selection list rejected'
+  [[ "${#selected[@]}" -eq 0 ]] || fail 'empty selection contained a phantom package'
+  pkg::load_requested "$tmp/not-present" selected || fail 'missing selection file rejected'
+  [[ "${#selected[@]}" -eq 0 ]] || fail 'missing selection file did not clear selection'
+
+  pkg::metadata_outputs() {
+    printf 'demo\n'
+    [[ "${OUTPUT_MODE:-ok}" != partial ]] || return 49
+  }
+  pacman() {
+    case "$1" in
+      -Sl) return 0 ;;
+      -Qq) printf 'demo\n' ;;
+      -Qi|-Si) printf 'Packager : Fixture Packager\n' ;;
+      *) return 2 ;;
+    esac
+  }
+
+  selected=(sentinel)
+  if OUTPUT_MODE=partial pkg::installed_selected "$tmp/packages" demo selected >"$tmp/log" 2>&1; then
+    fail 'installed selection accepted partially failed metadata outputs'
+  fi
+  [[ "${selected[*]}" == sentinel ]] || fail 'partial package metadata changed selected outputs'
+  grep -q 'unable to read package outputs' "$tmp/log" ||
+    fail 'partial package metadata diagnostic disappeared'
+
+  OUTPUT_MODE=ok pkg::installed_selected "$tmp/packages" demo selected ||
+    fail 'valid installed selection rejected'
+  [[ "${selected[*]}" == demo ]] || fail 'valid installed selection did not choose demo'
+
+  echo 'PASS selection_input_failures (partial list and recipe reads fail without changing selection)'
+)
+
 case "${1:-all}" in
   select_installed) select_installed ;;
+  selection_input_failures) selection_input_failures ;;
   provider_versions) provider_versions ;;
   deps) deps ;;
   versioned_local_providers) versioned_local_providers ;;
@@ -1273,6 +1342,6 @@ case "${1:-all}" in
   publish) publish ;;
   sync_dbpath_failures) sync_dbpath_failures ;;
   build) build ;;
-  all) sync_dbpath_failures; deps; metadata_cache_integrity; planning_metadata_failures; versioned_local_providers; published_incompatible_provider; archive_metadata_failures; exact_archive_scan_failures; partial_package_outputs; chroot_setup_failures; planner_failures; archive_selection_errors; archive_enumeration_failure; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases; strict_skipped; srcinfo_consistency; onepassword_update; provider_versions; select_installed ;;
+  all) selection_input_failures; sync_dbpath_failures; deps; metadata_cache_integrity; planning_metadata_failures; versioned_local_providers; published_incompatible_provider; archive_metadata_failures; exact_archive_scan_failures; partial_package_outputs; chroot_setup_failures; planner_failures; archive_selection_errors; archive_enumeration_failure; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases; strict_skipped; srcinfo_consistency; onepassword_update; provider_versions; select_installed ;;
   *) fail "unknown test: $1" ;;
 esac
