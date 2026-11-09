@@ -1,3 +1,6 @@
+[tools]
+bats = "1.14.0"
+
 [env]
 _.file = ".env"
 
@@ -24,6 +27,18 @@ SOURCE_DATE_EPOCH = "{{ exec(command='git log -1 --format=%ct 2>/dev/null || dat
 [tasks.default]
 description = "List available tasks"
 run = "mise tasks"
+
+[tasks.test]
+description = "Run all Bats unit and integration tests"
+run = "bats tests/bats"
+
+[tasks."test:unit"]
+description = "Run isolated dependency logic tests"
+run = "bats tests/bats/unit.bats"
+
+[tasks."test:integration"]
+description = "Run package workflow integration tests with mocked tools"
+run = "bats tests/bats/build-planning.bats tests/bats/package-metadata.bats tests/bats/package-selection.bats tests/bats/repo-maintenance.bats"
 
 [tasks."repo:maintain"]
 description = "Update, reconcile, prune, and refresh the published repository"

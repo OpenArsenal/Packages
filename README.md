@@ -227,23 +227,37 @@ Use `pkg:plan` before a larger build to inspect the dependency order without cha
 
 ## Tests
 
-Run fast, isolated dependency-logic tests with Bash (no Arch tools or repository database required):
+The test suite uses [bats-core](https://github.com/bats-core/bats-core), pinned
+by mise in `.mise/config.toml`. Install it and run the whole suite with:
 
 ```sh
-bash tests/unit.sh
+mise install
+mise run test
 ```
 
-Run the existing workflow/reliability integration tests, which use temporary
-directories and mocked external tools:
+To run one layer at a time:
 
 ```sh
-bash tests/reliability.sh
+mise run test:unit
+mise run test:integration
 ```
 
-Keep new tests at the lowest level that can detect the behavior: pure parsing
-and comparison rules belong in `tests/unit.sh`; package-building, metadata,
-filesystem, and repository workflows belong in `tests/reliability.sh`.
-Avoid duplicating the same scenario at both levels.
+Tests live in `tests/bats/`. The unit suite checks isolated dependency logic;
+the integration suites exercise package planning, metadata, selection, and
+repository workflows with temporary fixtures and mocked external tools.
+Every Bats case runs independently, with its own fixture cleanup. To focus on
+one test, use `bats --filter 'description' tests/bats/build-planning.bats`.
+
+`tests/check-srcinfo.sh` remains a standalone package metadata validation
+script, used by the test suite and available for checking real PKGBUILDs:
+
+```sh
+bash tests/check-srcinfo.sh packages/<package>
+```
+
+Add coverage at the lowest layer that can detect the behavior. Avoid duplicate
+unit and integration coverage, and reserve real-environment tests for
+journeys that cannot be verified with a direct function or workflow test.
 
 ## Additional tasks
 
