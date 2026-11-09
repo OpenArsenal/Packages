@@ -5,22 +5,22 @@ spec::parse() {
   local out_name="$2"
   local out_op="$3"
   local out_ver="$4"
-  local spec name op ver
+  local spec parsed_name parsed_op parsed_ver
 
   spec="${raw//$'\r'/}"
   spec="${spec//[[:space:]]/}"
 
   if [[ "$spec" =~ ^([^\<\>\=]+)(\<\=|\>\=|\=|\<|\>)(.+)$ ]]; then
-    name="${BASH_REMATCH[1]}"
-    op="${BASH_REMATCH[2]}"
-    ver="${BASH_REMATCH[3]}"
+    parsed_name="${BASH_REMATCH[1]}"
+    parsed_op="${BASH_REMATCH[2]}"
+    parsed_ver="${BASH_REMATCH[3]}"
   else
-    name="$spec"
-    op=""
-    ver=""
+    parsed_name="$spec"
+    parsed_op=""
+    parsed_ver=""
   fi
 
-  printf -v "$out_name" '%s' "$name"
-  printf -v "$out_op" '%s' "$op"
-  printf -v "$out_ver" '%s' "$ver"
+  printf -v "$out_name" '%s' "$parsed_name"
+  printf -v "$out_op" '%s' "$parsed_op"
+  printf -v "$out_ver" '%s' "$parsed_ver"
 }

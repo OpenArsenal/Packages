@@ -15,11 +15,18 @@ if [[ ! -e "$REPO_DB" ]]; then
   exit 0
 fi
 
+[[ -d "$PACKAGES_DIR" && -r "$PACKAGES_DIR" ]] || {
+  echo "error: package source directory missing or unreadable: $PACKAGES_DIR" >&2
+  exit 1
+}
+
 declare -A desired=()
+found_recipe=false
 shopt -s nullglob
 
 for pkg_dir in "$PACKAGES_DIR"/*; do
   [[ -f "$pkg_dir/PKGBUILD" ]] || continue
+  found_recipe=true
   pkg::cache_srcinfo "$pkg_dir" || exit
 
   while IFS= read -r output; do
@@ -29,11 +36,21 @@ done
 
 shopt -u nullglob
 
+[[ "$found_recipe" == true ]] || {
+  echo "error: no PKGBUILD recipes found in: $PACKAGES_DIR" >&2
+  exit 1
+}
+
+db_names="$(repo::db_packages "$REPO_DB" | sort -u)" || {
+  echo "error: unable to read repository database: $REPO_DB" >&2
+  exit 1
+}
+
 declare -a stale=()
 while IFS= read -r pkg_name; do
   [[ -n "$pkg_name" ]] || continue
   [[ -n "${desired[$pkg_name]+x}" ]] || stale+=("$pkg_name")
-done < <(repo::db_packages "$REPO_DB" | sort -u)
+done <<<"$db_names"
 
 if [[ "${#stale[@]}" -eq 0 ]]; then
   echo "Repository database already matches packages/."

@@ -181,11 +181,116 @@ build() (
   echo 'PASS build (new Git version, stale archive, same-version rebuild, failed build)'
 )
 
+deps() (
+  source "$root/.mise/lib/spec.sh"
+  source "$root/.mise/lib/pkg/resolver.sh"
+  local dep op ver
+
+  spec::parse 'nodejs>=22.12.0' dep op ver
+  [[ "$dep" == nodejs && "$op" == '>=' && "$ver" == 22.12.0 ]] || fail 'dependency version requirement was lost'
+  spec::parse 'nodejs' dep op ver
+  [[ "$dep" == nodejs && -z "$op" && -z "$ver" ]] || fail 'unversioned dependency changed'
+
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  REPO_DIR="$tmp/repo"
+  pkg::metadata_deps() { echo 'nodejs>=22.12.0'; }
+  pkg::dir_outputs_name() { return 1; }
+  repo::is_dep_satisfied() { printf '%s|%s|%s\n' "$2" "$3" "$4" >"$tmp/check"; }
+  pkg::plan_deps "$tmp/demo" demo || fail 'dependency planning failed'
+  [[ "$(cat "$tmp/check")" == 'nodejs|>=|22.12.0' ]] || fail 'planner omitted dependency constraint'
+  echo 'PASS deps (versioned and unversioned parsing, planner preserves constraints)'
+)
+
+clean_sources() (
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/bin" "$tmp/empty" "$tmp/empty/not-a-recipe"
+  export PKGBUILDS_ROOT="$root" REPO_DB="$tmp/repo.db" REPO_NAME=test PATH="$tmp/bin:$PATH" TEST_TMP="$tmp"
+  touch "$REPO_DB"
+
+  cat >"$tmp/bin/bsdtar" <<'MOCK'
+#!/usr/bin/env bash
+case "$1" in
+  -tf) echo 'kept/desc' ;;
+  -xOf) printf '%%NAME%%\nkept\n\n%%VERSION%%\n1-1\n' ;;
+  *) exit 2 ;;
+esac
+MOCK
+  cat >"$tmp/bin/repo-remove" <<'MOCK'
+#!/usr/bin/env bash
+printf '%s\n' "$@" >"$TEST_TMP/removed"
+MOCK
+  chmod +x "$tmp/bin/"*
+
+  for sources in "$tmp/missing" "$tmp/empty"; do
+    if PACKAGES_DIR="$sources" bash "$root/.mise/tasks/repo/clean" >"$tmp/log" 2>&1; then
+      fail "cleanup accepted a missing or empty source directory: $sources"
+    fi
+    [[ ! -e "$tmp/removed" ]] || fail 'cleanup modified repository with no recipes'
+  done
+
+  mkdir -p "$tmp/empty/kept"
+  touch "$tmp/empty/kept/PKGBUILD"
+  printf 'pkgbase = kept\n\tpkgname = kept\n' >"$tmp/empty/kept/.SRCINFO"
+  PACKAGES_DIR="$tmp/empty" bash "$root/.mise/tasks/repo/clean" >"$tmp/log" 2>&1 || fail "valid cleanup failed: $(cat "$tmp/log")"
+  [[ ! -e "$tmp/removed" ]] || fail 'cleanup removed a referenced package'
+  grep -q 'already matches' "$tmp/log" || fail 'cleanup did not recognize a matching repository'
+  echo 'PASS clean_sources (missing/empty sources rejected; matching source kept)'
+)
+
+clean_db() (
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/bin" "$tmp/packages/kept"
+  export PKGBUILDS_ROOT="$root" REPO_DB="$tmp/repo.db" REPO_NAME=test
+  export PACKAGES_DIR="$tmp/packages" PATH="$tmp/bin:$PATH" TEST_TMP="$tmp"
+  touch "$REPO_DB" "$PACKAGES_DIR/kept/PKGBUILD"
+  printf 'pkgbase = kept\n\tpkgname = kept\n' >"$PACKAGES_DIR/kept/.SRCINFO"
+
+  cat >"$tmp/bin/bsdtar" <<'MOCK'
+#!/usr/bin/env bash
+case "${BSDTAR_MODE:-ok}:$1" in
+  list-fail:-tf) exit 41 ;;
+  list-partial-fail:-tf) echo 'kept/desc'; exit 41 ;;
+  extract-fail:-xOf) exit 42 ;;
+  extract-partial-fail:-xOf) printf '%%NAME%%\nkept\n\n%%VERSION%%\n1-1\n'; exit 42 ;;
+  *:-tf) printf 'kept/desc\nstale/desc\n' ;;
+  *:-xOf) printf '%%NAME%%\nkept\n\n%%VERSION%%\n1-1\n%%NAME%%\nstale\n\n%%VERSION%%\n1-1\n' ;;
+  *) exit 2 ;;
+esac
+MOCK
+  cat >"$tmp/bin/repo-remove" <<'MOCK'
+#!/usr/bin/env bash
+printf '%s\n' "$@" >"$TEST_TMP/removed"
+MOCK
+  chmod +x "$tmp/bin/"*
+
+  for mode in list-fail list-partial-fail extract-fail extract-partial-fail; do
+    if BSDTAR_MODE="$mode" bash "$root/.mise/tasks/repo/clean" >"$tmp/log" 2>&1; then
+      fail "cleanup accepted failed database reader: $mode"
+    fi
+    [[ ! -e "$tmp/removed" ]] || fail "cleanup modified DB after $mode"
+    ! grep -q 'already matches' "$tmp/log" || fail "cleanup reported success after $mode"
+  done
+
+  usage_dry_run=true bash "$root/.mise/tasks/repo/clean" >"$tmp/log" 2>&1 || fail 'cleanup dry-run failed'
+  [[ "$(cat "$tmp/log")" == stale ]] || fail 'cleanup dry-run listed unexpected entries'
+  [[ ! -e "$tmp/removed" ]] || fail 'cleanup dry-run modified database'
+  bash "$root/.mise/tasks/repo/clean" >"$tmp/log" 2>&1 || fail 'cleanup failed with readable database'
+  [[ "$(tail -n1 "$tmp/removed")" == stale ]] || fail 'cleanup did not remove only stale entry'
+  ! grep -q '^kept$' "$tmp/removed" || fail 'cleanup removed an indexed package'
+  echo 'PASS clean_db (failed reads abort; dry-run and valid stale removal preserved)'
+)
+
 case "${1:-all}" in
+  deps) deps ;;
+  clean_sources) clean_sources ;;
+  clean_db) clean_db ;;
   prune) prune ;;
   metadata) metadata ;;
   publish) publish ;;
   build) build ;;
-  all) prune; metadata; publish; build ;;
+  all) deps; clean_sources; clean_db; prune; metadata; publish; build ;;
   *) fail "unknown test: $1" ;;
 esac
