@@ -1061,7 +1061,7 @@ planning_metadata_failures() (
     [[ "$?" -eq 2 ]] || fail 'output metadata failure status was lost'
   fi
   pkg::resolver_reset
-  PKG_PROVIDER_CANDIDATES[partial-alias]="$tmp/packages/app"$'\\n'
+  PKG_PROVIDER_CANDIDATES[partial-alias]="$tmp/packages/app"$'\n'
   repo::version_satisfies() { return 0; }
   if METADATA_STAGE=provides pkg::find_local_provider partial-alias '>=' 1 >"$tmp/log"; then
     fail 'partial provides metadata was accepted as a compatible provider'
