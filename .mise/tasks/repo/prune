@@ -11,19 +11,50 @@ source "${PKGBUILDS_ROOT}/.mise/lib/repo.sh"
 task::bootstrap
 task::require_env REPO_DIR REPO_DB
 
+declare -A published=()
 if [[ -e "$REPO_DB" ]]; then
   declare -A indexed=()
 
-  indexed_names="$(repo::db_packages "$REPO_DB" | sort -u)" || {
+  records="$(repo::db_records "$REPO_DB")" || {
     echo "error: unable to read repository database: $REPO_DB" >&2
     exit 1
   }
 
-  while IFS= read -r pkg_name; do
-    [[ -n "$pkg_name" ]] && indexed["$pkg_name"]=1
-  done <<<"$indexed_names"
+  package_count=0 filename_count=0
+  while IFS=$'\t' read -r kind first second; do
+    case "$kind" in
+      P)
+        [[ -n "$first" ]] && indexed["$first"]=1
+        ((package_count += 1))
+        ;;
+      F)
+        [[ -n "$first" && "$first" != */* && "$first" == *.pkg.tar.* ]] || {
+          echo "error: invalid published archive filename in: $REPO_DB" >&2
+          exit 1
+        }
+        published["$first"]=1
+        ((filename_count += 1))
+        ;;
+    esac
+  done <<<"$records"
 
+  (( package_count == filename_count )) || {
+    echo "error: incomplete archive filenames in repository database: $REPO_DB" >&2
+    exit 1
+  }
+fi
+
+args=(-d -v -c "$REPO_DIR" -k "${usage_keep:-2}")
+[[ -n "${usage_min_atime:-}" ]] && args+=(--min-atime "${usage_min_atime}")
+candidates="$(paccache "${args[@]}")" || {
+  echo "error: unable to select archives for pruning" >&2
+  exit 1
+}
+
+if [[ -e "$REPO_DB" ]]; then
   while IFS= read -r -d '' archive; do
+    [[ -n "${published[${archive##*/}]+x}" ]] && continue
+
     meta="$(pacman -Qp -- "$archive" 2>/dev/null)" || {
       echo "warning: unable to inspect package archive: $archive" >&2
       continue
@@ -39,21 +70,24 @@ if [[ -e "$REPO_DB" ]]; then
     fi
 
     [[ "${usage_quiet:-false}" == "true" ]] || echo "Removing unindexed archive: $archive"
-    rm -f -- "$archive" "$archive.sig"
+    rm -f -- "$archive" "$archive.sig" || exit 1
   done < <(
     find "$REPO_DIR" -maxdepth 1 -type f       -name '*.pkg.tar.*' ! -name '*.sig' -print0 2>/dev/null
   )
 fi
 
-args=(-c "$REPO_DIR" -k "${usage_keep:-2}")
+while IFS= read -r filename; do
+  [[ "$filename" == *.pkg.tar.* && "$filename" != *.sig && "$filename" != */* ]] || continue
+  [[ -n "${published[$filename]+x}" ]] && continue
+  archive="$REPO_DIR/$filename"
+  [[ -f "$archive" ]] || continue
 
-if [[ "${usage_dry_run:-false}" == "true" ]]; then
-  args+=(-d)
-else
-  args+=(-r)
-fi
+  if [[ "${usage_dry_run:-false}" == "true" ]]; then
+    printf '%s\n' "$archive"
+    [[ -f "$archive.sig" ]] && printf '%s\n' "$archive.sig"
+    continue
+  fi
 
-[[ "${usage_quiet:-false}" == "true" ]] && args+=(-q)
-[[ -n "${usage_min_atime:-}" ]] && args+=(--min-atime "${usage_min_atime}")
-
-paccache "${args[@]}"
+  [[ "${usage_quiet:-false}" == "true" ]] || echo "Removing old archive: $archive"
+  rm -f -- "$archive" "$archive.sig" || exit 1
+done <<<"$candidates"

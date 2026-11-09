@@ -19,7 +19,8 @@ case "$BSDTAR_MODE:$1" in
   extract-fail:-xOf) exit 42 ;;
   extract-partial-fail:-xOf) printf '%%NAME%%\nkept\n\n%%VERSION%%\n1-1\n'; exit 42 ;;
   *:-tf) echo 'kept/desc' ;;
-  *:-xOf) printf '%%NAME%%\nkept\n\n%%VERSION%%\n1-1\n' ;;
+  missing-filename:-xOf) printf '%%NAME%%\nkept\n\n%%VERSION%%\n1-1\n' ;;
+  *:-xOf) printf '%%FILENAME%%\nkept-1-1-x86_64.pkg.tar.zst\n\n%%NAME%%\nkept\n\n%%VERSION%%\n1-1\n' ;;
   *) exit 2 ;;
 esac
 MOCK
@@ -35,12 +36,18 @@ MOCK
   cat > "$tmp/bin/paccache" <<'MOCK'
 #!/usr/bin/env bash
 touch "$TEST_TMP/paccache-called"
+[[ " $* " == *' -d '* && " $* " == *' -v '* ]] || exit 88
+if [[ "${PACCACHE_MODE:-ok}" == fail ]]; then
+  echo 'kept-1-1-x86_64.pkg.tar.zst'
+  exit 43
+fi
+printf '==> Candidate packages:\nkept-0-1-x86_64.pkg.tar.zst\nkept-1-1-x86_64.pkg.tar.zst\n'
 MOCK
   chmod +x "$tmp/bin/"*
   touch "$REPO_DB" "$REPO_DIR/kept-1-1-x86_64.pkg.tar.zst" "$REPO_DIR/kept-1-1-x86_64.pkg.tar.zst.sig" \
     "$REPO_DIR/orphan-1-1-x86_64.pkg.tar.zst" "$REPO_DIR/orphan-1-1-x86_64.pkg.tar.zst.sig"
 
-  for mode in list-fail list-partial-fail extract-fail extract-partial-fail; do
+  for mode in list-fail list-partial-fail extract-fail extract-partial-fail missing-filename; do
     if BSDTAR_MODE="$mode" bash "$root/.mise/tasks/repo/prune" >"$tmp/log" 2>&1; then
       fail "prune succeeded after $mode"
     fi
@@ -49,11 +56,30 @@ MOCK
     [[ ! -e "$tmp/paccache-called" ]] || fail "paccache ran after $mode"
   done
 
+  if BSDTAR_MODE=ok PACCACHE_MODE=fail bash "$root/.mise/tasks/repo/prune" >"$tmp/log" 2>&1; then
+    fail 'prune succeeded after paccache failed'
+  fi
+  [[ -f "$REPO_DIR/orphan-1-1-x86_64.pkg.tar.zst" ]] || fail 'paccache failure removed orphan'
+
   BSDTAR_MODE=ok bash "$root/.mise/tasks/repo/prune" >"$tmp/log" 2>&1 || fail "successful prune failed: $(cat "$tmp/log")"
   [[ -f "$REPO_DIR/kept-1-1-x86_64.pkg.tar.zst" && -f "$REPO_DIR/kept-1-1-x86_64.pkg.tar.zst.sig" ]] || fail 'prune removed indexed package'
   [[ ! -e "$REPO_DIR/orphan-1-1-x86_64.pkg.tar.zst" && ! -e "$REPO_DIR/orphan-1-1-x86_64.pkg.tar.zst.sig" ]] || fail 'prune did not remove orphan'
   [[ -f "$tmp/paccache-called" ]] || fail 'paccache not called on success'
-  echo 'PASS prune (listing failure, extraction failure, successful pruning)'
+  for ver in 0 2 3; do
+    touch "$REPO_DIR/kept-${ver}-1-x86_64.pkg.tar.zst" "$REPO_DIR/kept-${ver}-1-x86_64.pkg.tar.zst.sig"
+  done
+
+  BSDTAR_MODE=ok usage_dry_run=true bash "$root/.mise/tasks/repo/prune" >"$tmp/log" 2>&1 || fail 'prune dry-run failed'
+  grep -q 'kept-0-1-x86_64.pkg.tar.zst' "$tmp/log" || fail 'old archive missing from dry-run'
+  ! grep -q 'kept-1-1-x86_64.pkg.tar.zst' "$tmp/log" || fail 'published archive listed for deletion'
+  [[ -f "$REPO_DIR/kept-0-1-x86_64.pkg.tar.zst" ]] || fail 'dry-run deleted archive'
+
+  BSDTAR_MODE=ok bash "$root/.mise/tasks/repo/prune" >"$tmp/log" 2>&1 || fail 'version retention prune failed'
+  [[ ! -e "$REPO_DIR/kept-0-1-x86_64.pkg.tar.zst" && ! -e "$REPO_DIR/kept-0-1-x86_64.pkg.tar.zst.sig" ]] || fail 'old unindexed version not removed'
+  for ver in 1 2 3; do
+    [[ -f "$REPO_DIR/kept-${ver}-1-x86_64.pkg.tar.zst" && -f "$REPO_DIR/kept-${ver}-1-x86_64.pkg.tar.zst.sig" ]] || fail "published or newer archive deleted: $ver"
+  done
+  echo 'PASS prune (reader failures, published version retained, old archive deleted, dry-run)'
 )
 
 

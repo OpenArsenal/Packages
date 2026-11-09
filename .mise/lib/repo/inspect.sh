@@ -56,7 +56,7 @@ repo::db_records() {
   (( ${#entries[@]} > 0 )) || return 0
 
   # Extract all desc members in one bsdtar invocation. Emit compact records:
-  # P <name> <version> for packages and R <provide> for provides entries.
+  # P <name> <version>, R <provide>, and F <archive filename>.
   contents="$(bsdtar -xOf "$repo_db" "${entries[@]}" 2>/dev/null)" || return 1
   awk '
       function flush_package() {
@@ -83,6 +83,11 @@ repo::db_records() {
         next
       }
 
+      $0 == "%FILENAME%" {
+        mode = "filename"
+        next
+      }
+
       /^%.*%$/ {
         mode = ""
         next
@@ -103,6 +108,12 @@ repo::db_records() {
 
       mode == "version" {
         version = $0
+        mode = ""
+        next
+      }
+
+      mode == "filename" {
+        printf "F\t%s\n", $0
         mode = ""
         next
       }
