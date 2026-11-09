@@ -31,7 +31,7 @@ pkg::index_register() {
 
 pkg::index_packages() {
   local packages_dir="$1"
-  local pkg_dir name raw provide_name provide_op provide_ver
+  local pkg_dir name raw provide_name provide_op provide_ver pkgbase outputs provides
 
   pkg::resolver_reset
   shopt -s nullglob
@@ -39,7 +39,7 @@ pkg::index_packages() {
   # Repository directory names are explicit identities and always win.
   for pkg_dir in "$packages_dir"/*; do
     [[ -f "$pkg_dir/PKGBUILD" ]] || continue
-    pkg::cache_srcinfo "$pkg_dir" || return
+    pkg::cache_srcinfo "$pkg_dir" || { shopt -u nullglob; return 1; }
     pkg::index_register "${pkg_dir##*/}" "$pkg_dir" true
   done
 
@@ -47,16 +47,32 @@ pkg::index_packages() {
   for pkg_dir in "$packages_dir"/*; do
     [[ -f "$pkg_dir/PKGBUILD" ]] || continue
 
-    pkg::index_register "$(pkg::metadata_pkgbase "$pkg_dir")" "$pkg_dir"
+    pkgbase="$(pkg::metadata_pkgbase "$pkg_dir")" || {
+      echo "error: unable to read pkgbase for: $pkg_dir" >&2
+      shopt -u nullglob
+      return 1
+    }
+    outputs="$(pkg::metadata_outputs "$pkg_dir")" || {
+      echo "error: unable to list package outputs for: $pkg_dir" >&2
+      shopt -u nullglob
+      return 1
+    }
 
+    pkg::index_register "$pkgbase" "$pkg_dir"
     while IFS= read -r name; do
       pkg::index_register "$name" "$pkg_dir"
-    done < <(pkg::metadata_outputs "$pkg_dir")
+    done <<<"$outputs"
   done
 
   # provides= entries are lowest-priority aliases.
   for pkg_dir in "$packages_dir"/*; do
     [[ -f "$pkg_dir/PKGBUILD" ]] || continue
+
+    provides="$(pkg::metadata_provides "$pkg_dir")" || {
+      echo "error: unable to list package providers for: $pkg_dir" >&2
+      shopt -u nullglob
+      return 1
+    }
 
     while IFS= read -r raw; do
       provide_name=""
@@ -64,7 +80,7 @@ pkg::index_packages() {
       provide_ver=""
       spec::parse "$raw" provide_name provide_op provide_ver
       pkg::index_register "$provide_name" "$pkg_dir"
-    done < <(pkg::metadata_provides "$pkg_dir")
+    done <<<"$provides"
   done
 
   shopt -u nullglob
@@ -132,25 +148,39 @@ pkg::find_local_provider() {
 
 pkg::all_outputs_in_repo() {
   local pkg_dir="$1"
-  local version output
+  local version output outputs
   local found=false
 
-  version="$(pkg::metadata_version "$pkg_dir")" || return 1
+  version="$(pkg::metadata_version "$pkg_dir")" || {
+    echo "error: unable to determine package version for: $pkg_dir" >&2
+    return 2
+  }
+  outputs="$(pkg::metadata_outputs "$pkg_dir")" || {
+    echo "error: unable to list package outputs for: $pkg_dir" >&2
+    return 2
+  }
 
   while IFS= read -r output; do
     [[ -n "$output" ]] || continue
     found=true
     repo::is_dep_satisfied "$REPO_DIR" "$output" ">=" "$version" || return 1
-  done < <(pkg::metadata_outputs "$pkg_dir")
+  done <<<"$outputs"
 
-  [[ "$found" == true ]]
+  if [[ "$found" != true ]]; then
+    echo "error: package declares no outputs: $pkg_dir" >&2
+    return 2
+  fi
 }
 
 pkg::plan_deps() {
   local pkg_dir="$1"
   local pkg_label="$2"
-  local raw dep op ver provider_dir
+  local raw dep op ver provider_dir dependencies
 
+  dependencies="$(pkg::metadata_deps "$pkg_dir")" || {
+    echo "error: unable to list dependencies for: $pkg_label" >&2
+    return 1
+  }
   while IFS= read -r raw; do
     [[ -n "$raw" ]] || continue
 
@@ -188,7 +218,7 @@ pkg::plan_deps() {
 
     echo "error: unresolved dependency for $pkg_label: $raw" >&2
     return 1
-  done < <(pkg::metadata_deps "$pkg_dir")
+  done <<<"$dependencies"
 }
 
 pkg::plan_dir() {
@@ -214,9 +244,17 @@ pkg::plan_dir() {
 
   PKG_STATE["$key"]="visiting"
 
-  if [[ "${PKG_FORCE_DIR[$key]-false}" != "true" ]] && pkg::all_outputs_in_repo "$pkg_dir"; then
-    PKG_STATE["$key"]="satisfied"
-    return 0
+  if [[ "${PKG_FORCE_DIR[$key]-false}" != "true" ]]; then
+    if pkg::all_outputs_in_repo "$pkg_dir"; then
+      PKG_STATE["$key"]="satisfied"
+      return 0
+    else
+      local rc=$?
+      if (( rc != 1 )); then
+        unset "PKG_STATE[$key]"
+        return "$rc"
+      fi
+    fi
   fi
 
   if ! pkg::plan_deps "$pkg_dir" "$key"; then
