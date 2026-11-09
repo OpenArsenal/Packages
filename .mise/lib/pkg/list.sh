@@ -4,19 +4,29 @@ pkg::load_requested() {
   local packages_file="$1"
   local outvar_name="$2"
   local -n outvar="$outvar_name"
+  local entries
 
   [[ -f "$packages_file" ]] || {
     outvar=()
     return 0
   }
 
-  mapfile -t outvar < <(
+  # A process substitution would hide a failed sed/awk and could accept a
+  # truncated package selection. Collect and check before modifying outvar.
+  entries="$(
+    set -o pipefail
     sed -e 's/\r$//' \
         -e 's/#.*$//' \
         -e 's/^[[:space:]]*//' \
         -e 's/[[:space:]]*$//' "$packages_file" |
       awk 'NF'
-  )
+  )" || {
+    echo "error: unable to read package selection: $packages_file" >&2
+    return 1
+  }
+
+  outvar=()
+  [[ -z "$entries" ]] || mapfile -t outvar <<<"$entries"
 }
 
 pkg::pacman_info_value() {
@@ -64,7 +74,7 @@ pkg::installed_selected() {
   declare -A repo_installed=()
   declare -A selected_dirs=()
 
-  local name pkg_dir output candidate candidates exact_dir
+  local name pkg_dir output outputs candidate candidates exact_dir
   local installed_packager repo_packager
   local covered installed_names
 
@@ -81,13 +91,23 @@ pkg::installed_selected() {
 
   for pkg_dir in "$packages_dir"/*; do
     [[ -f "$pkg_dir/PKGBUILD" ]] || continue
-    pkg::cache_srcinfo "$pkg_dir" || return
+    pkg::cache_srcinfo "$pkg_dir" || { shopt -u nullglob; return 1; }
+    outputs="$(pkg::metadata_outputs "$pkg_dir")" || {
+      echo "error: unable to read package outputs: $pkg_dir" >&2
+      shopt -u nullglob
+      return 1
+    }
+    if [[ -z "$outputs" ]]; then
+      echo "error: no package outputs declared: $pkg_dir" >&2
+      shopt -u nullglob
+      return 1
+    fi
 
     while IFS= read -r output; do
       [[ -n "$output" ]] || continue
       output_dirs["$output"]+=" $pkg_dir"
       (( output_count["$output"] += 1 ))
-    done < <(pkg::metadata_outputs "$pkg_dir")
+    done <<<"$outputs"
   done
 
   for output in "${!output_dirs[@]}"; do
