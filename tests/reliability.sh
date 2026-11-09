@@ -960,11 +960,62 @@ chroot_setup_failures() (
   echo 'PASS chroot_setup_failures (configuration errors stop later builds)'
 )
 
+
+published_incompatible_provider() (
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  export PKGBUILDS_ROOT="$root" REPO_DIR="$tmp/repo" REPO_DB="$tmp/missing.db"
+  mkdir -p "$REPO_DIR" "$tmp/packages"
+  source "$root/.mise/lib/repo.sh"
+  source "$root/.mise/lib/pkg.sh"
+
+  mkdir -p "$tmp/packages/foo" "$tmp/packages/app"
+  touch "$tmp/packages/foo/PKGBUILD" "$tmp/packages/app/PKGBUILD"
+  printf 'pkgbase = foo\n\tpkgver = 1\n\tpkgrel = 1\n\npkgname = foo\n' >"$tmp/packages/foo/.SRCINFO"
+  printf 'pkgbase = app\n\tpkgver = 1\n\tpkgrel = 1\n\tdepends = foo<2\n\npkgname = app\n' >"$tmp/packages/app/.SRCINFO"
+
+  # Model the real repository index with a newer but incompatible foo 3-1.
+  # Compare numeric fixture versions, not Arch's implementation of vercmp.
+  vercmp() {
+    local a="${1%%-*}" b="${2%%-*}"
+    [[ "$a" =~ ^[0-9]+$ && "$b" =~ ^[0-9]+$ ]] || return 47
+    if (( a < b )); then printf '%s\n' -1
+    elif (( a > b )); then printf '%s\n' 1
+    else printf '%s\n' 0; fi
+  }
+  pkg::pacman_can_resolve() { return 1; }
+  repo::index_reset
+  REPO_INDEX_DIR="$REPO_DIR"
+  REPO_PACKAGE_VERSION[foo]='3-1'
+
+  pkg::plan_selected "$tmp/packages" false app >"$tmp/log" 2>&1 ||
+    fail "compatible foo 1 recipe rejected: $(cat "$tmp/log")"
+  [[ "${PKG_PLAN[*]}" == "$tmp/packages/foo $tmp/packages/app" ]] ||
+    fail "foo 1 must be built before app requiring foo<2: ${PKG_PLAN[*]}"
+
+  # If foo was selected and skipped first, the later constraint must promote
+  # that already-visited recipe into the build plan before the application.
+  pkg::plan_selected "$tmp/packages" false foo app >"$tmp/log" 2>&1 ||
+    fail "compatible foo 1 recipe rejected after earlier selection: $(cat "$tmp/log")"
+  [[ "${PKG_PLAN[*]}" == "$tmp/packages/foo $tmp/packages/app" ]] ||
+    fail "skipped foo was not restored to the plan: ${PKG_PLAN[*]}"
+
+  # Do not rebuild foo when the repository already satisfies the constraint.
+  REPO_PACKAGE_VERSION[foo]='1-1'
+  pkg::plan_selected "$tmp/packages" false app >"$tmp/log" 2>&1 ||
+    fail "compatible published foo 1 was not accepted: $(cat "$tmp/log")"
+  [[ "${PKG_PLAN[*]}" == "$tmp/packages/app" ]] ||
+    fail "published compatible foo 1 was unnecessarily rebuilt: ${PKG_PLAN[*]}"
+
+  echo 'PASS published_incompatible_provider (upper bound forces local build, including earlier skipped selection)'
+)
+
 case "${1:-all}" in
   select_installed) select_installed ;;
   provider_versions) provider_versions ;;
   deps) deps ;;
   versioned_local_providers) versioned_local_providers ;;
+  published_incompatible_provider) published_incompatible_provider ;;
   archive_metadata_failures) archive_metadata_failures ;;
   exact_archive_scan_failures) exact_archive_scan_failures ;;
   partial_package_outputs) partial_package_outputs ;;
@@ -982,6 +1033,6 @@ case "${1:-all}" in
   metadata) metadata ;;
   publish) publish ;;
   build) build ;;
-  all) deps; versioned_local_providers; archive_metadata_failures; exact_archive_scan_failures; partial_package_outputs; chroot_setup_failures; planner_failures; archive_selection_errors; archive_enumeration_failure; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases; strict_skipped; srcinfo_consistency; onepassword_update; provider_versions; select_installed ;;
+  all) deps; versioned_local_providers; published_incompatible_provider; archive_metadata_failures; exact_archive_scan_failures; partial_package_outputs; chroot_setup_failures; planner_failures; archive_selection_errors; archive_enumeration_failure; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases; strict_skipped; srcinfo_consistency; onepassword_update; provider_versions; select_installed ;;
   *) fail "unknown test: $1" ;;
 esac
