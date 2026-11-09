@@ -83,13 +83,20 @@ pkg::build_dir() {
 pkg::publish_outputs() {
   local pkg_dir="$1"
   local marker="${2:-}"
-  local output matched archive
+  local output matched archive outputs
   local -a archives=()
   local -a matches=()
   local found=false
 
   [[ -f "$marker" ]] || {
     echo "error: missing build marker for: ${pkg_dir##*/}" >&2
+    return 1
+  }
+
+  # A process substitution hides the producer's exit status. Abort before
+  # publication if output metadata generation or parsing fails.
+  outputs="$(pkg::metadata_outputs "$pkg_dir")" || {
+    echo "error: unable to read package outputs for: ${pkg_dir##*/}" >&2
     return 1
   }
 
@@ -122,7 +129,7 @@ pkg::publish_outputs() {
 
     echo "==> Publishing: $output" >&2
     archives+=("${matches[0]}")
-  done < <(pkg::metadata_outputs "$pkg_dir")
+  done <<<"$outputs"
 
   [[ "$found" == "true" ]] || {
     echo "error: no package outputs declared for: ${pkg_dir##*/}" >&2
