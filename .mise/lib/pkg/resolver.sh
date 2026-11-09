@@ -1,12 +1,14 @@
 # shellcheck shell=bash
 
 declare -Ag PKG_PROVIDER_DIR=()
+declare -Ag PKG_PROVIDER_CANDIDATES=()
 declare -Ag PKG_STATE=()
 declare -Ag PKG_FORCE_DIR=()
 declare -ag PKG_PLAN=()
 
 pkg::resolver_reset() {
   PKG_PROVIDER_DIR=()
+  PKG_PROVIDER_CANDIDATES=()
   PKG_STATE=()
   PKG_FORCE_DIR=()
   PKG_PLAN=()
@@ -22,6 +24,9 @@ pkg::index_register() {
   if [[ "$overwrite" == "true" || -z "${PKG_PROVIDER_DIR[$name]+x}" ]]; then
     PKG_PROVIDER_DIR["$name"]="$pkg_dir"
   fi
+
+  # Collect every candidate while preserving single-provider identity precedence.
+  PKG_PROVIDER_CANDIDATES["$name"]+="${pkg_dir}"$'\n'
 }
 
 pkg::index_packages() {
@@ -77,6 +82,54 @@ pkg::dir_outputs_name() {
   return 1
 }
 
+# A versioned dependency is satisfied locally only by a real package output or
+# an explicitly versioned provides= entry that meets the constraint.
+pkg::provider_matches_version() {
+  local pkg_dir="$1" wanted="$2" op="$3" ver="$4"
+  local actual raw provide_name provide_op provide_ver
+
+  if pkg::dir_outputs_name "$pkg_dir" "$wanted"; then
+    actual="$(pkg::metadata_version "$pkg_dir")" || return 1
+    if repo::version_satisfies "$actual" "$op" "$ver"; then
+      return 0
+    fi
+  fi
+
+  while IFS= read -r raw; do
+    provide_name=""
+    provide_op=""
+    provide_ver=""
+    spec::parse "$raw" provide_name provide_op provide_ver
+    if [[ "$provide_name" == "$wanted" && "$provide_op" == '=' && -n "$provide_ver" ]] &&
+      repo::version_satisfies "$provide_ver" "$op" "$ver"; then
+      return 0
+    fi
+  done < <(pkg::metadata_provides "$pkg_dir")
+
+  return 1
+}
+
+pkg::find_local_provider() {
+  local dep="$1" op="$2" ver="$3" candidate
+
+  if [[ -z "$op" || -z "$ver" ]]; then
+    candidate="${PKG_PROVIDER_DIR[$dep]-}"
+    [[ -n "$candidate" ]] || return 1
+    printf '%s\n' "$candidate"
+    return 0
+  fi
+
+  while IFS= read -r candidate; do
+    [[ -n "$candidate" ]] || continue
+    if pkg::provider_matches_version "$candidate" "$dep" "$op" "$ver"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done <<<"${PKG_PROVIDER_CANDIDATES[$dep]-}"
+
+  return 1
+}
+
 pkg::all_outputs_in_repo() {
   local pkg_dir="$1"
   local version output
@@ -115,7 +168,7 @@ pkg::plan_deps() {
       continue
     fi
 
-    provider_dir="${PKG_PROVIDER_DIR[$dep]-}"
+    provider_dir="$(pkg::find_local_provider "$dep" "$op" "$ver")" || provider_dir=""
     if [[ -n "$provider_dir" ]]; then
       if [[ "$provider_dir" == "$pkg_dir" ]]; then
         continue

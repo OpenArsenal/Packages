@@ -756,10 +756,107 @@ archive_enumeration_failure() (
   echo 'PASS archive_enumeration_failure (partial scan aborts; successful scan publishes)'
 )
 
+
+versioned_local_providers() (
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  export PKGBUILDS_ROOT="$root" REPO_DIR="$tmp/repo" REPO_DB="$tmp/missing.db"
+  mkdir -p "$REPO_DIR" "$tmp/packages"
+  source "$root/.mise/lib/repo.sh"
+  source "$root/.mise/lib/pkg.sh"
+
+  recipe() {
+    local name="$1" dependency="${2:-}" provided="${3:-}"
+    local dir="$tmp/packages/$name"
+    mkdir -p "$dir"
+    touch "$dir/PKGBUILD"
+    printf 'pkgbase = %s\n\tpkgver = 1\n\tpkgrel = 1\n\npkgname = %s\n' \
+      "$name" "$name" >"$dir/.SRCINFO"
+    [[ -z "$dependency" ]] || printf '\tdepends = %s\n' "$dependency" >>"$dir/.SRCINFO"
+    [[ -z "$provided" ]] || printf '\tprovides = %s\n' "$provided" >>"$dir/.SRCINFO"
+  }
+
+  recipe consumer 'shared>=2'
+  recipe impossible 'shared>=3'
+  recipe provider-one '' 'shared=1'
+  recipe provider-two '' 'shared=2'
+  recipe provider-unversioned '' shared
+
+  vercmp() {
+    local a="$1" b="$2"
+    [[ "$a" =~ ^[0-9]+$ && "$b" =~ ^[0-9]+$ ]] || return 48
+    if (( a < b )); then printf '%s\n' -1
+    elif (( a > b )); then printf '%s\n' 1
+    else printf '%s\n' 0; fi
+  }
+  repo::is_dep_satisfied() { return 1; }
+  pkg::pacman_can_resolve() { return 1; }
+
+  pkg::plan_selected "$tmp/packages" false consumer >"$tmp/log" 2>&1 ||
+    fail "compatible local provider was rejected: $(cat "$tmp/log")"
+  [[ "${PKG_PLAN[*]}" == "$tmp/packages/provider-two $tmp/packages/consumer" ]] ||
+    fail "versioned dependency selected wrong provider: ${PKG_PLAN[*]}"
+
+  if pkg::plan_selected "$tmp/packages" false impossible >"$tmp/log" 2>&1; then
+    fail 'incompatible local provider satisfied a versioned dependency'
+  fi
+  grep -q 'unresolved dependency' "$tmp/log" ||
+    fail 'missing diagnostic for incompatible local provider'
+  echo 'PASS versioned_local_providers (compatible alias selected, incompatible rejected)'
+)
+
+archive_metadata_failures() (
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  source "$root/.mise/lib/repo/update.sh"
+
+  repo::match_package_archives() {
+    printf '%s\n' "$tmp/demo-1.pkg.tar.zst" "$tmp/demo-2.pkg.tar.zst"
+  }
+  pacman() {
+    [[ "$1" == -Qp && "$2" == -- ]] || return 2
+    case "${3##*/}" in
+      demo-1.pkg.tar.zst) printf 'demo 1-1\n' ;;
+      demo-2.pkg.tar.zst)
+        case "${META_MODE:-ok}" in
+          unreadable) return 45 ;;
+          malformed) printf 'demo\n' ;;
+          ok) printf 'demo 2-1\n' ;;
+        esac
+        ;;
+      *) return 3 ;;
+    esac
+  }
+  vercmp() {
+    [[ "$1:$2" == '2-1:1-1' ]] || return 47
+    printf '1\n'
+  }
+  repo::add_archives() {
+    printf '%s\n' "${@:5}" >"$tmp/published"
+  }
+
+  local mode
+  for mode in unreadable malformed; do
+    rm -f -- "$tmp/published"
+    if META_MODE="$mode" repo::update_db "$tmp" "$tmp/db" "" false false false false >"$tmp/log" 2>&1; then
+      fail "repository update accepted $mode package metadata"
+    fi
+    [[ ! -e "$tmp/published" ]] || fail "repository published a partial set after $mode metadata"
+  done
+
+  META_MODE=ok repo::update_db "$tmp" "$tmp/db" "" false false false false >"$tmp/log" 2>&1 ||
+    fail "valid package metadata rejected: $(cat "$tmp/log")"
+  [[ "$(cat "$tmp/published")" == "$tmp/demo-2.pkg.tar.zst" ]] ||
+    fail 'valid newest package was not selected'
+  echo 'PASS archive_metadata_failures (unreadable metadata blocks publication)'
+)
+
 case "${1:-all}" in
   select_installed) select_installed ;;
   provider_versions) provider_versions ;;
   deps) deps ;;
+  versioned_local_providers) versioned_local_providers ;;
+  archive_metadata_failures) archive_metadata_failures ;;
   planner_failures) planner_failures ;;
   archive_selection_errors) archive_selection_errors ;;
   archive_enumeration_failure) archive_enumeration_failure ;;
@@ -773,6 +870,6 @@ case "${1:-all}" in
   metadata) metadata ;;
   publish) publish ;;
   build) build ;;
-  all) deps; planner_failures; archive_selection_errors; archive_enumeration_failure; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases; strict_skipped; srcinfo_consistency; onepassword_update; provider_versions; select_installed ;;
+  all) deps; versioned_local_providers; archive_metadata_failures; planner_failures; archive_selection_errors; archive_enumeration_failure; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases; strict_skipped; srcinfo_consistency; onepassword_update; provider_versions; select_installed ;;
   *) fail "unknown test: $1" ;;
 esac
