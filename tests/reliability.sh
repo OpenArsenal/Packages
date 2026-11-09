@@ -1090,6 +1090,97 @@ planning_metadata_failures() (
   echo 'PASS planning_metadata_failures (incomplete output, provider and dependency metadata abort planning)'
 )
 
+
+metadata_cache_integrity() (
+  local tmp
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/pkg"
+  touch "$tmp/pkg/PKGBUILD"
+  source "$root/.mise/lib/pkg/metadata.sh"
+
+  makepkg() {
+    [[ "$1" == --printsrcinfo ]] || return 2
+    if [[ "${MAKEPKG_MODE:-ok}" == partial ]]; then
+      printf 'pkgbase = demo\n\tpkgver = 1\n\tdepends = incomplete>=1\n'
+      return 47
+    fi
+    printf 'pkgbase = demo\n\tpkgver = 2\n\tpkgrel = 1\n\npkgname = demo\n'
+  }
+
+  if MAKEPKG_MODE=partial pkg::cache_srcinfo "$tmp/pkg" >"$tmp/log" 2>&1; then
+    fail 'partial makepkg metadata was accepted'
+  fi
+  [[ -z "${PKG_SRCINFO_CACHE[$tmp/pkg]+x}" ]] ||
+    fail 'failed makepkg output poisoned the metadata cache'
+
+  MAKEPKG_MODE=ok pkg::cache_srcinfo "$tmp/pkg" ||
+    fail 'retry after failed metadata generation was rejected'
+  [[ "$(pkg::metadata_outputs "$tmp/pkg")" == demo ]] ||
+    fail 'retry did not load valid package name'
+  [[ "$(pkg::metadata_version "$tmp/pkg")" == 2-1 ]] ||
+    fail 'retry did not load valid package version'
+  [[ -z "$(pkg::metadata_deps "$tmp/pkg")" ]] ||
+    fail 'partial dependencies leaked into successful metadata cache'
+  echo 'PASS metadata cache (failed generation not cached; retry succeeds)'
+
+  # Model field readers that emit partial data and then fail. Later, valid
+  # fields must not erase the failure of an earlier dependency or provider.
+  pkg::metadata_values() {
+    local key="$2"
+    case "$key" in
+      depends) printf 'runtime>=1\n' ;;
+      makedepends) printf 'builder\n' ;;
+      provides) printf 'virtual=1\n' ;;
+      provides_x86_64) printf 'arch-virtual=1\n' ;;
+      pkgname) printf 'demo\n' ;;
+      pkgbase) printf 'demo\n' ;;
+      pkgver) printf '2\n' ;;
+      pkgrel) printf '1\n' ;;
+    esac
+    [[ "${FAILED_FIELD:-}" != "$key" ]] || return 48
+    return 0
+  }
+  export CARCH=x86_64
+
+  local field
+  for field in depends makedepends provides provides_x86_64 pkgname pkgbase pkgver pkgrel; do
+    case "$field" in
+      depends|makedepends)
+        if FAILED_FIELD="$field" pkg::metadata_deps "$tmp/pkg" >"$tmp/log"; then
+          fail "dependency reader ignored failed $field field"
+        fi
+        ;;
+      provides|provides_x86_64)
+        if FAILED_FIELD="$field" pkg::metadata_provides "$tmp/pkg" >"$tmp/log"; then
+          fail "provides reader ignored failed $field field"
+        fi
+        ;;
+      pkgname)
+        if FAILED_FIELD="$field" pkg::metadata_outputs "$tmp/pkg" >"$tmp/log"; then
+          fail 'output reader ignored failed pkgname field'
+        fi
+        ;;
+      pkgbase)
+        if FAILED_FIELD="$field" pkg::metadata_pkgbase "$tmp/pkg" >"$tmp/log"; then
+          fail 'pkgbase reader ignored failed pkgbase field'
+        fi
+        ;;
+      pkgver|pkgrel)
+        if FAILED_FIELD="$field" pkg::metadata_version "$tmp/pkg" >"$tmp/log"; then
+          fail "version reader ignored failed $field field"
+        fi
+        ;;
+    esac
+  done
+
+  [[ "$(FAILED_FIELD=none pkg::metadata_deps "$tmp/pkg")" == $'builder\nruntime>=1' ]] ||
+    fail 'valid dependency aggregation changed'
+  [[ "$(FAILED_FIELD=none pkg::metadata_provides "$tmp/pkg")" == $'arch-virtual=1\nvirtual=1' ]] ||
+    fail 'valid provider aggregation changed'
+  echo 'PASS metadata field reads (all reader failures propagate; valid aggregation preserved)'
+)
+
 case "${1:-all}" in
   select_installed) select_installed ;;
   provider_versions) provider_versions ;;
@@ -1112,8 +1203,9 @@ case "${1:-all}" in
   strict_skipped) strict_skipped ;;
   prune) prune ;;
   metadata) metadata ;;
+  metadata_cache_integrity) metadata_cache_integrity ;;
   publish) publish ;;
   build) build ;;
-  all) deps; planning_metadata_failures; versioned_local_providers; published_incompatible_provider; archive_metadata_failures; exact_archive_scan_failures; partial_package_outputs; chroot_setup_failures; planner_failures; archive_selection_errors; archive_enumeration_failure; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases; strict_skipped; srcinfo_consistency; onepassword_update; provider_versions; select_installed ;;
+  all) deps; metadata_cache_integrity; planning_metadata_failures; versioned_local_providers; published_incompatible_provider; archive_metadata_failures; exact_archive_scan_failures; partial_package_outputs; chroot_setup_failures; planner_failures; archive_selection_errors; archive_enumeration_failure; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases; strict_skipped; srcinfo_consistency; onepassword_update; provider_versions; select_installed ;;
   *) fail "unknown test: $1" ;;
 esac
