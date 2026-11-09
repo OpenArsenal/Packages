@@ -180,6 +180,9 @@ pkg::plan_selected() {
       ;;
   esac
 
+  # A failed repository index must not be mistaken for unsatisfied
+  # dependencies, causing builds to start against unreadable repository state.
+  repo::ensure_index "$REPO_DIR" || return 1
   pkg::index_packages "$packages_dir" || return 1
 
   # Resolve and mark every explicit selection before traversing dependencies.

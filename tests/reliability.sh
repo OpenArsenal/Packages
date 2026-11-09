@@ -612,8 +612,9 @@ MOCK
 planner_failures() (
   tmp="$(mktemp -d)"
   trap 'rm -rf -- "$tmp"' EXIT
-  export PKGBUILDS_ROOT="$root" REPO_DIR="$tmp/repo"
+  export PKGBUILDS_ROOT="$root" REPO_DIR="$tmp/repo" REPO_DB="$tmp/missing.db"
   mkdir -p "$REPO_DIR" "$tmp/packages"
+  source "$root/.mise/lib/repo.sh"
   source "$root/.mise/lib/pkg.sh"
 
   recipe() {
@@ -648,12 +649,26 @@ planner_failures() (
   grep -q 'dependency cycle detected' "$tmp/log" || fail 'cycle diagnostic disappeared'
   [[ ! -e "$tmp/build-ran" ]] || fail 'build started after a cycle'
 
+  # A broken database must stop the build before metadata/dependency fallback.
+  REPO_DB="$tmp/broken.db"
+  touch "$REPO_DB"
+  repo::index_reset
+  bsdtar() { return 47; }
+  if pkg::build_selected "$tmp/packages" false good >"$tmp/log" 2>&1; then
+    fail 'build proceeded after repository index read failed'
+  fi
+  grep -q 'unable to inspect repository database' "$tmp/log" ||
+    fail 'repository index failure diagnostic disappeared'
+  [[ ! -e "$tmp/build-ran" ]] || fail 'build started with unreadable repository index'
+
+  REPO_DB="$tmp/missing.db"
+  repo::index_reset
   pkg::cache_srcinfo() { return 47; }
   if pkg::build_selected "$tmp/packages" false good >"$tmp/log" 2>&1; then
     fail 'build proceeded after metadata indexing failed'
   fi
   [[ ! -e "$tmp/build-ran" ]] || fail 'build started after metadata indexing failed'
-  echo 'PASS planner_failures (unresolved deps, cycles, and metadata errors stop builds)'
+  echo 'PASS planner_failures (unresolved deps, cycles, and unreadable metadata or index stop builds)'
 )
 
 archive_selection_errors() (
@@ -707,12 +722,47 @@ archive_selection_errors() (
   echo 'PASS archive_selection_errors (newest archive and failed comparisons)'
 )
 
+
+archive_enumeration_failure() (
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  source "$root/.mise/lib/repo/update.sh"
+
+  repo::match_package_archives() {
+    printf '%s\n' "$tmp/demo-1.pkg.tar.zst"
+    [[ "${ENUM_MODE:-ok}" == ok ]] || return 47
+  }
+  repo::select_newest_archives() {
+    local outvar_name="$1"
+    shift
+    local -n outvar="$outvar_name"
+    outvar=("$@")
+  }
+  repo::add_archives() {
+    printf '%s\n' "${@:5}" >"$tmp/published"
+  }
+
+  if ENUM_MODE=partial repo::update_db "$tmp" "$tmp/db" "" false false false false >"$tmp/log" 2>&1; then
+    fail 'repository update accepted partially failed archive enumeration'
+  fi
+  [[ ! -e "$tmp/published" ]] || fail 'repository update published partial archive set'
+  grep -q 'unable to enumerate package archives' "$tmp/log" ||
+    fail 'archive enumeration failure diagnostic disappeared'
+
+  ENUM_MODE=ok repo::update_db "$tmp" "$tmp/db" "" false false false false >"$tmp/log" 2>&1 ||
+    fail "successful archive enumeration was rejected: $(cat "$tmp/log")"
+  [[ "$(cat "$tmp/published")" == "$tmp/demo-1.pkg.tar.zst" ]] ||
+    fail 'successful archive enumeration was not published'
+  echo 'PASS archive_enumeration_failure (partial scan aborts; successful scan publishes)'
+)
+
 case "${1:-all}" in
   select_installed) select_installed ;;
   provider_versions) provider_versions ;;
   deps) deps ;;
   planner_failures) planner_failures ;;
   archive_selection_errors) archive_selection_errors ;;
+  archive_enumeration_failure) archive_enumeration_failure ;;
   clean_sources) clean_sources ;;
   clean_db) clean_db ;;
   electron_aliases) electron_aliases ;;
@@ -723,6 +773,6 @@ case "${1:-all}" in
   metadata) metadata ;;
   publish) publish ;;
   build) build ;;
-  all) deps; planner_failures; archive_selection_errors; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases; strict_skipped; srcinfo_consistency; onepassword_update; provider_versions; select_installed ;;
+  all) deps; planner_failures; archive_selection_errors; archive_enumeration_failure; clean_sources; clean_db; prune; metadata; publish; build; electron_aliases; strict_skipped; srcinfo_consistency; onepassword_update; provider_versions; select_installed ;;
   *) fail "unknown test: $1" ;;
 esac
