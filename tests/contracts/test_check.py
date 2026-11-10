@@ -80,6 +80,66 @@ class LauncherContractsTest(unittest.TestCase):
                 errors,
             )
 
+    def test_unquoted_cli_arguments_are_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            directory = root / "packages" / "demo"
+            directory.mkdir(parents=True)
+            wrapper = directory / "demo-flags-wrapper.sh"
+            wrapper.write_text(
+                "#!/bin/bash\n"
+                'mapfile -t flags < "$XDG_CONFIG_HOME/demo.conf"\n'
+                'exec @DEMO_EXEC@ "${flags[@]}" $@\n',
+                encoding="utf-8",
+            )
+            spec = {
+                "adapter": "token", "script": wrapper.name,
+                "token": "@DEMO_EXEC@", "configs": ["demo.conf"],
+            }
+            errors = " ".join(launcher_contract(root, spec, "demo"))
+            self.assertIn("contract-cli-with-space", errors)
+
+    def test_strict_arguments_rejects_unexpected_extras(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            directory = root / "packages" / "demo"
+            directory.mkdir(parents=True)
+            wrapper = directory / "demo-flags-wrapper.sh"
+            wrapper.write_text(
+                "#!/bin/bash\n"
+                'mapfile -t flags < <(grep -v "^#" "$XDG_CONFIG_HOME/demo.conf")\n'
+                'exec @DEMO_EXEC@ "${flags[@]}" "$@" --unexpected\n',
+                encoding="utf-8",
+            )
+            spec = {
+                "adapter": "token", "script": wrapper.name,
+                "token": "@DEMO_EXEC@", "configs": ["demo.conf"],
+                "strict_arguments": True,
+            }
+            errors = " ".join(launcher_contract(root, spec, "demo"))
+            self.assertIn("unexpected extra arguments", errors)
+
+    def test_unterminated_config_line_is_tested_when_required(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            directory = root / "packages" / "demo"
+            directory.mkdir(parents=True)
+            wrapper = directory / "demo-flags-wrapper.sh"
+            wrapper.write_text(
+                "#!/bin/bash\n"
+                'flags=()\n'
+                'while IFS= read -r line; do flags+=("$line"); done < "$XDG_CONFIG_HOME/demo.conf"\n'
+                'exec @DEMO_EXEC@ "${flags[@]}" "$@"\n',
+                encoding="utf-8",
+            )
+            spec = {
+                "adapter": "token", "script": wrapper.name,
+                "token": "@DEMO_EXEC@", "configs": ["demo.conf"],
+                "unterminated_last_config": True,
+            }
+            errors = " ".join(launcher_contract(root, spec, "demo"))
+            self.assertIn("contract-config-0", errors)
+
     def test_new_wrapper_requires_explicit_manifest_entry(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
