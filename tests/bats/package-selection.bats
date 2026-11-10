@@ -198,3 +198,61 @@ MOCK
     fail "valid exact-name provider was not preferred: ${selected[*]}"
   )
 }
+
+@test "Installed selection preserves candidate paths under source roots containing spaces" {
+  (
+  local tmp packages
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  packages="$tmp/source tree"
+  mkdir -p "$packages/alternate" "$packages/shared" "$tmp/bin"
+  touch "$packages/alternate/PKGBUILD" "$packages/shared/PKGBUILD"
+
+  # alternate provides both installed outputs; shared is an overlapping
+  # alternative. With a space in the source root, whitespace-split candidate
+  # paths failed to recognize that alternate already covered 'shared'.
+  printf 'pkgbase = alternate\n\tpkgname = exclusive\n\tpkgname = shared\n' \
+    >"$packages/alternate/.SRCINFO"
+  printf 'pkgbase = shared\n\tpkgname = shared\n' \
+    >"$packages/shared/.SRCINFO"
+
+  cat >"$tmp/bin/pacman" <<'MOCK'
+#!/usr/bin/env bash
+case "$1" in
+  -Sl) exit 0 ;;
+  -Qq) printf '%s\n' "$PACMAN_INSTALLED" ;;
+  -Qi|-Si) printf 'Packager : Fixture Packager\n' ;;
+  *) exit 2 ;;
+esac
+MOCK
+  chmod +x "$tmp/bin/pacman"
+  export PKGBUILDS_ROOT="$root" PACKAGES_DIR="$packages"
+  export PACKAGES_FILE="$tmp/saved selection" REPO_NAME=test PATH="$tmp/bin:$PATH"
+  export PACMAN_INSTALLED=$'exclusive\nshared'
+  printf 'original\n' >"$PACKAGES_FILE"
+
+  usage_dry_run=true bash "$root/.mise/tasks/pkg/select-installed" >"$tmp/dry-run" 2>"$tmp/log" ||
+    fail "spaced-root dry-run failed: $(cat "$tmp/log")"
+  [[ "$(cat "$tmp/dry-run")" == alternate ]] ||
+    fail "spaced-root dry-run selected an extra recipe: $(cat "$tmp/dry-run")"
+  [[ "$(cat "$PACKAGES_FILE")" == original ]] ||
+    fail 'spaced-root dry-run changed the saved selection'
+  ! grep -q 'ambiguous installed package' "$tmp/log" ||
+    fail 'already-covered output was reported ambiguous'
+
+  bash "$root/.mise/tasks/pkg/select-installed" >"$tmp/log" 2>&1 ||
+    fail "spaced-root saved selection failed: $(cat "$tmp/log")"
+  [[ "$(cat "$PACKAGES_FILE")" == alternate ]] ||
+    fail "spaced-root saved selection included an unwanted provider: $(cat "$PACKAGES_FILE")"
+  grep -Fq 'Wrote 1 package(s)' "$tmp/log" ||
+    fail 'selection reported the wrong number of recipes'
+
+  # Without the unique output, the direct matching provider is preferred,
+  # but only because its directory is a full-path match to the output.
+  PACMAN_INSTALLED=shared usage_dry_run=true \
+    bash "$root/.mise/tasks/pkg/select-installed" >"$tmp/dry-run" 2>"$tmp/log" ||
+    fail "spaced-root exact match failed: $(cat "$tmp/log")"
+  [[ "$(cat "$tmp/dry-run")" == shared ]] ||
+    fail "spaced-root exact match selected the wrong provider: $(cat "$tmp/dry-run")"
+  )
+}
