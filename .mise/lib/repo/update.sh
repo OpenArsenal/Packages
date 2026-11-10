@@ -82,8 +82,8 @@ repo::match_package_archives() {
 repo::select_newest_archives() {
   local outvar_name="$1"
   shift
-  local -n outvar="$outvar_name"
-  outvar=()
+  local -n newest_archives_ref="$outvar_name"
+  newest_archives_ref=()
 
   declare -A newest_file=()
   declare -A newest_ver=()
@@ -129,7 +129,7 @@ repo::select_newest_archives() {
   done
 
   [[ "${#newest_file[@]}" -gt 0 ]] || {
-    outvar=()
+    newest_archives_ref=()
     return 1
   }
 
@@ -138,9 +138,9 @@ repo::select_newest_archives() {
     printf '%s\n' "${!newest_file[@]}" | sort
   )
 
-  outvar=()
+  newest_archives_ref=()
   for pkg_name in "${pkg_names[@]}"; do
-    outvar+=("${newest_file[$pkg_name]}")
+    newest_archives_ref+=("${newest_file[$pkg_name]}")
   done
 }
 
