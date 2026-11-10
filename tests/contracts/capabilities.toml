@@ -168,6 +168,13 @@ tests = ["Flutter artifact updater rejects missing or failed metadata without ch
 
 [[behaviors]]
 capability = "updater-fail-closed"
+packages = ["google-chrome-ffmpeg", "google-chrome-canary-ffmpeg"]
+entrypoints = ["update-chrome-ref.sh"]
+suite = "tests/packages/chrome.bats"
+tests = ["Chrome FFmpeg updaters preserve recipes on failed metadata and update valid revisions"]
+
+[[behaviors]]
+capability = "updater-fail-closed"
 packages = ["chromium-ffmpeg", "vivaldi-ffmpeg"]
 entrypoints = ["update-ffmpeg-ref.sh"]
 suite = "tests/packages/ffmpeg.bats"
