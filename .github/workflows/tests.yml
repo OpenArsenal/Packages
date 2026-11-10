@@ -10,6 +10,7 @@ permissions:
 
 jobs:
   tests:
+    name: Shared workflow tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,5 +25,15 @@ jobs:
         run: python3 tests/check-local-source-checksums.py
       - name: Unit tests
         run: mise run test:unit
-      - name: Workflow integration tests (mocked external tools)
+      - name: Shared workflow integration tests (mocked external tools)
         run: mise run test:integration
+
+  package-tests:
+    name: Package-specific Bats suites
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned bats-core with mise
+        uses: jdx/mise-action@v5
+      - name: Package-specific integration tests
+        run: mise run test:packages
