@@ -2,8 +2,8 @@
 #MISE description="Prune old versions and archives no longer indexed by the repository"
 #USAGE flag "-q --quiet" help="Do not print removed orphan archive names"
 #USAGE flag "-d --dry-run" help="Preview removals"
-#USAGE arg "-k --keep <count>" help="Versions to keep per indexed package" default="2"
-#USAGE arg "-a --min-atime <age>" help="Only remove old versions unused for this long" required=#false
+#USAGE flag "-k --keep <count>" help="Versions to keep per indexed package" default="2"
+#USAGE flag "-a --min-atime <age>" help="Only remove old versions unused for this long" required=#false
 
 source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
 source "${PKGBUILDS_ROOT}/.mise/lib/repo.sh"
