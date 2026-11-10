@@ -104,13 +104,24 @@ if [[ "${usage_apply:-false}" == "true" ]]; then
   for dir in "${package_dirs[@]}"; do
     if (
       cd "$dir" || exit 1
-      makepkg --printsrcinfo > .SRCINFO.tmp || exit 1
-      mv .SRCINFO.tmp .SRCINFO
+      # Generate beside the tracked metadata; don't truncate .SRCINFO until
+      # makepkg succeeds and its output has the required package fields.
+      srcinfo_tmp="$(mktemp .SRCINFO.tmp.XXXXXX)" || exit 1
+      trap 'rm -f -- "$srcinfo_tmp"' EXIT
+      makepkg --printsrcinfo >"$srcinfo_tmp" || exit 1
+      for field in pkgbase pkgver pkgrel pkgname; do
+        if ! grep -Eq "^[[:space:]]*${field} = [^[:space:]]+" "$srcinfo_tmp"; then
+          echo "error: invalid generated .SRCINFO (missing $field): ${dir##*/}" >&2
+          exit 1
+        fi
+      done
+      chmod 644 -- "$srcinfo_tmp" || exit 1
+      mv -f -- "$srcinfo_tmp" .SRCINFO || exit 1
+      trap - EXIT
     ); then
       :
     else
-      rm -f "$dir/.SRCINFO.tmp"
-      echo "error: failed to refresh .SRCINFO for: ${dir##*/}" >&2
+      echo "error: failed to refresh .SRCINFO for: ${dir##*/}; preserving existing metadata" >&2
       srcinfo_rc=1
     fi
   done
