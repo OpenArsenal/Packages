@@ -900,3 +900,106 @@ MOCK
     fail "compatible split recipe generated wrong plan: ${PKG_PLAN[*]}"
   )
 }
+
+@test "Build tasks validate and plan before invoking privileged setup" {
+  (
+  local tmp task rc
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/bin" "$tmp/packages with spaces/demo" "$tmp/repo"
+  export PKGBUILDS_ROOT="$root" PACKAGES_DIR="$tmp/packages with spaces"
+  export PACKAGES_FILE="$tmp/selected" REPO_DIR="$tmp/repo"
+  export REPO_DB="$REPO_DIR/test.db" CHROOT_DIR="$tmp/chroot"
+  export TEST_TMP="$tmp" PATH="$tmp/bin:$PATH"
+  touch "$PACKAGES_DIR/demo/PKGBUILD"
+  printf 'pkgbase = demo\n\tpkgver = 1\n\tpkgrel = 1\npkgname = demo\n' \
+    >"$PACKAGES_DIR/demo/.SRCINFO"
+
+  # The live mise scheduler processes #MISE depends before task execution.
+  # Enforce the removal of unconditional setup dependencies as part of the
+  # safety contract; direct Bash tests alone cannot observe scheduler edges.
+  for task in build build-selected; do
+    if grep -Eq '^#MISE[[:space:]]+depends=' "$root/.mise/tasks/pkg/$task"; then
+      fail "pkg:$task still schedules setup before selection validation"
+    fi
+  done
+
+  cat >"$tmp/bin/mise" <<'MOCK'
+#!/usr/bin/env bash
+[[ "$1" == run ]] || exit 80
+printf '%s\n' "$*" >>"$TEST_TMP/setup-calls"
+case "$2" in
+  repo:create) exit 0 ;;
+  chroot:create) exit 47 ;;
+  *) exit 81 ;;
+esac
+MOCK
+  cat >"$tmp/bin/bsdtar" <<'MOCK'
+#!/usr/bin/env bash
+case "$1" in
+  -tf) printf 'demo/desc\n' ;;
+  -xOf) printf '%%NAME%%\ndemo\n%%VERSION%%\n1-1\n%%FILENAME%%\ndemo-1-1-any.pkg.tar.zst\n' ;;
+  *) exit 82 ;;
+esac
+MOCK
+  cat >"$tmp/bin/vercmp" <<'MOCK'
+#!/usr/bin/env bash
+[[ "$1" == "$2" ]] || exit 83
+printf '0\n'
+MOCK
+  chmod +x "$tmp/bin/"*
+
+  : >"$PACKAGES_FILE"
+  if bash "$root/.mise/tasks/pkg/build-selected" >"$tmp/log" 2>&1; then
+    fail 'empty selection was accepted'
+  fi
+  [[ ! -e "$tmp/setup-calls" ]] || fail 'empty selection invoked setup'
+
+  printf 'missing-recipe\n' >"$PACKAGES_FILE"
+  if bash "$root/.mise/tasks/pkg/build-selected" >"$tmp/log" 2>&1; then
+    fail 'invalid selection was accepted'
+  fi
+  [[ ! -e "$tmp/setup-calls" ]] || fail 'invalid selected recipe invoked setup'
+
+  if usage_package=missing-recipe bash "$root/.mise/tasks/pkg/build" >"$tmp/log" 2>&1; then
+    fail 'invalid single package was accepted'
+  fi
+  [[ ! -e "$tmp/setup-calls" ]] || fail 'invalid single package invoked setup'
+
+  # When the requested output is already published, neither task should
+  # install repositories or provision a chroot.
+  printf 'demo\n' >"$PACKAGES_FILE"
+  touch "$REPO_DB"
+  bash "$root/.mise/tasks/pkg/build-selected" >"$tmp/log" 2>&1 ||
+    fail "no-work selected build failed: $(cat "$tmp/log")"
+  usage_package=demo bash "$root/.mise/tasks/pkg/build" >"$tmp/log" 2>&1 ||
+    fail "no-work single build failed: $(cat "$tmp/log")"
+  [[ ! -e "$tmp/setup-calls" ]] || fail 'up-to-date packages still triggered setup'
+  grep -Fq 'No packages need building.' "$tmp/log" ||
+    fail 'no-work build did not report that setup was skipped'
+
+  # The setup call order must be repo:create then chroot:create. The
+  # chroot mock deliberately fails, so no build or publication can begin.
+  rm -f "$REPO_DB"
+  for task in build build-selected; do
+    rm -f "$tmp/setup-calls"
+    if [[ "$task" == build ]]; then
+      if usage_package=demo bash "$root/.mise/tasks/pkg/build" >"$tmp/log" 2>&1; then
+        fail 'single-package build ignored setup failure'
+      else
+        rc=$?
+      fi
+    else
+      if bash "$root/.mise/tasks/pkg/build-selected" >"$tmp/log" 2>&1; then
+        fail 'selected build ignored setup failure'
+      else
+        rc=$?
+      fi
+    fi
+    [[ "$rc" -eq 47 ]] || fail "pkg:$task changed chroot setup failure status: $rc"
+    [[ -f "$tmp/setup-calls" ]] || fail "pkg:$task did not invoke setup"
+    [[ "$(cat "$tmp/setup-calls")" == $'run repo:create\nrun chroot:create' ]] ||
+      fail "pkg:$task did not provision repository before chroot: $(cat "$tmp/setup-calls")"
+  done
+  )
+}
