@@ -3,12 +3,16 @@
 declare -Ag REPO_PACKAGE_VERSION=()
 declare -Ag REPO_PROVIDE_VERSIONS=()
 declare -Ag REPO_PROVIDE_PRESENT=()
+# Each alias maps to "published package owner<TAB>provided version" records.
+# Ownership lets build planning exclude obsolete aliases when an owner is replaced.
+declare -Ag REPO_PROVIDE_OWNERS=()
 declare -g REPO_INDEX_DIR=""
 
 repo::index_reset() {
   REPO_PACKAGE_VERSION=()
   REPO_PROVIDE_VERSIONS=()
   REPO_PROVIDE_PRESENT=()
+  REPO_PROVIDE_OWNERS=()
   REPO_INDEX_DIR=""
 }
 
@@ -73,15 +77,20 @@ repo::db_records() {
   (( ${#entries[@]} > 0 )) || return 0
 
   # Extract all desc members in one bsdtar invocation. Emit compact records:
-  # P <name> <version>, R <provide>, and F <archive filename>.
+  # P <name> <version>, R <provide> <owning package>, and F <archive filename>.
   contents="$(bsdtar -xOf "$repo_db" "${entries[@]}" 2>/dev/null)" || return 1
   records="$(awk '
-      function flush_package() {
+      function flush_package(    count, lines, i) {
         if (name != "" && version != "") {
           printf "P\t%s\t%s\n", name, version
+          count = split(provided, lines, "\n")
+          for (i = 1; i <= count; i++) {
+            if (lines[i] != "") printf "R\t%s\t%s\n", lines[i], name
+          }
         }
         name = ""
         version = ""
+        provided = ""
       }
 
       $0 == "%NAME%" {
@@ -136,7 +145,7 @@ repo::db_records() {
       }
 
       mode == "provides" {
-        printf "R\t%s\n", $0
+        provided = provided $0 "\n"
       }
 
       END {
@@ -190,6 +199,11 @@ repo::index_build() {
       R)
         raw="$first"
         [[ -n "$raw" ]] || continue
+        [[ -n "$second" ]] || {
+          echo "error: published provider has no owning package: $raw" >&2
+          repo::index_reset
+          return 1
+        }
 
         provide_name=""
         provide_op=""
@@ -198,6 +212,7 @@ repo::index_build() {
         [[ -n "$provide_name" ]] || continue
 
         REPO_PROVIDE_PRESENT["$provide_name"]=1
+        REPO_PROVIDE_OWNERS["$provide_name"]+="$second"$'\t'"$provide_ver"$'\n'
         if [[ -n "$provide_ver" ]]; then
           REPO_PROVIDE_VERSIONS["$provide_name"]+="${provide_ver}"$'\n'
         fi
