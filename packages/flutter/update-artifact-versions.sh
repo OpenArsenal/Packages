@@ -1,24 +1,41 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
 makepkg -ofC
 
-readonly ENGINE_VERSION="$(cat src/flutter/bin/internal/engine.version)"
+# Read every value used by PKGBUILD before changing the recipe. In particular,
+# a readonly declaration with command substitution masks the command's status.
+ENGINE_VERSION="$(cat src/flutter/bin/internal/engine.version)" || {
+  echo "error: unable to read Flutter engine version" >&2
+  exit 1
+}
+MATERIAL_FONTS_VERSION="$(cat src/flutter/bin/internal/material_fonts.version | cut -d '/' -f4)" || {
+  echo "error: unable to read material fonts version" >&2
+  exit 1
+}
+GRADLE_WRAPPER_VERSION="$(cat src/flutter/bin/internal/gradle_wrapper.version | cut -d '/' -f3)" || {
+  echo "error: unable to read Gradle wrapper version" >&2
+  exit 1
+}
+SDK_VERSION="$(cat src/dart/dart-sdk/version)" || {
+  echo "error: unable to read Dart SDK version" >&2
+  exit 1
+}
 
-readonly MATERIAL_FONTS_VERSION="$(cat src/flutter/bin/internal/material_fonts.version | cut -d '/' -f4)"
-readonly GRADLE_WRAPPER_VERSION="$(cat src/flutter/bin/internal/gradle_wrapper.version | cut -d '/' -f3)"
-readonly LIBIMOBILEDEVICE_VERSION="$(cat src/flutter/bin/internal/libimobiledevice.version)"
-readonly USBMUXD_VERSION="$(cat src/flutter/bin/internal/libusbmuxd.version)"
-readonly LIBPLIST_VERSION="$(cat src/flutter/bin/internal/libplist.version)"
-readonly OPENSSL_VERSION="$(cat src/flutter/bin/internal/openssl.version)"
-readonly IOS_DEPLOY_VERSION="$(cat src/flutter/bin/internal/ios-deploy.version)"
-readonly SDK_VERSION="$(cat src/dart/dart-sdk/version)"
-readonly SDK_STRING="$(grep sdk src/flutter/packages/flutter_tools/pubspec.yaml | awk -F "'" '{print $2}')"
-readonly SDK_MIN="$(echo $SDK_STRING | awk -F '=' '{print $2}' | awk -F '-' '{print $1}')"
-readonly SDK_MAX="$(echo $SDK_STRING | awk -F '<' '{print $2}' | awk -F '-' '{print $1}')"
+for name in ENGINE_VERSION MATERIAL_FONTS_VERSION GRADLE_WRAPPER_VERSION SDK_VERSION; do
+  value="${!name}"
+  if [[ -z "${value//[[:space:]]/}" ]]; then
+    echo "error: missing or empty artifact version: $name" >&2
+    exit 1
+  fi
+done
 
-sed -i 's/_dartver=.*/_dartver="'"${SDK_VERSION}"'"/g' PKGBUILD
-sed -i 's/_enginever=.*/_enginever='"${ENGINE_VERSION}"'/g' PKGBUILD
-sed -i 's/_materialfontsver=.*/_materialfontsver='"${MATERIAL_FONTS_VERSION}"'/g' PKGBUILD
-sed -i 's/_gradlewver=.*/_gradlewver='"${GRADLE_WRAPPER_VERSION}"'/g' PKGBUILD
+readonly ENGINE_VERSION MATERIAL_FONTS_VERSION GRADLE_WRAPPER_VERSION SDK_VERSION
+
+sed -i \
+  -e 's/_dartver=.*/_dartver="'"$SDK_VERSION"'"/g' \
+  -e 's/_enginever=.*/_enginever='"$ENGINE_VERSION"'/g' \
+  -e 's/_materialfontsver=.*/_materialfontsver='"$MATERIAL_FONTS_VERSION"'/g' \
+  -e 's/_gradlewver=.*/_gradlewver='"$GRADLE_WRAPPER_VERSION"'/g' \
+  PKGBUILD

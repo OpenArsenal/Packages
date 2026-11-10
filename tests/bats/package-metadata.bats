@@ -366,3 +366,63 @@ MOCK
     fail 'valid version comparison no longer classified outdated packages'
   )
 }
+
+@test "Flutter artifact updater rejects missing or failed metadata without changing the recipe" {
+  (
+  local tmp
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/bin" "$tmp/src/flutter/bin/internal" "$tmp/src/dart/dart-sdk"
+  printf '_dartver="old"\n_enginever=old\n_materialfontsver=old\n_gradlewver=old\n' >"$tmp/PKGBUILD"
+  cp "$tmp/PKGBUILD" "$tmp/original"
+
+  cat >"$tmp/bin/makepkg" <<'MOCK'
+#!/usr/bin/env bash
+[[ "$1" == -ofC ]]
+MOCK
+  cat >"$tmp/bin/cat" <<'MOCK'
+#!/usr/bin/env bash
+if [[ "${CAT_MODE:-ok}" == partial && "${1:-}" == */material_fonts.version ]]; then
+  printf 'a/b/c/incomplete\n'
+  exit 47
+fi
+exec /usr/bin/cat "$@"
+MOCK
+  chmod +x "$tmp/bin/"*
+
+  printf 'new-engine\n' >"$tmp/src/flutter/bin/internal/engine.version"
+  printf 'a/b/c/new-fonts\n' >"$tmp/src/flutter/bin/internal/material_fonts.version"
+  printf 'a/b/new-gradle\n' >"$tmp/src/flutter/bin/internal/gradle_wrapper.version"
+
+  # SDK metadata is missing even though earlier fields were readable.
+  if (cd "$tmp" && PATH="$tmp/bin:$PATH" bash "$root/packages/flutter/update-artifact-versions.sh") >"$tmp/log" 2>&1; then
+    fail 'Flutter updater accepted missing Dart SDK metadata'
+  fi
+  cmp -s "$tmp/PKGBUILD" "$tmp/original" ||
+    fail 'missing Dart SDK version changed PKGBUILD'
+
+  printf '3.11.0\n' >"$tmp/src/dart/dart-sdk/version"
+
+  # A pipeline producing partial output then failing must not reach sed.
+  if (cd "$tmp" && CAT_MODE=partial PATH="$tmp/bin:$PATH" bash "$root/packages/flutter/update-artifact-versions.sh") >"$tmp/log" 2>&1; then
+    fail 'Flutter updater accepted failed material-font metadata read'
+  fi
+  cmp -s "$tmp/PKGBUILD" "$tmp/original" ||
+    fail 'failed material-font metadata read changed PKGBUILD'
+
+  : >"$tmp/src/flutter/bin/internal/engine.version"
+  if (cd "$tmp" && PATH="$tmp/bin:$PATH" bash "$root/packages/flutter/update-artifact-versions.sh") >"$tmp/log" 2>&1; then
+    fail 'Flutter updater accepted an empty engine version'
+  fi
+  cmp -s "$tmp/PKGBUILD" "$tmp/original" ||
+    fail 'empty engine version changed PKGBUILD'
+
+  printf 'new-engine\n' >"$tmp/src/flutter/bin/internal/engine.version"
+  (cd "$tmp" && PATH="$tmp/bin:$PATH" bash "$root/packages/flutter/update-artifact-versions.sh") >"$tmp/log" 2>&1 ||
+    fail "Flutter updater rejected valid metadata: $(cat "$tmp/log")"
+  grep -qx '_dartver="3.11.0"' "$tmp/PKGBUILD" || fail 'Dart version was not updated'
+  grep -qx '_enginever=new-engine' "$tmp/PKGBUILD" || fail 'engine version was not updated'
+  grep -qx '_materialfontsver=new-fonts' "$tmp/PKGBUILD" || fail 'material fonts were not updated'
+  grep -qx '_gradlewver=new-gradle' "$tmp/PKGBUILD" || fail 'Gradle wrapper was not updated'
+  )
+}
