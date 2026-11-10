@@ -78,8 +78,23 @@ fi
 # Start generate package
 makechrootpkg -c -r $CHROOT -- -Acsf .
 
-# Update .SRCINFO
-makepkg --printsrcinfo >.SRCINFO
+# Generate metadata beside .SRCINFO so failures never truncate a valid file.
+# A same-directory rename replaces it atomically only after all checks pass.
+srcinfo_tmp="$(mktemp .SRCINFO.tmp.XXXXXX)" || exit 1
+trap 'rm -f -- "$srcinfo_tmp"' EXIT
+if ! makepkg --printsrcinfo >"$srcinfo_tmp"; then
+    echo "error: failed to generate .SRCINFO; preserving existing metadata" >&2
+    exit 1
+fi
+for field in pkgbase pkgname pkgver pkgrel; do
+    if ! grep -Eq "^[[:space:]]*${field} = [^[:space:]]+" "$srcinfo_tmp"; then
+        echo "error: incomplete .SRCINFO ($field); preserving existing metadata" >&2
+        exit 1
+    fi
+done
+chmod 644 -- "$srcinfo_tmp"
+mv -f -- "$srcinfo_tmp" .SRCINFO
+trap - EXIT
 
 # Commit changes
 git add PKGBUILD .SRCINFO
