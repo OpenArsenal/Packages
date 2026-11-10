@@ -227,74 +227,58 @@ Use `pkg:plan` before a larger build to inspect the dependency order without cha
 
 ## Tests
 
-The test suite uses [bats-core](https://github.com/bats-core/bats-core), pinned
-by mise in `.mise/config.toml`. The default test group runs **shared packaging
-tooling tests only**, not tests for individual applications:
+Tests are organized by responsibility. The **repository root** owns shared
+packaging-tool tests, while the top-level **`packages/` directory** owns
+package contracts and package-specific regressions. Bats-core is pinned in
+`.mise/config.toml`.
+
+From the repository root:
 
 ```sh
 mise install
-mise run test
+mise run test              # Shared Bats tests only
+mise run test:unit         # Shared unit tests
+mise run test:integration  # Shared workflow tests
+mise run test:all          # Explicitly run both root and package-level suites
 ```
 
-Run the shared layers separately, or opt in to the package-specific suites:
+From the top-level `packages/` directory:
 
 ```sh
-mise run test:unit
-mise run test:integration
-mise run test:contracts    # Universal metadata/source + reusable launcher checks
-mise run test:packages
-mise run test:all          # Shared, contract, and package-specific suites
+cd packages
+mise run test               # All package contracts + package-specific regressions
+mise run test:contracts     # Universal metadata, source and capability contracts
+mise run test:regressions   # Package-specific Bats regressions
 ```
 
-Shared unit and integration tests live in `tests/bats/` and cover dependency
-logic, package planning, metadata, selection, and repository workflows.
-Application-specific suites live in `tests/packages/`, separated by package
-family (Flutter, Wayland, Figma, FFmpeg, and so on).
+These package-level tasks are inherited by subdirectories, so invoking
+`mise run test` from `packages/flutter/` also runs the **entire** package
+test group, not only Flutter tests. No per-package `mise.toml` files are
+needed. To target one package's specialized regressions, run a file directly,
+for example `bats tests/packages/flutter.bats` from the repository root.
 
-**Each package with dedicated coverage defines a local `packages/<name>/mise.toml`.**
-The nearest task wins: when you're in a covered package directory, the same
-`mise run test` command runs *that package's* suite instead of the shared suite.
+Test implementations remain centralized: `tests/bats/` holds shared tooling
+tests, `tests/contracts/` holds universal checks and capability adapters
+(see its [contract guide](tests/contracts/README.md)), and `tests/packages/`
+holds specialized behavior tests. The contract registry requires wrappers
+and updater scripts to declare their relevant coverage. Universal checks
+include local source checksums, metadata and Bash syntax; behavioral Bats
+tests use temporary fixtures and mocked external tools.
 
-```sh
-cd packages/flutter
-mise run test             # Flutter checks only
+CI exercises the repository-root `mise run test`, the package-root
+`mise run test:contracts`, and the package-root `mise run test` in
+independent jobs. This validates the directory-based task selection as
+well as the test logic.
 
-cd ../figma-linux
-mise run test             # Figma checks only
-
-cd ../..
-mise run test             # Shared packaging tests only
-mise run test:packages    # Explicitly run all package suites
-```
-
-A package without a local test task inherits the repository's shared `test`
-task. You can also invoke an individual suite directly with
-`bats tests/packages/flutter.bats`, or filter a shared test using
-`bats --filter 'description' tests/bats/build-planning.bats`.
-
-The [contract tests](tests/contracts/README.md) apply consistent metadata,
-Bash syntax, and local-source requirements to every recipe. They also run
-declared launcher families with fake executables and verify that each updater
-and high-impact install-hook capability retains its Bats regression adapter.
-The manifest deliberately requires new `*-flags-wrapper.sh` and updater
-scripts to be registered.
-
-CI runs **shared tests**, **universal/capability contracts**, and
-**package-specific tests** as independent jobs. The package job invokes
-`mise run test` from each covered package directory to validate local routing.
-Bats cases use temporary fixtures and mocked external tools rather than
-modifying installed applications.
-
-`tests/check-srcinfo.sh` remains a standalone package metadata validation
-script, used by the test suite and available for checking real PKGBUILDs:
+`tests/check-srcinfo.sh` remains available for validating a real package's
+generated metadata when Arch's `makepkg` is installed:
 
 ```sh
 bash tests/check-srcinfo.sh packages/<package>
 ```
 
-Add coverage at the lowest layer that can detect the behavior. Avoid duplicate
-unit and integration coverage, and reserve real-environment tests for
-journeys that cannot be verified with a direct function or workflow test.
+Add coverage at the lowest layer that can detect the behavior. Avoid
+duplicating universal checks in individual package regressions.
 
 ## Additional tasks
 

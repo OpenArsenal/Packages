@@ -1,0 +1,17 @@
+# Package-level testing. Tasks here apply from packages/ and its subdirectories.
+# All test files remain under ../tests/; no per-recipe mise configuration is needed.
+
+[tasks.test]
+description = "Run all package contracts and package-specific Bats regressions"
+run = ["mise run test:contracts", "mise run test:regressions"]
+
+[tasks."test:contracts"]
+description = "Validate every package recipe and execute reusable capability contracts"
+run = [
+  "python3 -m unittest discover -s ../tests/contracts -p 'test_*.py'",
+  "python3 ../tests/contracts/check.py all",
+]
+
+[tasks."test:regressions"]
+description = "Run package-specific Bats regressions once, including shared variant suites"
+run = "bats ../tests/packages"

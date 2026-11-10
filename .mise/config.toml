@@ -40,20 +40,9 @@ run = "bats tests/bats/unit.bats"
 description = "Run shared packaging workflow integration tests with mocked external tools"
 run = "bats tests/bats/build-planning.bats tests/bats/chroot-config.bats tests/bats/file-scans.bats tests/bats/package-metadata.bats tests/bats/package-selection.bats tests/bats/repo-maintenance.bats tests/bats/safe-operations.bats tests/bats/source-integrity.bats"
 
-[tasks."test:packages"]
-description = "Run package-specific Bats suites separately from shared workflow tests"
-run = "bats tests/packages"
-
-[tasks."test:contracts"]
-description = "Run universal package checks and manifest-driven capability contracts"
-run = [
-  "python3 -m unittest discover -s tests/contracts -p 'test_*.py'",
-  "python3 tests/contracts/check.py all",
-]
-
 [tasks."test:all"]
-description = "Run shared, contract, and package-specific test groups"
-run = ["mise run test", "mise run test:contracts", "mise run test:packages"]
+description = "Run the root shared suite and then the package-root test suite"
+run = ["mise run test", "cd packages && mise run test"]
 
 [tasks."repo:maintain"]
 description = "Update, reconcile, prune, and refresh the published repository"
