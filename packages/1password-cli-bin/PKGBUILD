@@ -27,7 +27,7 @@ sha256sums_aarch64=('e56c379fabafb393ce699258e484694abe464870fb41f35ce1b5c3f1786
 
 check() {
   if (( ! SKIPPGPCHECK )); then
-    gpg --verify ${srcdir}/op.sig ${srcdir}/op
+    gpg --verify "${srcdir}/op.sig" "${srcdir}/op"
   fi
 }
 
