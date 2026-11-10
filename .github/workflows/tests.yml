@@ -21,12 +21,21 @@ jobs:
           set -o pipefail
           bash -n tests/check-srcinfo.sh tests/bats/test_helper/common.bash
           find .mise/lib .mise/tasks -type f -print0 | xargs -0 -r -n1 bash -n
-      - name: Verify local package source checksums
-        run: python3 tests/check-local-source-checksums.py
       - name: Unit tests
         run: mise run test:unit
       - name: Shared workflow integration tests (mocked external tools)
         run: mise run test:integration
+
+
+  contract-tests:
+    name: Universal and capability contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check contract harness unit tests
+        run: python3 -m unittest discover -s tests/contracts -p 'test_*.py'
+      - name: Verify package metadata, sources, launchers and capability registry
+        run: python3 tests/contracts/check.py all
 
   package-tests:
     name: Package-specific Bats suites
