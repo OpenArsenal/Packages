@@ -29,16 +29,24 @@ description = "List available tasks"
 run = "mise tasks"
 
 [tasks.test]
-description = "Run all Bats unit and integration tests"
+description = "Run shared Bats unit and packaging workflow tests (no package-specific suites)"
 run = "bats tests/bats"
 
 [tasks."test:unit"]
-description = "Run isolated dependency logic tests"
+description = "Run isolated shared dependency logic tests"
 run = "bats tests/bats/unit.bats"
 
 [tasks."test:integration"]
-description = "Run package workflow integration tests with mocked tools"
-run = "bats tests/bats/build-planning.bats tests/bats/chroot-config.bats tests/bats/edge-updater.bats tests/bats/file-scans.bats tests/bats/ffmpeg-update.bats tests/bats/figma-launcher.bats tests/bats/launcher-paths.bats tests/bats/flutter-lifecycle.bats tests/bats/package-metadata.bats tests/bats/package-selection.bats tests/bats/repo-maintenance.bats tests/bats/safe-operations.bats tests/bats/wayland-helper.bats"
+description = "Run shared packaging workflow integration tests with mocked external tools"
+run = "bats tests/bats/build-planning.bats tests/bats/chroot-config.bats tests/bats/file-scans.bats tests/bats/package-metadata.bats tests/bats/package-selection.bats tests/bats/repo-maintenance.bats tests/bats/safe-operations.bats tests/bats/source-integrity.bats"
+
+[tasks."test:packages"]
+description = "Run package-specific Bats suites separately from shared workflow tests"
+run = "bats tests/packages"
+
+[tasks."test:all"]
+description = "Run shared and package-specific Bats suites"
+run = ["mise run test", "mise run test:packages"]
 
 [tasks."repo:maintain"]
 description = "Update, reconcile, prune, and refresh the published repository"

@@ -2,7 +2,7 @@
 # Launch actual package wrappers with temporary flags files and a fake executable.
 
 setup() {
-  load 'test_helper/common'
+  load '../bats/test_helper/common'
   bats_repo_setup
 }
 

@@ -2,7 +2,7 @@
 # File-backed launcher integration test, with a fake Figma executable.
 
 setup() {
-  load 'test_helper/common'
+  load '../bats/test_helper/common'
   bats_repo_setup
 }
 

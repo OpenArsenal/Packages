@@ -2,7 +2,7 @@
 # Exercise the Edge updater with mocked XML metadata and build tools.
 
 setup() {
-  load 'test_helper/common'
+  load '../bats/test_helper/common'
   bats_repo_setup
 }
 
