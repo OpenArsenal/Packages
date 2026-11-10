@@ -144,6 +144,46 @@ repo::select_newest_archives() {
   done
 }
 
+# Common boundary for both repo:update and package-build publication.
+# Checked before repo-add, which records names but never installs archive bytes.
+repo::validate_publishable_archives() {
+  local repo_dir="$1"
+  shift
+
+  (( $# > 0 )) || {
+    echo "error: no package archives supplied for publication" >&2
+    return 1
+  }
+
+  # repo-add only records an archive's filename in the database; it does
+  # not copy the file to the directory served by the repository. Validate
+  # every selected archive *before* any publication (or dry-run output).
+  # Check both the supplied path's directory and the symlink target:
+  # an outside alias pointing *into* REPO_DIR is also not downloadable under
+  # its advertised filename, even though realpath(1) resolves inside.
+  local repo_dir_real archive archive_real archive_parent_real
+  repo_dir_real="$(cd -- "$repo_dir" && pwd -P)" || {
+    echo "error: unable to resolve repository directory: $repo_dir" >&2
+    return 1
+  }
+  for archive in "$@"; do
+    archive_real="$(realpath -e -- "$archive")" || {
+      echo "error: selected archive does not exist: $archive" >&2
+      return 1
+    }
+    archive_parent_real="$(realpath -e -- "$(dirname -- "$archive")")" || {
+      echo "error: unable to resolve selected archive's parent directory: $archive" >&2
+      return 1
+    }
+    if [[ ! -f "$archive_real" || "$archive_parent_real" != "$repo_dir_real" ||
+          "${archive_real%/*}" != "$repo_dir_real" ]]; then
+      echo "error: selected archive is not a regular file inside REPO_DIR: $archive" >&2
+      echo "       copy the archive into $repo_dir_real before running repo:update" >&2
+      return 1
+    fi
+  done
+}
+
 repo::add_archives() {
   local repo_db="$1"
   local include_new="$2"
@@ -206,33 +246,7 @@ repo::update_db() {
     return 1
   fi
 
-  # repo-add only records an archive's filename in the database; it does
-  # not copy the file to the directory served by the repository. Validate
-  # every selected archive *before* any publication (or dry-run output).
-  # Check both the supplied path's directory and the symlink target:
-  # an outside alias pointing *into* REPO_DIR is also not downloadable under
-  # its advertised filename, even though realpath(1) resolves inside.
-  local repo_dir_real archive archive_real archive_parent_real
-  repo_dir_real="$(cd -- "$repo_dir" && pwd -P)" || {
-    echo "error: unable to resolve repository directory: $repo_dir" >&2
-    return 1
-  }
-  for archive in "${selected[@]}"; do
-    archive_real="$(realpath -e -- "$archive")" || {
-      echo "error: selected archive does not exist: $archive" >&2
-      return 1
-    }
-    archive_parent_real="$(realpath -e -- "$(dirname -- "$archive")")" || {
-      echo "error: unable to resolve selected archive's parent directory: $archive" >&2
-      return 1
-    }
-    if [[ ! -f "$archive_real" || "$archive_parent_real" != "$repo_dir_real" ||
-          "${archive_real%/*}" != "$repo_dir_real" ]]; then
-      echo "error: selected archive is not a regular file inside REPO_DIR: $archive" >&2
-      echo "       copy the archive into $repo_dir_real before running repo:update" >&2
-      return 1
-    fi
-  done
+  repo::validate_publishable_archives "$repo_dir" "${selected[@]}" || return 1
 
   if [[ "$dry_run" == "true" ]]; then
     printf '%s\n' "${selected[@]}"
