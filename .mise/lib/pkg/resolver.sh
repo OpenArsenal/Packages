@@ -391,6 +391,8 @@ pkg::plan_dir() {
 pkg::finalize_plan() {
   local i j pkg_dir output outputs version raw dep op ver dependencies provider_index
   local edge consumer_path provider_path ready progress
+  local repo_owner published_ver retired_match unchanged_match matching_replacement
+  local candidate_dir candidate_provides provided_raw provided_name provided_op provided_ver
   local -A output_provider=() output_version=() prerequisites=() placed=() plan_indexes=()
   local -a ordered=() required=()
 
@@ -434,16 +436,232 @@ pkg::finalize_plan() {
       [[ -n "$dep" ]] || continue
 
       provider_index="${output_provider[$dep]-}"
-      [[ -n "$provider_index" && "$provider_index" != "$i" ]] || continue
+      if [[ -n "$provider_index" ]]; then
+        [[ "$provider_index" != "$i" ]] || continue
+        if [[ -n "$op" && -n "$ver" ]] &&
+          ! repo::version_satisfies "${output_version[$dep]}" "$op" "$ver"; then
+          echo "error: planned replacement of '$dep' by ${PKG_PLAN[$provider_index]##*/} (${output_version[$dep]}) is incompatible with dependency '$raw' of ${pkg_dir##*/}" >&2
+          return 1
+        fi
 
-      if [[ -n "$op" && -n "$ver" ]] &&
-        ! repo::version_satisfies "${output_version[$dep]}" "$op" "$ver"; then
-        echo "error: planned replacement of '$dep' by ${PKG_PLAN[$provider_index]##*/} (${output_version[$dep]}) is incompatible with dependency '$raw' of ${pkg_dir##*/}" >&2
-        return 1
+        # Store numeric plan indexes, never whitespace-separated paths.
+        prerequisites["$i"]+="$provider_index "
+        continue
       fi
 
-      # Store numeric plan indexes, never whitespace-separated paths.
-      prerequisites["$i"]+="$provider_index "
+      # A dependency may have been accepted through a *published* provides=
+      # alias whose owner is being replaced in this plan. The old alias must
+      # not satisfy the consumer after the owner is published anew. Keep
+      # aliases from independent, unreplaced packages, however.
+      [[ -n "${REPO_PROVIDE_OWNERS[$dep]-}" ]] || continue
+      retired_match=false
+      unchanged_match=false
+      while IFS=
+    done <<<"$dependencies"
+  done
+
+  # Retain dependencies resolved via provides= aliases in the initial
+  # traversal. Recomputing only from actual pkgname outputs would discard
+  # these edges and can reorder a consumer ahead of its selected provider.
+  # Use numeric plan indexes so directory paths containing spaces stay intact.
+  for edge in "${!PKG_RESOLVED_EDGES[@]}"; do
+    consumer_path="${edge%%$'\x1f'*}"
+    provider_path="${edge#*$'\x1f'}"
+    i="${plan_indexes[$consumer_path]-}"
+    j="${plan_indexes[$provider_path]-}"
+    [[ -n "$i" && -n "$j" && "$i" != "$j" ]] || continue
+    prerequisites["$i"]+="$j "
+  done
+
+  # Stable topological ordering: preserve the original order wherever there
+  # is no planned-output dependency. An unresolved cycle stops all builds.
+  while (( ${#ordered[@]} < ${#PKG_PLAN[@]} )); do
+    progress=false
+    for i in "${!PKG_PLAN[@]}"; do
+      [[ -z "${placed[$i]+x}" ]] || continue
+
+      required=()
+      read -r -a required <<<"${prerequisites[$i]-}"
+      ready=true
+      for j in "${required[@]}"; do
+        if [[ -z "${placed[$j]+x}" ]]; then
+          ready=false
+          break
+        fi
+      done
+      [[ "$ready" == "true" ]] || continue
+
+      ordered+=("${PKG_PLAN[$i]}")
+      placed["$i"]=1
+      progress=true
+    done
+
+    if [[ "$progress" != "true" ]]; then
+      echo "error: dependency cycle among planned package replacements" >&2
+      return 1
+    fi
+  done
+
+  PKG_PLAN=("${ordered[@]}")
+}
+
+pkg::plan_selected() {
+  local packages_dir="$1"
+  local force_selected="$2"
+  shift 2
+  local entry pkg_dir
+  local -a selected_dirs=()
+
+  case "$force_selected" in
+    true|false) ;;
+    *)
+      echo "error: invalid force flag: $force_selected" >&2
+      return 2
+      ;;
+  esac
+
+  # A failed repository index must not be mistaken for unsatisfied
+  # dependencies, causing builds to start against unreadable repository state.
+  repo::ensure_index "$REPO_DIR" || return 1
+  pkg::index_packages "$packages_dir" || return 1
+
+  # Resolve and mark every explicit selection before traversing dependencies.
+  # This guarantees --force applies even when one selected package is visited
+  # first as another selected package's dependency.
+  for entry in "$@"; do
+    if [[ -d "$entry" || ( "$entry" != */* && -d "$packages_dir/$entry" ) ]]; then
+      pkg_dir="$(pkg::resolve_dir "$entry" "$packages_dir")" || return 1
+    else
+      pkg_dir="${PKG_PROVIDER_DIR[$entry]-}"
+      [[ -n "$pkg_dir" ]] || {
+        echo "error: no local package provides: $entry" >&2
+        return 1
+      }
+    fi
+
+    selected_dirs+=("$pkg_dir")
+
+    if [[ "$force_selected" == "true" ]]; then
+      PKG_FORCE_DIR["$pkg_dir"]="true"
+    fi
+  done
+
+  for pkg_dir in "${selected_dirs[@]}"; do
+    pkg::plan_dir "$pkg_dir" || return 1
+  done
+
+  pkg::finalize_plan
+}
+
+pkg::print_plan() {
+  local pkg_dir
+
+  for pkg_dir in "${PKG_PLAN[@]}"; do
+    printf '%s\t%s\n' "${pkg_dir##*/}" "$pkg_dir"
+  done
+}
+
+pkg::build_plan() {
+  local pkg_dir marker
+  local published=false
+
+  if declare -F chroot::enable_repo >/dev/null 2>&1; then
+    chroot::enable_repo || {
+      echo "error: unable to configure the build chroot repository" >&2
+      return 1
+    }
+  fi
+
+  for pkg_dir in "${PKG_PLAN[@]}"; do
+    # shortcut: assumes one writer to REPO_DIR; use staged outputs for parallel builds.
+    marker="$(mktemp)" || return 1
+    if ! pkg::build_dir "$pkg_dir" || ! pkg::publish_outputs "$pkg_dir" "$marker"; then
+      rm -f -- "$marker"
+      return 1
+    fi
+    rm -f -- "$marker" || return 1
+    published=true
+
+    if declare -F chroot::enable_repo >/dev/null 2>&1; then
+      chroot::enable_repo || {
+        echo "error: unable to refresh the build chroot repository" >&2
+        return 1
+      }
+    fi
+  done
+
+  if [[ "$published" == "true" ]] && declare -F repo::refresh_sync_db >/dev/null 2>&1; then
+    : "${REPO_NAME:?REPO_NAME not set}"
+
+    if ! repo::refresh_sync_db "$REPO_NAME"; then
+      echo "error: packages were published, but the host sync database refresh failed" >&2
+      return 1
+    fi
+  fi
+}
+
+pkg::build_selected() {
+  local packages_dir="$1"
+  local force_selected="$2"
+  shift 2
+
+  pkg::plan_selected "$packages_dir" "$force_selected" "$@" || return 1
+  pkg::build_plan
+}
+\t' read -r repo_owner published_ver; do
+        [[ -n "$repo_owner" ]] || continue
+        if [[ -n "$op" && -n "$ver" ]]; then
+          [[ -n "$published_ver" ]] || continue
+          repo::version_satisfies "$published_ver" "$op" "$ver" || continue
+        fi
+
+        if [[ -n "${output_provider[$repo_owner]+x}" ]]; then
+          retired_match=true
+        else
+          unchanged_match=true
+        fi
+      done <<<"${REPO_PROVIDE_OWNERS[$dep]}"
+
+      [[ "$retired_match" == "true" && "$unchanged_match" != "true" ]] || continue
+
+      # A separate published package with this actual name can still satisfy
+      # the dependency even when an obsolete virtual provider disappears.
+      if [[ -n "${REPO_PACKAGE_VERSION[$dep]+x}" ]] &&
+        repo::version_satisfies "${REPO_PACKAGE_VERSION[$dep]}" "$op" "$ver"; then
+        continue
+      fi
+
+      # Look for aliases of packages *actually planned* for publication.
+      # A compatible replacement creates an ordering edge; a changed or
+      # removed alias without another provider must fail before any build.
+      matching_replacement=false
+      for j in "${!PKG_PLAN[@]}"; do
+        candidate_dir="${PKG_PLAN[$j]}"
+        candidate_provides="$(pkg::metadata_provides "$candidate_dir")" || {
+          echo "error: unable to inspect planned provider aliases: $candidate_dir" >&2
+          return 1
+        }
+        while IFS= read -r provided_raw; do
+          [[ -n "$provided_raw" ]] || continue
+          provided_name="" provided_op="" provided_ver=""
+          spec::parse "$provided_raw" provided_name provided_op provided_ver
+          [[ "$provided_name" == "$dep" ]] || continue
+          if [[ -n "$op" && -n "$ver" ]]; then
+            [[ "$provided_op" == "=" && -n "$provided_ver" ]] || continue
+            repo::version_satisfies "$provided_ver" "$op" "$ver" || continue
+          fi
+
+          [[ "$j" == "$i" ]] || prerequisites["$i"]+="$j "
+          matching_replacement=true
+          break
+        done <<<"$candidate_provides"
+        [[ "$matching_replacement" == "true" ]] && break
+      done
+
+      if [[ "$matching_replacement" != "true" ]]; then
+        echo "error: planned replacement removes the published provider for '$raw' required by ${pkg_dir##*/}" >&2
+        return 1
+      fi
     done <<<"$dependencies"
   done
 
