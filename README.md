@@ -228,25 +228,34 @@ Use `pkg:plan` before a larger build to inspect the dependency order without cha
 ## Tests
 
 The test suite uses [bats-core](https://github.com/bats-core/bats-core), pinned
-by mise in `.mise/config.toml`. Install it and run the whole suite with:
+by mise in `.mise/config.toml`. The default test group runs **shared packaging
+tooling tests only**, not tests for individual applications:
 
 ```sh
 mise install
 mise run test
 ```
 
-To run one layer at a time:
+Run the shared layers separately, or opt in to the package-specific suites:
 
 ```sh
 mise run test:unit
 mise run test:integration
+mise run test:packages
+mise run test:all           # Shared and package-specific suites
 ```
 
-Tests live in `tests/bats/`. The unit suite checks isolated dependency logic;
-the integration suites exercise package planning, metadata, selection, and
-repository workflows with temporary fixtures and mocked external tools.
-Every Bats case runs independently, with its own fixture cleanup. To focus on
-one test, use `bats --filter 'description' tests/bats/build-planning.bats`.
+Shared unit and integration tests live in `tests/bats/` and cover dependency
+logic, package planning, metadata, selection, and repository workflows.
+Application-specific suites live in `tests/packages/`, separated by package
+family (Flutter, Wayland, Figma, FFmpeg, and so on). Run an individual suite
+with `bats tests/packages/flutter.bats`, or filter a shared test with
+`bats --filter 'description' tests/bats/build-planning.bats`.
+
+CI runs **shared tests** and **package-specific tests** in separate jobs so the
+results and failures do not get mixed together. Every Bats case uses
+temporary fixtures and mocked external tools rather than modifying installed
+applications.
 
 `tests/check-srcinfo.sh` remains a standalone package metadata validation
 script, used by the test suite and available for checking real PKGBUILDs:
