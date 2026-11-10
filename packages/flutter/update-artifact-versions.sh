@@ -24,7 +24,8 @@ SDK_VERSION="$(cat src/dart/dart-sdk/version)" || {
 }
 
 for name in ENGINE_VERSION MATERIAL_FONTS_VERSION GRADLE_WRAPPER_VERSION SDK_VERSION; do
-  if [[ -z "${!name//[[:space:]]/}" ]]; then
+  value="${!name}"
+  if [[ -z "${value//[[:space:]]/}" ]]; then
     echo "error: missing or empty artifact version: $name" >&2
     exit 1
   fi
