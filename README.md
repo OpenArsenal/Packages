@@ -26,7 +26,7 @@ SigLevel = Optional TrustAll
 Server = file:///srv/pacman/repos/openarsenal/x86_64_v3
 ```
 
-`mise install` installs the pinned Bats test tool. The `.env` file is for machine-local overrides and is ignored by Git. Printing the stanza does **not** edit your host's `/etc/pacman.conf`.
+`mise install` installs pinned **Bats-core** and **ShellCheck**, and its postinstall hook fetches tagged `bats-support`, `bats-assert`, and `bats-file` into the ignored `.mise/vendor/bats/` directory. mise sets `BATS_LIB_PATH` so tests can use `bats_load_library bats-assert` and `bats_load_library bats-file` (load `bats-support` first). You can rerun `mise run test:install-libs` to restore the helper libraries. The `.env` file is for machine-local overrides and is ignored by Git. Printing the stanza does **not** edit your host's `/etc/pacman.conf`.
 
 To build packages, use an **Arch Linux or CachyOS host** with the Arch packaging toolchain and root access via `sudo` (or a root shell). Check the required commands before building:
 
@@ -140,6 +140,7 @@ Tests run at two levels. From the repository root:
 ```sh
 mise run test       # Shared Bats tooling tests
 mise run test:all   # Shared tests, then package contracts and regressions
+mise run lint:shell # Opt-in ShellCheck for Bash helpers and mise task scripts
 ```
 
 To run only package-level checks:
