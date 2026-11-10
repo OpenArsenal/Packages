@@ -739,3 +739,111 @@ MOCK
     fail "app-only alias provider was not planned before consumer: ${PKG_PLAN[*]}"
   )
 }
+
+@test "Planned provider replacements cannot reuse changed or removed published aliases" {
+  (
+  local tmp packages mode selection
+  local -a requested=()
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  packages="$tmp/source tree"
+  export PKGBUILDS_ROOT="$root" REPO_DIR="$tmp/repo" REPO_DB="$tmp/repo/test.db"
+  mkdir -p "$REPO_DIR" "$packages/provider" "$packages/app"
+  touch "$REPO_DB" "$packages/provider/PKGBUILD" "$packages/app/PKGBUILD"
+  printf 'pkgbase = app\n\tpkgver = 1\n\tpkgrel = 1\n\tdepends = virtual-api<2\npkgname = app\n' \
+    >"$packages/app/.SRCINFO"
+
+  # Parse the real database record format. The published provider=1 offers
+  # virtual-api=1; an optional independent backup is used to verify that
+  # removing one owner does not erase aliases from unrelated packages.
+  BACKUP_PUBLISHED=false
+  bsdtar() {
+    case "$1" in
+      -tf)
+        printf 'provider/desc\n'
+        [[ "$BACKUP_PUBLISHED" != true ]] || printf 'backup/desc\n'
+        ;;
+      -xOf)
+        printf '%%NAME%%\nprovider\n%%VERSION%%\n1-1\n%%PROVIDES%%\nvirtual-api=1\n'
+        if [[ "$BACKUP_PUBLISHED" == true ]]; then
+          printf '%%NAME%%\nbackup\n%%VERSION%%\n1-1\n%%PROVIDES%%\nvirtual-api=1\n'
+        fi
+        ;;
+      *) return 2 ;;
+    esac
+  }
+  vercmp() {
+    local a="${1%%-*}" b="${2%%-*}"
+    [[ "$a" =~ ^[0-9]+$ && "$b" =~ ^[0-9]+$ ]] || return 47
+    if (( a < b )); then printf '%s\n' -1
+    elif (( a > b )); then printf '%s\n' 1
+    else printf '%s\n' 0
+    fi
+  }
+  source "$root/.mise/lib/repo.sh"
+  source "$root/.mise/lib/pkg.sh"
+  pkg::pacman_can_resolve() { return 1; }
+  pkg::build_plan() { touch "$tmp/build-started"; }
+
+  # With no provider replacement scheduled, the existing published alias
+  # remains valid and must not trigger a build of the local provider.
+  printf 'pkgbase = provider\n\tpkgver = 2\n\tpkgrel = 1\npkgname = provider\n\tprovides = virtual-api=2\n' \
+    >"$packages/provider/.SRCINFO"
+  pkg::plan_selected "$packages" false app >"$tmp/log" 2>&1 ||
+    fail "published virtual provider was not accepted: $(cat "$tmp/log")"
+  [[ "${#PKG_PLAN[@]}" -eq 1 && "${PKG_PLAN[0]}" == "$packages/app" ]] ||
+    fail "app-only selection scheduled an unnecessary provider rebuild: ${PKG_PLAN[*]}"
+
+  for mode in version-changed removed renamed; do
+    case "$mode" in
+      version-changed) provided='virtual-api=2' ;;
+      removed) provided='' ;;
+      renamed) provided='other-api=1' ;;
+    esac
+    printf 'pkgbase = provider\n\tpkgver = 2\n\tpkgrel = 1\npkgname = provider\n' \
+      >"$packages/provider/.SRCINFO"
+    [[ -z "$provided" ]] ||
+      printf '\tprovides = %s\n' "$provided" >>"$packages/provider/.SRCINFO"
+    pkg::metadata_cache_reset
+
+    for selection in 'app provider' 'provider app'; do
+      read -r -a requested <<<"$selection"
+      rm -f "$tmp/build-started"
+      if pkg::build_selected "$packages" false "${requested[@]}" >"$tmp/log" 2>&1; then
+        fail "ordinary plan accepted $mode published-alias replacement ($selection)"
+      fi
+      grep -Fq "planned replacement removes the published provider for 'virtual-api<2'" "$tmp/log" ||
+        fail "missing obsolete alias diagnostic for $mode ($selection): $(cat "$tmp/log")"
+      [[ ! -e "$tmp/build-started" ]] ||
+        fail "build started before rejecting $mode alias ($selection)"
+    done
+  done
+
+  # A replacement still offering the compatible virtual-api=1 is safe,
+  # but it must be built before the app that relies on the new provider.
+  printf 'pkgbase = provider\n\tpkgver = 2\n\tpkgrel = 1\npkgname = provider\n\tprovides = virtual-api=1\n' \
+    >"$packages/provider/.SRCINFO"
+  pkg::metadata_cache_reset
+  for selection in 'app provider' 'provider app'; do
+    read -r -a requested <<<"$selection"
+    pkg::plan_selected "$packages" false "${requested[@]}" >"$tmp/log" 2>&1 ||
+      fail "compatible virtual replacement failed for $selection: $(cat "$tmp/log")"
+    [[ "${#PKG_PLAN[@]}" -eq 2 &&
+       "${PKG_PLAN[0]}" == "$packages/provider" &&
+       "${PKG_PLAN[1]}" == "$packages/app" ]] ||
+      fail "compatible virtual provider was not ordered first: ${PKG_PLAN[*]}"
+  done
+
+  # A separate published owner of virtual-api=1 survives the replacement,
+  # so removing the alias from provider must not cause a false rejection.
+  BACKUP_PUBLISHED=true
+  repo::index_reset
+  printf 'pkgbase = provider\n\tpkgver = 2\n\tpkgrel = 1\npkgname = provider\n' \
+    >"$packages/provider/.SRCINFO"
+  pkg::metadata_cache_reset
+  pkg::plan_selected "$packages" false app provider >"$tmp/log" 2>&1 ||
+    fail "independent published virtual provider was discarded: $(cat "$tmp/log")"
+  [[ "${#PKG_PLAN[@]}" -eq 2 ]] ||
+    fail "unrelated published backup caused extra builds: ${PKG_PLAN[*]}"
+  )
+}

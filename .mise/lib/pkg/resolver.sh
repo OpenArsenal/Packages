@@ -391,6 +391,8 @@ pkg::plan_dir() {
 pkg::finalize_plan() {
   local i j pkg_dir output outputs version raw dep op ver dependencies provider_index
   local edge consumer_path provider_path ready progress
+  local repo_owner published_ver retired_match unchanged_match matching_replacement
+  local candidate_dir candidate_provides provided_raw provided_name provided_op provided_ver
   local -A output_provider=() output_version=() prerequisites=() placed=() plan_indexes=()
   local -a ordered=() required=()
 
@@ -434,16 +436,75 @@ pkg::finalize_plan() {
       [[ -n "$dep" ]] || continue
 
       provider_index="${output_provider[$dep]-}"
-      [[ -n "$provider_index" && "$provider_index" != "$i" ]] || continue
+      if [[ -n "$provider_index" ]]; then
+        [[ "$provider_index" != "$i" ]] || continue
+        if [[ -n "$op" && -n "$ver" ]] &&
+          ! repo::version_satisfies "${output_version[$dep]}" "$op" "$ver"; then
+          echo "error: planned replacement of '$dep' by ${PKG_PLAN[$provider_index]##*/} (${output_version[$dep]}) is incompatible with dependency '$raw' of ${pkg_dir##*/}" >&2
+          return 1
+        fi
 
-      if [[ -n "$op" && -n "$ver" ]] &&
-        ! repo::version_satisfies "${output_version[$dep]}" "$op" "$ver"; then
-        echo "error: planned replacement of '$dep' by ${PKG_PLAN[$provider_index]##*/} (${output_version[$dep]}) is incompatible with dependency '$raw' of ${pkg_dir##*/}" >&2
-        return 1
+        # Store numeric plan indexes, never whitespace-separated paths.
+        prerequisites["$i"]+="$provider_index "
+        continue
       fi
 
-      # Store numeric plan indexes, never whitespace-separated paths.
-      prerequisites["$i"]+="$provider_index "
+      # The published provider for this alias may be replaced in this plan.
+      # Only alias versions belonging to unreplaced packages survive.
+      [[ -n "${REPO_PROVIDE_OWNERS[$dep]-}" ]] || continue
+      retired_match=false
+      unchanged_match=false
+      while IFS=$'\t' read -r repo_owner published_ver; do
+        [[ -n "$repo_owner" ]] || continue
+        if [[ -n "$op" && -n "$ver" ]]; then
+          [[ -n "$published_ver" ]] || continue
+          repo::version_satisfies "$published_ver" "$op" "$ver" || continue
+        fi
+        if [[ -n "${output_provider[$repo_owner]+x}" ]]; then
+          retired_match=true
+        else
+          unchanged_match=true
+        fi
+      done <<<"${REPO_PROVIDE_OWNERS[$dep]}"
+
+      [[ "$retired_match" == "true" && "$unchanged_match" != "true" ]] || continue
+
+      # A separately published real package may still satisfy the name.
+      if [[ -n "${REPO_PACKAGE_VERSION[$dep]+x}" ]] &&
+        repo::version_satisfies "${REPO_PACKAGE_VERSION[$dep]}" "$op" "$ver"; then
+        continue
+      fi
+
+      # Replacement packages may continue providing the alias, change its
+      # version, or drop it entirely. If the sole compatible alias is new,
+      # order that provider before its consumer.
+      matching_replacement=false
+      for j in "${!PKG_PLAN[@]}"; do
+        candidate_dir="${PKG_PLAN[$j]}"
+        candidate_provides="$(pkg::metadata_provides "$candidate_dir")" || {
+          echo "error: unable to inspect planned provider aliases: $candidate_dir" >&2
+          return 1
+        }
+        while IFS= read -r provided_raw; do
+          [[ -n "$provided_raw" ]] || continue
+          provided_name="" provided_op="" provided_ver=""
+          spec::parse "$provided_raw" provided_name provided_op provided_ver
+          [[ "$provided_name" == "$dep" ]] || continue
+          if [[ -n "$op" && -n "$ver" ]]; then
+            [[ "$provided_op" == "=" && -n "$provided_ver" ]] || continue
+            repo::version_satisfies "$provided_ver" "$op" "$ver" || continue
+          fi
+          [[ "$j" == "$i" ]] || prerequisites["$i"]+="$j "
+          matching_replacement=true
+          break
+        done <<<"$candidate_provides"
+        [[ "$matching_replacement" == "true" ]] && break
+      done
+
+      if [[ "$matching_replacement" != "true" ]]; then
+        echo "error: planned replacement removes the published provider for '$raw' required by ${pkg_dir##*/}" >&2
+        return 1
+      fi
     done <<<"$dependencies"
   done
 
