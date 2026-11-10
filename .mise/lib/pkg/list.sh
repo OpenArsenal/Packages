@@ -69,12 +69,16 @@ pkg::installed_selected() {
   }
 
   declare -A installed=()
-  declare -A output_dirs=()
+  # Keep each complete source path in an array. Output-to-directory maps store
+  # only numeric array indexes, never whitespace-delimited filesystem paths.
+  declare -a candidate_dirs=()
+  declare -a candidate_ids=()
+  declare -A output_dir_ids=()
   declare -A output_count=()
   declare -A repo_installed=()
   declare -A selected_dirs=()
 
-  local name pkg_dir output outputs candidate candidates exact_dir
+  local name pkg_dir output outputs candidate candidate_id exact_dir
   local installed_packager repo_packager
   local covered installed_names
 
@@ -103,14 +107,16 @@ pkg::installed_selected() {
       return 1
     fi
 
+    candidate_id="${#candidate_dirs[@]}"
+    candidate_dirs+=("$pkg_dir")
     while IFS= read -r output; do
       [[ -n "$output" ]] || continue
-      output_dirs["$output"]+=" $pkg_dir"
+      output_dir_ids["$output"]+="$candidate_id "
       (( output_count["$output"] += 1 ))
     done <<<"$outputs"
   done
 
-  for output in "${!output_dirs[@]}"; do
+  for output in "${!output_dir_ids[@]}"; do
     [[ -n "${installed[$output]+x}" ]] || continue
 
     installed_packager="$(pkg::pacman_info_value Q "$output" Packager)" || {
@@ -133,7 +139,8 @@ pkg::installed_selected() {
   # Unique outputs identify their source directory unambiguously.
   for output in "${!repo_installed[@]}"; do
     (( output_count["$output"] == 1 )) || continue
-    candidate="${output_dirs[$output]# }"
+    read -r -a candidate_ids <<<"${output_dir_ids[$output]}"
+    candidate="${candidate_dirs[${candidate_ids[0]}]}"
     selected_dirs["$candidate"]=1
   done
 
@@ -143,10 +150,11 @@ pkg::installed_selected() {
   for output in "${!repo_installed[@]}"; do
     (( output_count["$output"] > 1 )) || continue
 
-    candidates="${output_dirs[$output]}"
+    read -r -a candidate_ids <<<"${output_dir_ids[$output]}"
     covered=false
 
-    for candidate in $candidates; do
+    for candidate_id in "${candidate_ids[@]}"; do
+      candidate="${candidate_dirs[$candidate_id]}"
       if [[ -n "${selected_dirs[$candidate]+x}" ]]; then
         covered=true
         break
@@ -156,11 +164,16 @@ pkg::installed_selected() {
     [[ "$covered" == "true" ]] && continue
 
     exact_dir="$packages_dir/$output"
-    # Require a whole-path match; shared-alt must not match shared.
-    if [[ "$candidates " == *" $exact_dir "* && -f "$exact_dir/PKGBUILD" ]]; then
-      selected_dirs["$exact_dir"]=1
-      continue
-    fi
+    # Compare complete candidate paths directly, never as substrings.
+    for candidate_id in "${candidate_ids[@]}"; do
+      candidate="${candidate_dirs[$candidate_id]}"
+      if [[ "$candidate" == "$exact_dir" && -f "$exact_dir/PKGBUILD" ]]; then
+        selected_dirs["$exact_dir"]=1
+        covered=true
+        break
+      fi
+    done
+    [[ "$covered" == "true" ]] && continue
 
     echo "warning: ambiguous installed package '$output'; skipping source selection" >&2
   done
