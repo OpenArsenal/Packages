@@ -1,7 +1,7 @@
 pkgbase = ntfsplus-udev
 	pkgdesc = udev and udisks2 rules for preferring the ntfsplus/new ntfs driver
 	pkgver = 1.0.0
-	pkgrel = 1
+	pkgrel = 2
 	epoch = 1
 	arch = any
 	license = GPL-2.0-only
@@ -12,6 +12,6 @@ pkgbase = ntfsplus-udev
 	source = README.md
 	sha256sums = 5ab94954500a6fd4fe8252ce84c343a3b1b60fd7478c18c14fe9352c6c523d48
 	sha256sums = adc9493f562e0d85035788917161bac4e920ed7733f7d174207a93577322762f
-	sha256sums = 2711410ea8ef8d6ad6d2ab46cab1b59f0f982104e74157315eb7a96213d263cc
+	sha256sums = 88bf857cdf133c6b1addd7b816fe8e4465883e908f6ba27fdff4281e8e559994
 
 pkgname = ntfsplus-udev
