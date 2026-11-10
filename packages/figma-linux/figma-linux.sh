@@ -48,7 +48,7 @@ if [[ "${#REMOVE_FLAGS[@]}" -gt 0 ]]; then
 	declare -a FILTERED_DEFAULTS=()
 
 	for d in "${DEFAULT_FLAGS[@]}"; do
-		local keep="1"
+		keep="1"
 		for r in "${REMOVE_FLAGS[@]}"; do
 			if [[ "${d}" == "${r}" ]]; then
 				keep="0"
