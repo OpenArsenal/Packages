@@ -8,7 +8,7 @@ setup() {
   bats_repo_setup
 }
 
-@test "Package update preserves valid SRCINFO on generation failure" {
+@test "Package update preserves SRCINFO on failed or incomplete generation" {
   (
   tmp="$(mktemp -d)"
   trap 'rm -rf -- "$tmp"' EXIT
@@ -16,7 +16,7 @@ setup() {
   export PKGBUILDS_ROOT="$root" PACKAGES_DIR="$tmp/packages" PACKAGES_FILE="$tmp/packages.txt"
   export usage_package=demo usage_apply=true PATH="$tmp/bin:$PATH"
   touch "$PACKAGES_FILE" "$PACKAGES_DIR/demo/PKGBUILD" "$PACKAGES_DIR/demo/.nvchecker.toml"
-  printf 'pkgbase = demo\n\tpkgver = 1\n' >"$PACKAGES_DIR/demo/.SRCINFO"
+  printf 'pkgbase = demo\n\tpkgver = 1\n\tpkgrel = 1\npkgname = demo\n' >"$PACKAGES_DIR/demo/.SRCINFO"
   cp "$PACKAGES_DIR/demo/.SRCINFO" "$tmp/original"
   cat >"$tmp/bin/pkgctl" <<'MOCK'
 #!/usr/bin/env bash
@@ -25,24 +25,39 @@ MOCK
   cat >"$tmp/bin/makepkg" <<'MOCK'
 #!/usr/bin/env bash
 [[ "$1" == --printsrcinfo ]] || exit 2
-if [[ "$MAKEPKG_MODE" == fail ]]; then
-  printf 'partial metadata\n'
-  exit 12
-fi
-printf 'pkgbase = demo\n\tpkgver = 2\n'
+case "${MAKEPKG_MODE:-ok}" in
+  fail) printf 'partial metadata\n'; exit 12 ;;
+  empty) exit 0 ;;
+  incomplete) printf 'pkgbase = demo\n\tpkgver = 2\n'; exit 0 ;;
+  ok) printf 'pkgbase = demo\n\tpkgver = 2\n\tpkgrel = 1\npkgname = demo\n' ;;
+  *) exit 2 ;;
+esac
 MOCK
   chmod +x "$tmp/bin/"*
 
-  if MAKEPKG_MODE=fail bash "$root/.mise/tasks/pkg/update" >"$tmp/log" 2>&1; then
-    fail 'pkg update succeeded after failed metadata generation'
-  fi
-  cmp -s "$tmp/original" "$PACKAGES_DIR/demo/.SRCINFO" || fail 'pkg update overwrote valid metadata'
-  [[ ! -e "$PACKAGES_DIR/demo/.SRCINFO.tmp" ]] || fail 'pkg update left partial metadata'
+  for mode in fail empty incomplete; do
+    if MAKEPKG_MODE="$mode" bash "$root/.mise/tasks/pkg/update" >"$tmp/log" 2>&1; then
+      fail "pkg update accepted $mode metadata generation"
+    fi
+    cmp -s "$tmp/original" "$PACKAGES_DIR/demo/.SRCINFO" ||
+      fail "pkg update overwrote valid metadata after $mode generation"
+    grep -Fq 'preserving existing metadata' "$tmp/log" ||
+      fail "pkg update omitted preservation diagnostic for $mode generation"
+    if compgen -G "$PACKAGES_DIR/demo/.SRCINFO.tmp.*" >/dev/null; then
+      fail "pkg update left partial metadata after $mode generation"
+    fi
+  done
 
-  MAKEPKG_MODE=ok bash "$root/.mise/tasks/pkg/update" >"$tmp/log" 2>&1 || fail "pkg update failed on success: $(cat "$tmp/log")"
-  grep -q 'pkgver = 2' "$PACKAGES_DIR/demo/.SRCINFO" || fail 'pkg update did not refresh valid metadata'
-  [[ ! -e "$PACKAGES_DIR/demo/.SRCINFO.tmp" ]] || fail 'pkg update left temporary metadata'
-  echo 'PASS metadata (failed generation preserves original, successful generation replaces it)'
+  MAKEPKG_MODE=ok bash "$root/.mise/tasks/pkg/update" >"$tmp/log" 2>&1 ||
+    fail "pkg update failed on success: $(cat "$tmp/log")"
+  grep -q 'pkgver = 2' "$PACKAGES_DIR/demo/.SRCINFO" ||
+    fail 'pkg update did not refresh valid metadata'
+  grep -q '^pkgname = demo$' "$PACKAGES_DIR/demo/.SRCINFO" ||
+    fail 'pkg update lost package outputs'
+  if compgen -G "$PACKAGES_DIR/demo/.SRCINFO.tmp.*" >/dev/null; then
+    fail 'pkg update left temporary metadata after successful generation'
+  fi
+  echo 'PASS metadata (failed, empty, incomplete generations preserve original; valid output replaces it)'
   )
 }
 
