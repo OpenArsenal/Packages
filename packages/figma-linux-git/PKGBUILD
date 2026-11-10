@@ -3,7 +3,7 @@ _pkgname=figma-linux
 _electronversion=30
 pkgname=${_pkgname}-git
 pkgver=0.11.4.r10.gd9a7a03
-pkgrel=6
+pkgrel=7
 pkgdesc="Unofficial Electron-based Figma desktop client for Linux (bundled Electron, git HEAD)"
 arch=('x86_64' 'aarch64')
 url="https://github.com/Figma-Linux/figma-linux"
@@ -28,7 +28,7 @@ source=(
 
 sha256sums=('SKIP'
             '5029d26b935d5527c9a71f1a3fe81264f92a3d4a9f1c3b71296623d8d9d1edb2'
-            '7d939f619daa3c1f1d45d7bd9274a2161417e951695ed2514d573bbf09552586')
+            '85178e045c08a709dbc7e212f81d484809933e303e52d02494a10833237835b3')
 
 _record_electron_version() {
   local _binary="$1"
