@@ -120,3 +120,44 @@ MOCK
 
   )
 }
+
+@test "Flutter install hooks preserve legacy Git metadata and administrator-managed groups" {
+  (
+    local tmp
+    tmp="$(mktemp -d)"
+    trap 'rm -rf -- "$tmp"' EXIT
+    mkdir -p "$tmp/bin" "$tmp/usr/lib/flutter/.git" "$tmp/etc"
+    printf 'custom Flutter history\n' >"$tmp/usr/lib/flutter/.git/config"
+    printf 'flutterusers:x:1244:developer\n' >"$tmp/etc/group"
+    cp "$tmp/etc/group" "$tmp/original-group"
+
+    # Fixture-specific path substitutions keep the real host untouched.
+    sed -e "s#/opt/flutter#$tmp/opt/flutter#g" \
+        -e "s#/usr/lib/flutter/.git#$tmp/usr/lib/flutter/.git#g" \
+        -e "s#/etc/group#$tmp/etc/group#g" \
+      "$root/packages/flutter/flutter-common.install" >"$tmp/install-hook"
+
+    cat >"$tmp/bin/groupdel" <<'MOCK'
+#!/usr/bin/env bash
+printf 'called\n' >"$TEST_TMP/groupdel-called"
+exit 73
+MOCK
+    chmod +x "$tmp/bin/groupdel"
+
+    TEST_TMP="$tmp" PATH="$tmp/bin:$PATH" \
+      bash -c 'source "$1"; pre_install "3.41.6-4"; post_install "3.41.6-4"' \
+        _ "$tmp/install-hook" >"$tmp/log" 2>&1 ||
+      fail "Flutter hooks failed while preserving legacy state: $(cat "$tmp/log")"
+
+    [[ "$(cat "$tmp/usr/lib/flutter/.git/config")" == 'custom Flutter history' ]] ||
+      fail 'Flutter install removed preexisting Git metadata'
+    cmp -s "$tmp/etc/group" "$tmp/original-group" ||
+      fail 'Flutter install altered an existing group'
+    [[ ! -e "$tmp/groupdel-called" ]] ||
+      fail 'Flutter install invoked groupdel'
+    grep -Fq 'leaving it untouched' "$tmp/log" ||
+      fail 'Flutter install did not report preserved Git metadata'
+    grep -Fq 'has not been removed' "$tmp/log" ||
+      fail 'Flutter install did not report the existing flutterusers group'
+  )
+}
