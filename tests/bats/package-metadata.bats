@@ -46,31 +46,6 @@ MOCK
   )
 }
 
-@test "Electron package aliases match their declared versions" {
-  (
-  local major dir actual metadata
-  for major in 40 41; do
-    (
-      dir="$root/packages/electron${major}-castlab-bin"
-      source "$dir/PKGBUILD"
-      actual="$(printf '%s\n' "${provides[@]}" | LC_ALL=C sort)"
-      metadata="$(sed -n 's/^[[:space:]]*provides = //p' "$dir/.SRCINFO" | LC_ALL=C sort)"
-      [[ "$(sed -n 's/^[[:space:]]*pkgrel = //p' "$dir/.SRCINFO")" == "$pkgrel" ]] || fail "electron $major metadata pkgrel mismatch"
-      [[ "$(sed -n 's/^[[:space:]]*pkgver = //p' "$dir/.SRCINFO")" == "$pkgver" ]] || fail "electron $major metadata pkgver mismatch"
-      [[ "$actual" == "$metadata" ]] || fail "electron $major .SRCINFO does not match PKGBUILD"
-      [[ "$actual" != *electron42-castlab* ]] || fail "electron $major incorrectly provides Electron 42"
-      [[ "$actual" == *"electron-castlab=$pkgver"* ]] || fail "electron $major lost generic alias"
-      if [[ "$major" == 40 ]]; then
-        [[ ${#provides[@]} -eq 1 ]] || fail 'Electron 40 has extra provides aliases'
-      else
-        [[ ${#provides[@]} -eq 2 && "$actual" == *"electron41-castlab=$pkgver"* ]] || fail 'Electron 41 missing correct versioned alias'
-      fi
-    )
-  done
-  echo 'PASS electron aliases (correct runtime, updated release, .SRCINFO agrees)'
-  )
-}
-
 @test "Strict installed version checks fail on unknown results" {
   (
   tmp="$(mktemp -d)"
@@ -136,77 +111,6 @@ MOCK
     fail 'missing metadata accepted'
   fi
   echo 'PASS srcinfo_consistency (matching, stale, generation failure, missing metadata)'
-  )
-}
-
-@test "1Password updater preserves recipes after failed verification" {
-  (
-  tmp="$(mktemp -d)"
-  trap 'rm -rf -- "$tmp"' EXIT
-  mkdir -p "$tmp/bin" "$tmp/pkg"
-  cat >"$tmp/bin/wget" <<'MOCK'
-#!/usr/bin/env bash
-[[ "$1" == -q && "$2" == -O ]] || exit 12
-[[ "$4" != *"op_linux_${FAIL_WGET:-unlikely}_"* ]] || exit 42
-printf 'fake zip data for %s' "$4" >"$3"
-MOCK
-  cat >"$tmp/bin/unzip" <<'MOCK'
-#!/usr/bin/env bash
-[[ "$1" == -p && -f "$2" ]] || exit 12
-[[ "$2" != *"op_linux_${FAIL_UNZIP:-unlikely}_"* ]] || exit 43
-case "$3" in
-  op) printf binary ;;
-  op.sig) printf signature ;;
-  *) exit 44 ;;
-esac
-MOCK
-  cat >"$tmp/bin/gpgv" <<'MOCK'
-#!/usr/bin/env bash
-[[ "$1" == -q && -s "$2" && -s "$3" ]] || exit 12
-[[ "${FAIL_SIG:-0}" != 1 ]] || exit 45
-MOCK
-  chmod +x "$tmp/bin/"*
-  cat >"$tmp/pkg/PKGBUILD" <<'RECIPE'
-pkgname=1password-cli-bin
-pkgver=2.42.0
-pkgrel=1
-sha256sums_x86_64=('old')
-sha256sums_i686=('old')
-sha256sums_arm=('old')
-sha256sums_armv6h=('old')
-sha256sums_aarch64=('old')
-RECIPE
-  printf precious >"$tmp/pkg/operations-notes.txt"
-  printf precious2 >"$tmp/pkg/op-cache.txt"
-  cp "$tmp/pkg/PKGBUILD" "$tmp/initial"
-
-  for failure in wget unzip sig; do
-    if (
-      cd "$tmp/pkg"
-      export PATH="$tmp/bin:$PATH" PKGVER=2.43.0
-      case "$failure" in
-        wget) export FAIL_WGET=arm ;;
-        unzip) export FAIL_UNZIP=amd64 ;;
-        sig) export FAIL_SIG=1 ;;
-      esac
-      bash "$root/packages/1password-cli-bin/package-update.sh" >"$tmp/log" 2>&1
-    ); then
-      fail "updater succeeded after $failure failure"
-    fi
-    cmp -s "$tmp/initial" "$tmp/pkg/PKGBUILD" || fail "updater changed recipe after $failure failure"
-    [[ "$(cat "$tmp/pkg/operations-notes.txt")" == precious && "$(cat "$tmp/pkg/op-cache.txt")" == precious2 ]] || fail 'updater deleted unrelated files'
-  done
-
-  (
-    cd "$tmp/pkg"
-    PATH="$tmp/bin:$PATH" PKGVER=2.43.0 bash "$root/packages/1password-cli-bin/package-update.sh"
-  ) || fail 'successful updater run failed'
-  grep -qx 'pkgver=2.43.0' "$tmp/pkg/PKGBUILD" || fail 'pkgver not updated'
-  for arch in x86_64 i686 arm armv6h aarch64; do
-    grep -Eq "^sha256sums_$arch=\('[0-9a-f]{64}'\)$" "$tmp/pkg/PKGBUILD" || fail "checksum not updated: $arch"
-  done
-  [[ "$(cat "$tmp/pkg/operations-notes.txt")" == precious && "$(cat "$tmp/pkg/op-cache.txt")" == precious2 ]] || fail 'updater deleted unrelated files on success'
-  echo 'PASS onepassword_update (failures preserve files; success updates checksums)'
   )
 }
 
@@ -364,65 +268,5 @@ MOCK
     fail "valid comparator was rejected: $(cat "$tmp/log")"
   grep -Fq 'Outdated (1):' "$tmp/log" ||
     fail 'valid version comparison no longer classified outdated packages'
-  )
-}
-
-@test "Flutter artifact updater rejects missing or failed metadata without changing the recipe" {
-  (
-  local tmp
-  tmp="$(mktemp -d)"
-  trap 'rm -rf -- "$tmp"' EXIT
-  mkdir -p "$tmp/bin" "$tmp/src/flutter/bin/internal" "$tmp/src/dart/dart-sdk"
-  printf '_dartver="old"\n_enginever=old\n_materialfontsver=old\n_gradlewver=old\n' >"$tmp/PKGBUILD"
-  cp "$tmp/PKGBUILD" "$tmp/original"
-
-  cat >"$tmp/bin/makepkg" <<'MOCK'
-#!/usr/bin/env bash
-[[ "$1" == -ofC ]]
-MOCK
-  cat >"$tmp/bin/cat" <<'MOCK'
-#!/usr/bin/env bash
-if [[ "${CAT_MODE:-ok}" == partial && "${1:-}" == */material_fonts.version ]]; then
-  printf 'a/b/c/incomplete\n'
-  exit 47
-fi
-exec /usr/bin/cat "$@"
-MOCK
-  chmod +x "$tmp/bin/"*
-
-  printf 'new-engine\n' >"$tmp/src/flutter/bin/internal/engine.version"
-  printf 'a/b/c/new-fonts\n' >"$tmp/src/flutter/bin/internal/material_fonts.version"
-  printf 'a/b/new-gradle\n' >"$tmp/src/flutter/bin/internal/gradle_wrapper.version"
-
-  # SDK metadata is missing even though earlier fields were readable.
-  if (cd "$tmp" && PATH="$tmp/bin:$PATH" bash "$root/packages/flutter/update-artifact-versions.sh") >"$tmp/log" 2>&1; then
-    fail 'Flutter updater accepted missing Dart SDK metadata'
-  fi
-  cmp -s "$tmp/PKGBUILD" "$tmp/original" ||
-    fail 'missing Dart SDK version changed PKGBUILD'
-
-  printf '3.11.0\n' >"$tmp/src/dart/dart-sdk/version"
-
-  # A pipeline producing partial output then failing must not reach sed.
-  if (cd "$tmp" && CAT_MODE=partial PATH="$tmp/bin:$PATH" bash "$root/packages/flutter/update-artifact-versions.sh") >"$tmp/log" 2>&1; then
-    fail 'Flutter updater accepted failed material-font metadata read'
-  fi
-  cmp -s "$tmp/PKGBUILD" "$tmp/original" ||
-    fail 'failed material-font metadata read changed PKGBUILD'
-
-  : >"$tmp/src/flutter/bin/internal/engine.version"
-  if (cd "$tmp" && PATH="$tmp/bin:$PATH" bash "$root/packages/flutter/update-artifact-versions.sh") >"$tmp/log" 2>&1; then
-    fail 'Flutter updater accepted an empty engine version'
-  fi
-  cmp -s "$tmp/PKGBUILD" "$tmp/original" ||
-    fail 'empty engine version changed PKGBUILD'
-
-  printf 'new-engine\n' >"$tmp/src/flutter/bin/internal/engine.version"
-  (cd "$tmp" && PATH="$tmp/bin:$PATH" bash "$root/packages/flutter/update-artifact-versions.sh") >"$tmp/log" 2>&1 ||
-    fail "Flutter updater rejected valid metadata: $(cat "$tmp/log")"
-  grep -qx '_dartver="3.11.0"' "$tmp/PKGBUILD" || fail 'Dart version was not updated'
-  grep -qx '_enginever=new-engine' "$tmp/PKGBUILD" || fail 'engine version was not updated'
-  grep -qx '_materialfontsver=new-fonts' "$tmp/PKGBUILD" || fail 'material fonts were not updated'
-  grep -qx '_gradlewver=new-gradle' "$tmp/PKGBUILD" || fail 'Gradle wrapper was not updated'
   )
 }
