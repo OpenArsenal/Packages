@@ -1,0 +1,4 @@
+# Local test task for the visual-studio-code recipe. Inherited repository tasks stay available.
+[tasks.test]
+description = "Run desktop-launchers Bats regressions for visual-studio-code"
+run = "bats ../../tests/packages/desktop-launchers.bats"

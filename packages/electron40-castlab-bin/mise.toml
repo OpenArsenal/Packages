@@ -1,0 +1,4 @@
+# Local test task for the electron40-castlab-bin recipe. Inherited repository tasks stay available.
+[tasks.test]
+description = "Run electron Bats regressions for electron40-castlab-bin"
+run = "bats ../../tests/packages/electron.bats"

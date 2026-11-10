@@ -35,5 +35,17 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install pinned bats-core with mise
         uses: jdx/mise-action@v5
-      - name: Package-specific integration tests
-        run: mise run test:packages
+      - name: Package-directory Bats tests
+        run: |
+          set -euo pipefail
+          for package in \
+            1password-cli-bin 1password-wayland \
+            chromium-ffmpeg vivaldi-ffmpeg \
+            electron40-castlab-bin electron41-castlab-bin \
+            figma-linux figma-linux-git flutter \
+            google-chrome-canary-ffmpeg google-chrome-ffmpeg \
+            microsoft-edge-stable-bin visual-studio-code; do
+            echo "::group::packages/$package"
+            (cd "packages/$package" && mise run test)
+            echo "::endgroup::"
+          done
