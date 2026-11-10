@@ -154,6 +154,36 @@ pkg::find_local_provider() {
   return 1
 }
 
+# Selected --force providers must be planned before their consumers, even
+# when the repository still satisfies the dependency with an older build.
+# Iterate the indexed candidates, not arbitrary package names: virtual
+# provides= aliases need the same treatment as actual package outputs.
+pkg::find_forced_local_provider() {
+  local dep="$1" op="$2" ver="$3" candidate rc
+
+  while IFS= read -r candidate; do
+    [[ -n "$candidate" ]] || continue
+    [[ "${PKG_FORCE_DIR[$candidate]-false}" == "true" ]] || continue
+
+    # Registration in PKG_PROVIDER_CANDIDATES already establishes that an
+    # unversioned dependency is provided, including an unversioned alias.
+    if [[ -z "$op" || -z "$ver" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+
+    if pkg::provider_matches_version "$candidate" "$dep" "$op" "$ver"; then
+      printf '%s\n' "$candidate"
+      return 0
+    else
+      rc=$?
+      (( rc == 1 )) || return "$rc"
+    fi
+  done <<<"${PKG_PROVIDER_CANDIDATES[$dep]-}"
+
+  return 1
+}
+
 pkg::all_outputs_in_repo() {
   local pkg_dir="$1"
   local version output outputs
@@ -204,6 +234,22 @@ pkg::plan_deps() {
       local rc=$?
       if (( rc != 1 )); then
         echo "error: unable to inspect outputs for: $pkg_dir" >&2
+        return 1
+      fi
+    fi
+
+    # All explicit --force selections were marked before dependency traversal.
+    # Plan a compatible selected provider first even if the published
+    # repository still contains an older build that satisfies this dependency.
+    if provider_dir="$(pkg::find_forced_local_provider "$dep" "$op" "$ver")"; then
+      if [[ "$provider_dir" != "$pkg_dir" ]]; then
+        pkg::plan_dir "$provider_dir" || return 1
+      fi
+      continue
+    else
+      local rc=$?
+      if (( rc != 1 )); then
+        echo "error: unable to inspect forced local provider for: $raw" >&2
         return 1
       fi
     fi

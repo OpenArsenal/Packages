@@ -528,3 +528,69 @@ MOCK
     fail 'build publisher selected the wrong archive'
   )
 }
+
+@test "Forced selected dependency builds precede consumers even when older version is published" {
+  (
+  local tmp packages requirement selection
+  local -a requested=()
+
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  packages="$tmp/packages"
+  export REPO_DIR="$tmp/repo" REPO_DB="$tmp/nonexistent.db"
+  mkdir -p "$REPO_DIR" "$packages/libdemo" "$packages/app"
+  touch "$packages/libdemo/PKGBUILD" "$packages/app/PKGBUILD"
+
+  # A newer libdemo=2-1 is selected locally, while the repository still
+  # satisfies libdemo via the published version 1-1.
+  printf 'pkgbase = libdemo\n\tpkgver = 2\n\tpkgrel = 1\npkgname = libdemo\n' \
+    >"$packages/libdemo/.SRCINFO"
+
+  source "$root/.mise/lib/repo.sh"
+  source "$root/.mise/lib/pkg.sh"
+  repo::index_reset
+  REPO_INDEX_DIR="$REPO_DIR"
+  REPO_PACKAGE_VERSION[libdemo]='1-1'
+
+  # In Ubuntu CI, model just the Arch version comparison used in the
+  # versioned case. The planner itself and metadata readers remain real.
+  vercmp() {
+    local a="${1%%-*}" b="${2%%-*}"
+    [[ "$a" =~ ^[0-9]+$ && "$b" =~ ^[0-9]+$ ]] || return 47
+    if (( a < b )); then printf '%s\n' -1
+    elif (( a > b )); then printf '%s\n' 1
+    else printf '%s\n' 0
+    fi
+  }
+
+  # Cover both an unversioned dependency and a lower-bound constraint
+  # already satisfied by the *older* published library.
+  for requirement in libdemo 'libdemo>=1'; do
+    printf 'pkgbase = app\n\tpkgver = 1\n\tpkgrel = 1\n\tdepends = %s\npkgname = app\n' \
+      "$requirement" >"$packages/app/.SRCINFO"
+    pkg::metadata_cache_reset
+
+    # Force applies only to explicitly requested recipes, not every package
+    # whose outputs are available locally.
+    pkg::plan_selected "$packages" true app >"$tmp/log" 2>&1 ||
+      fail "forcing only app failed ($requirement): $(cat "$tmp/log")"
+    [[ "${#PKG_PLAN[@]}" -eq 1 && "${PKG_PLAN[0]}" == "$packages/app" ]] ||
+      fail "forcing app alone unexpectedly rebuilt libdemo ($requirement): ${PKG_PLAN[*]}"
+
+    for selection in 'app libdemo' 'libdemo app'; do
+      read -r -a requested <<<"$selection"
+      pkg::plan_selected "$packages" true "${requested[@]}" >"$tmp/log" 2>&1 ||
+        fail "forced planning failed for $selection ($requirement): $(cat "$tmp/log")"
+      [[ "${#PKG_PLAN[@]}" -eq 2 &&
+         "${PKG_PLAN[0]}" == "$packages/libdemo" &&
+         "${PKG_PLAN[1]}" == "$packages/app" ]] ||
+        fail "forced dependency built after its consumer for $selection ($requirement): ${PKG_PLAN[*]}"
+    done
+
+    pkg::plan_selected "$packages" false app >"$tmp/log" 2>&1 ||
+      fail "normal planning failed ($requirement): $(cat "$tmp/log")"
+    [[ "${#PKG_PLAN[@]}" -eq 1 && "${PKG_PLAN[0]}" == "$packages/app" ]] ||
+      fail "normal planning rebuilt an already-satisfied published dependency: ${PKG_PLAN[*]}"
+  done
+  )
+}
