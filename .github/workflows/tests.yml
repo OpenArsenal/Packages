@@ -21,10 +21,8 @@ jobs:
           set -o pipefail
           bash -n tests/check-srcinfo.sh tests/bats/test_helper/common.bash
           find .mise/lib .mise/tasks -type f -print0 | xargs -0 -r -n1 bash -n
-      - name: Unit tests
-        run: mise run test:unit
-      - name: Shared workflow integration tests (mocked external tools)
-        run: mise run test:integration
+      - name: Root shared tests (unit + integration)
+        run: mise run test
 
 
   contract-tests:
@@ -32,10 +30,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check contract harness unit tests
-        run: python3 -m unittest discover -s tests/contracts -p 'test_*.py'
-      - name: Verify package metadata, sources, launchers and capability registry
-        run: python3 tests/contracts/check.py all
+      - name: Install pinned bats-core with mise
+        uses: jdx/mise-action@v5
+      - name: Package-wide universal and capability contracts
+        working-directory: packages
+        run: mise run test:contracts
 
   package-tests:
     name: Package-specific Bats suites
@@ -44,17 +43,6 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install pinned bats-core with mise
         uses: jdx/mise-action@v5
-      - name: Package-directory Bats tests
-        run: |
-          set -euo pipefail
-          for package in \
-            1password-cli-bin 1password-wayland \
-            chromium-ffmpeg vivaldi-ffmpeg \
-            electron40-castlab-bin electron41-castlab-bin \
-            figma-linux figma-linux-git flutter \
-            google-chrome-canary-ffmpeg google-chrome-ffmpeg \
-            microsoft-edge-stable-bin visual-studio-code; do
-            echo "::group::packages/$package"
-            (cd "packages/$package" && mise run test)
-            echo "::endgroup::"
-          done
+      - name: Run package-root test entrypoint (contracts + regressions)
+        working-directory: packages
+        run: mise run test
