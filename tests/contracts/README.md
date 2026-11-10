@@ -22,7 +22,9 @@ mise run test               # Both package groups
 The sole package `mise.toml` is `packages/mise.toml`; its tasks also apply
 in package subdirectories. From the **repository root**, `mise run test` runs
 only shared Bats tests, while `mise run test:all` explicitly runs the shared
-and package-root test groups. CI runs all three categories as independent jobs.
+and package-root test groups. CI runs shared tooling separately from the
+package-root `mise run test` entrypoint, which runs both contracts and
+regressions once.
 
 The existing `tests/check-local-source-checksums.py` is **reused**, not
 reimplemented: it validates source files against `.SRCINFO` checksums and
