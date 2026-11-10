@@ -14,7 +14,7 @@ _dartmax="3.11.0"
 # this host is blocked in China, according to Flutter docs, the FLUTTER_STORAGE_BASE_URL environment variable
 # should be used to provide an alternative mirror
 _storagebase="${FLUTTER_STORAGE_BASE_URL:-"https://storage.googleapis.com"}"
-pkgrel=2
+pkgrel=3
 pkgdesc="A new mobile app SDK to help developers and designers build modern mobile apps for iOS and Android."
 _pkgdesc="Flutter SDK component"
 arch=("x86_64" "aarch64")
@@ -191,7 +191,7 @@ sha256sums=('145b0a160dcbf6fb68e6f57913a0b55229aacac82cef7618ab830cfca540aa53'
             '732cc50cc2a502726efd5ab230c5c81af76a07661f34a9a6327622d99de0f30f'
             '47bea61b2d62a4637d56f2807661afd7d427f1f48434d1d132b7e6e10ffb6aa8'
             'e41d25d8cba8b0bb51ee0b20cb6b730bfb2c491d67c669ab8e3550d60b37fb5c'
-            'b4c104129eb57e7e3edca2e23376b8b034de2d466189bdc1c3e2a304506889a3'
+            '83514e197d7f2cd7e0d46cacce1e6eba2bfc8a6929dda02821095927d7c6660d'
             'f0c88e34c130f243786f7673d4c5f8fb5d1089c84b0604085aeb35a7fa8b3682'
             'cadd32aaac6beeb91052174d50494bb7e16444759fcdc8224ea13550657f525f'
             'e26c476ad75647fe4441d56888b95837f586db5feb0fada5e51005eb0582ce32'
@@ -216,12 +216,40 @@ sha256sums_aarch64=('e4f9a7856b7628d2aca06150c111fe55a38314f3f42012f7eb779aaa201
                     'd8a5c350a903b4671311a7d128edc2d3f49568fcd5a331dfed63e3245b07d5c3'
                     'ae9e5df7d8fe07dc27e2144006b43934dad01eded2f028276604d2b8a1ef5649')
 
+
+# Resolve Dart from its actual executable, including regular files and symlinks.
+# An explicitly configured DART_ROOT always takes precedence.
+_flutter_resolve_dart_root() {
+  if [[ -n "${DART_ROOT:-}" ]]; then
+    return 0
+  fi
+
+  local dart_binary
+  dart_binary="$(command -v dart)" || {
+    echo "error: dart executable not found in PATH" >&2
+    return 1
+  }
+  dart_binary="$(readlink -f -- "$dart_binary")" || {
+    echo "error: unable to resolve dart executable" >&2
+    return 1
+  }
+  case "$dart_binary" in
+    */bin/dart)
+      DART_ROOT="${dart_binary%/bin/dart}"
+      ;;
+    *)
+      echo "error: unexpected Dart executable location: $dart_binary" >&2
+      return 1
+      ;;
+  esac
+  [[ -n "$DART_ROOT" ]]
+}
+
 prepare() {
   # SDK
 
   # this is required in case people try to build with `aur/dart-sdk-dev` instead of `extra/dart`
-  DART_BINARY=$(readlink $(command -v dart))
-  DART_ROOT=${DART_ROOT:-${DART_BINARY/\/bin\/dart*/}}
+  _flutter_resolve_dart_root || return 1
 
   if [ "${DART_ROOT}" != "/opt/dart-sdk" ]; then
     echo -e "\n\n++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n\n"
@@ -537,8 +565,7 @@ _package-intellij-patch() {
   )
 
   # this is required in case people try to build with `aur/dart-sdk-dev` instead of `extra/dart`
-  DART_BINARY=$(readlink $(command -v dart))
-  DART_ROOT=${DART_ROOT:-${DART_BINARY/\/bin\/dart*/}}
+  _flutter_resolve_dart_root || return 1
 
   install -dm755 "${pkgdir}/usr/lib/${_group}/bin/cache"
   
