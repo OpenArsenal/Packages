@@ -1,0 +1,203 @@
+# Declarative adapters for behavior shared by multiple package recipes.
+# Every packages/*/*-flags-wrapper.sh must appear in a launcher group.
+# For a new family, add a small adapter to check.py, not a copied Bats suite.
+schema = 1
+
+[[launchers]]
+family = "gg"
+packages = ["gg", "gg-bin", "gg-git"]
+script = "gg-flags-wrapper.sh"
+adapter = "token"
+token = "@GG_EXEC@"
+configs = ["gg-flags.conf"]
+environment_assignment = true
+
+[[launchers]]
+family = "affine"
+packages = ["affine", "affine-bin", "affine-git"]
+script = "affine-flags-wrapper.sh"
+adapter = "token"
+token = "@AFFINE_EXEC@"
+configs = ["affine-flags.conf"]
+
+[[launchers]]
+family = "affine-electron"
+packages = ["affine-electron", "affine-electron-git"]
+script = "affine-flags-wrapper.sh"
+adapter = "electron"
+token = "@ELECTRON_CMD@"
+app_token = "@AFFINE_APP@"
+appdir = "/usr/lib/affine"
+configs = ["electron-flags.conf", "affine-flags.conf"]
+
+[[launchers]]
+family = "gitbutler"
+packages = ["gitbutler", "gitbutler-bin", "gitbutler-git"]
+script = "gitbutler-flags-wrapper.sh"
+adapter = "token"
+token = "@GITBUTLER_EXEC@"
+configs = ["gitbutler-flags.conf"]
+
+[[launchers]]
+family = "logseq"
+packages = ["logseq", "logseq-bin", "logseq-git"]
+script = "logseq-flags-wrapper.sh"
+adapter = "token"
+token = "@LOGSEQ_EXEC@"
+configs = ["logseq-flags.conf"]
+
+[[launchers]]
+family = "logseq-electron"
+packages = ["logseq-electron", "logseq-electron-git"]
+script = "logseq-flags-wrapper.sh"
+adapter = "electron"
+token = "@ELECTRON_CMD@"
+app_token = "@LOGSEQ_APP@"
+configs = ["electron-flags.conf", "logseq-flags.conf"]
+
+[[launchers]]
+family = "positron"
+packages = ["positron"]
+script = "positron-flags-wrapper.sh"
+adapter = "literal"
+executable = "/opt/positron/positron"
+configs = ["positron-flags.conf"]
+
+[[launchers]]
+family = "positron-bin"
+packages = ["positron-bin"]
+script = "positron-flags-wrapper.sh"
+adapter = "literal"
+executable = "/opt/positron/bin/positron"
+configs = ["positron-flags.conf"]
+
+[[launchers]]
+family = "singularityapp"
+packages = ["singularityapp"]
+script = "singularityapp-flags-wrapper.sh"
+adapter = "snap"
+configs = ["singularityapp-flags.conf"]
+
+[[launchers]]
+family = "vesktop"
+packages = ["vesktop", "vesktop-git"]
+script = "vesktop-flags-wrapper.sh"
+adapter = "token"
+token = "@VESKTOP_EXEC@"
+configs = ["vesktop-flags.conf"]
+
+[[launchers]]
+family = "vesktop-electron"
+packages = ["vesktop-electron", "vesktop-electron-git"]
+script = "vesktop-flags-wrapper.sh"
+adapter = "electron"
+token = "@ELECTRON_CMD@"
+app_token = "@VESKTOP_APP@"
+configs = ["electron-flags.conf", "vesktop-flags.conf"]
+
+[[launchers]]
+family = "figma-linux"
+packages = ["figma-linux", "figma-linux-git"]
+script = "figma-linux.sh"
+adapter = "figma"
+configs = ["figma-linux/figma-linux-flags.conf"]
+
+[[launchers]]
+family = "visual-studio-code"
+packages = ["visual-studio-code"]
+script = "visual-studio-code.sh"
+adapter = "literal"
+executable = "/opt/visual-studio-code/bin/code"
+configs = ["code-flags.conf"]
+
+[[launchers]]
+family = "chrome-stable"
+packages = ["google-chrome-ffmpeg"]
+script = "google-chrome-stable.sh"
+adapter = "literal"
+executable = "/opt/google/chrome/google-chrome"
+configs = ["chrome-flags.conf"]
+
+[[launchers]]
+family = "chrome-canary"
+packages = ["google-chrome-canary-ffmpeg"]
+script = "google-chrome-canary.sh"
+adapter = "literal"
+executable = "/opt/google/chrome-canary/google-chrome-canary"
+configs = ["chrome-canary-flags.conf"]
+
+[[launchers]]
+family = "cherry-studio"
+packages = ["cherry-studio", "cherry-studio-git"]
+script = "cherry-studio.sh"
+adapter = "token"
+token = "__ELECTRON__"
+configs = ["cherry-studio-flags.conf"]
+
+[[launchers]]
+family = "cherry-studio-bin"
+packages = ["cherry-studio-bin"]
+script = "cherry-studio-bin.sh"
+adapter = "cherry-bin"
+configs = ["cherry-studio-flags.conf"]
+
+# These specialized regressions already exercise the capability contract.
+# Reuse their Bats tests rather than running the same behavioral case twice.
+# check.py verifies each entrypoint and named test stays present; the separate
+# package-specific CI job executes the referenced Bats suites.
+
+[[behaviors]]
+capability = "updater-fail-closed"
+packages = ["1password-cli-bin"]
+entrypoints = ["package-update.sh"]
+suite = "tests/packages/onepassword.bats"
+tests = ["1Password updater preserves recipes after failed verification"]
+
+[[behaviors]]
+capability = "updater-fail-closed"
+packages = ["flutter"]
+entrypoints = ["update-artifact-versions.sh"]
+suite = "tests/packages/flutter.bats"
+tests = ["Flutter artifact updater rejects missing or failed metadata without changing the recipe"]
+
+[[behaviors]]
+capability = "updater-fail-closed"
+packages = ["chromium-ffmpeg", "vivaldi-ffmpeg"]
+entrypoints = ["update-ffmpeg-ref.sh"]
+suite = "tests/packages/ffmpeg.bats"
+tests = ["FFmpeg updaters fall back on HTTP 404 but stop on other HTTP errors"]
+
+[[behaviors]]
+capability = "updater-fail-closed"
+packages = ["microsoft-edge-stable-bin"]
+entrypoints = ["update_version.sh"]
+suite = "tests/packages/microsoft-edge.bats"
+tests = ["Edge updater refuses incomplete metadata without modifying PKGBUILD"]
+
+[[behaviors]]
+capability = "install-hook-preserves-user-data"
+packages = ["flutter"]
+entrypoints = ["flutter-common.install"]
+suite = "tests/packages/flutter.bats"
+tests = [
+  "Fresh Flutter installation preserves an existing SDK directory",
+  "Flutter install hooks preserve legacy Git metadata and administrator-managed groups",
+]
+
+[[behaviors]]
+capability = "install-hook-lifecycle"
+packages = ["1password-wayland"]
+entrypoints = [
+  "1password-wayland.install",
+  "electron-fiddle-wayland.install",
+  "element-desktop-wayland.install",
+  "rambox-pro-bin-wayland.install",
+  "signal-desktop-wayland.install",
+]
+suite = "tests/packages/wayland.bats"
+tests = [
+  "All five Wayland variants package their lifecycle hooks and executable helpers",
+  "All five Wayland install scripts call patch on install/upgrade and unpatch on removal",
+  "Wayland patch never replaces the original launcher after backup failures",
+  "Wayland unpatch preserves foreign symlinks and stops if restoring backup fails",
+]
