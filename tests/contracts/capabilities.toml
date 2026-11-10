@@ -109,6 +109,8 @@ script = "visual-studio-code.sh"
 adapter = "literal"
 executable = "/opt/visual-studio-code/bin/code"
 configs = ["code-flags.conf"]
+exact_argv = "cli-first"
+unterminated_config = true
 
 [[launchers]]
 family = "chrome-stable"
@@ -117,6 +119,8 @@ script = "google-chrome-stable.sh"
 adapter = "literal"
 executable = "/opt/google/chrome/google-chrome"
 configs = ["chrome-flags.conf"]
+exact_argv = "config-first"
+unterminated_config = true
 
 [[launchers]]
 family = "chrome-canary"
@@ -125,6 +129,8 @@ script = "google-chrome-canary.sh"
 adapter = "literal"
 executable = "/opt/google/chrome-canary/google-chrome-canary"
 configs = ["chrome-canary-flags.conf"]
+exact_argv = "config-first"
+unterminated_config = true
 
 [[launchers]]
 family = "cherry-studio"

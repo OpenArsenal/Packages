@@ -80,6 +80,54 @@ class LauncherContractsTest(unittest.TestCase):
                 errors,
             )
 
+
+    def test_exact_argv_rejects_surplus_and_reordered_flags(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            directory = root / "packages" / "demo"
+            directory.mkdir(parents=True)
+            wrapper = directory / "demo-flags-wrapper.sh"
+            spec = {
+                "adapter": "token", "script": wrapper.name,
+                "token": "@DEMO_EXEC@", "configs": ["demo.conf"],
+                "exact_argv": "config-first", "unterminated_config": True,
+            }
+            wrapper.write_text(
+                '#!/bin/bash\nexec @DEMO_EXEC@ --contract-config-0=value "$@"\n',
+                encoding="utf-8",
+            )
+            self.assertEqual(launcher_contract(root, spec, "demo"), [])
+            wrapper.write_text(
+                '#!/bin/bash\nexec @DEMO_EXEC@ --contract-config-0=value --unexpected "$@"\n',
+                encoding="utf-8",
+            )
+            errors = " ".join(launcher_contract(root, spec, "demo"))
+            self.assertIn("unexpected launcher arguments", errors)
+            wrapper.write_text(
+                '#!/bin/bash\nexec @DEMO_EXEC@ "$@" --contract-config-0=value\n',
+                encoding="utf-8",
+            )
+            errors = " ".join(launcher_contract(root, spec, "demo"))
+            self.assertIn("unexpected launcher arguments", errors)
+
+    def test_unquoted_cli_argument_splitting_is_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            directory = root / "packages" / "demo"
+            directory.mkdir(parents=True)
+            wrapper = directory / "demo-flags-wrapper.sh"
+            wrapper.write_text(
+                "#!/bin/bash\nexec @DEMO_EXEC@ --contract-config-0=value $@\n",
+                encoding="utf-8",
+            )
+            spec = {
+                "adapter": "token", "script": wrapper.name,
+                "token": "@DEMO_EXEC@", "configs": ["demo.conf"],
+            }
+            errors = " ".join(launcher_contract(root, spec, "demo"))
+            self.assertIn("lost or duplicated argument", errors)
+            self.assertIn("contract-cli=two words", errors)
+
     def test_new_wrapper_requires_explicit_manifest_entry(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)

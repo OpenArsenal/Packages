@@ -128,6 +128,8 @@ def validate_registry(root: Path, registry: dict) -> list[str]:
             errors.append(f"{family}: unsupported launcher adapter {adapter!r}")
         if not group.get("configs"):
             errors.append(f"{family}: declare at least one configuration path")
+        if group.get("exact_argv") not in (None, "config-first", "cli-first"):
+            errors.append(f"{family}: unsupported exact_argv order")
         packages = group.get("packages", [])
         if not packages:
             errors.append(f"{family}: no package directories")
@@ -243,7 +245,8 @@ def launcher_contract(root: Path, spec: dict, package: str) -> list[str]:
             config = xdg / rel
             config.parent.mkdir(parents=True, exist_ok=True)
             flag = f"--contract-config-{idx}=value"
-            config.write_text(f"# {COMMENT_SENTINEL}\n{flag}\n", encoding="utf-8")
+            ending = "" if spec.get("unterminated_config") else "\n"
+            config.write_text(f"# {COMMENT_SENTINEL}\n{flag}{ending}", encoding="utf-8")
             expected_args.append(flag)
         if spec.get("environment_assignment"):
             with (xdg / spec["configs"][0]).open("a", encoding="utf-8") as file:
@@ -264,10 +267,11 @@ def launcher_contract(root: Path, spec: dict, package: str) -> list[str]:
             "GSETTINGS_SCHEMA_DIR": "",
         })
         env.pop("CONTRACT_TEST_ENV", None)
-        cli = "--contract-cli=value"
+        # A whitespace-bearing argument catches unquoted $@ expansions.
+        cli = ["--contract-cli=value", "--contract-cli=two words"]
         try:
             result = subprocess.run(
-                ["bash", str(wrapper), cli], cwd=base, env=env,
+                ["bash", str(wrapper), *cli], cwd=base, env=env,
                 capture_output=True, text=True, timeout=15,
             )
         except (OSError, subprocess.TimeoutExpired) as error:
@@ -280,8 +284,15 @@ def launcher_contract(root: Path, spec: dict, package: str) -> list[str]:
         argv = record["argv"]
         errors = [
             f"{package}: lost or duplicated argument {arg!r}: {argv!r}"
-            for arg in [*expected_args, cli] if argv.count(arg) != 1
+            for arg in [*expected_args, *cli] if argv.count(arg) != 1
         ]
+        if spec.get("exact_argv"):
+            expected_argv = ([*expected_args, *cli] if spec["exact_argv"] == "config-first"
+                             else [*cli, *expected_args])
+            if argv != expected_argv:
+                errors.append(
+                    f"{package}: unexpected launcher arguments or order: {argv!r} != {expected_argv!r}"
+                )
         if any(COMMENT_SENTINEL in arg for arg in argv):
             errors.append(f"{package}: comment was forwarded to executable")
         if spec.get("environment_assignment") and record.get("contract_env") != "hello=world":
