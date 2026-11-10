@@ -1,4 +1,0 @@
-# Local test task for the microsoft-edge-stable-bin recipe. Inherited repository tasks stay available.
-[tasks.test]
-description = "Run microsoft-edge Bats regressions for microsoft-edge-stable-bin"
-run = "bats ../../tests/packages/microsoft-edge.bats"
