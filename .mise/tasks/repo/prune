@@ -112,7 +112,7 @@ done
 
 args=(-d -v -c "$REPO_DIR" -k "${usage_keep:-2}")
 [[ -n "${usage_min_atime:-}" ]] && args+=(--min-atime "${usage_min_atime}")
-candidates="$(paccache "${args[@]}")" || {
+prune_candidates_output="$(paccache "${args[@]}")" || {
   echo "error: unable to select archives for pruning" >&2
   exit 1
 }
@@ -163,4 +163,4 @@ while IFS= read -r filename; do
 
   [[ "${usage_quiet:-false}" == "true" ]] || echo "Removing old archive: $archive"
   rm -f -- "$archive" "$archive.sig" || exit 1
-done <<<"$candidates"
+done <<<"$prune_candidates_output"
