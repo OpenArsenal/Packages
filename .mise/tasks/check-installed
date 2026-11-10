@@ -10,6 +10,17 @@ for tool in pacman nvchecker jq vercmp timeout; do
   command -v "$tool" >/dev/null || { echo "Missing tool: $tool" >&2; exit 1; }
 done
 root="${PKGBUILDS_ROOT:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)}"
+source_dir="${PACKAGES_DIR:-$root/packages}"
+# A typo or inaccessible source directory must not become a successful
+# zero-package report, even when --strict is requested.
+if [[ ! -d "$source_dir" || ! -r "$source_dir" || ! -x "$source_dir" ]]; then
+  echo "error: package source directory does not exist or is inaccessible: $source_dir" >&2
+  exit 1
+fi
+source_dir="$(cd -- "$source_dir" && pwd -P)" || {
+  echo "error: unable to resolve package source directory: $source_dir" >&2
+  exit 1
+}
 installed="$(pacman -Q)" || exit 1
 declare -A versions=() rows=() counts=()
 while read -r name version; do
@@ -69,7 +80,7 @@ compare() {
 
 checked=0
 shopt -s nullglob
-for srcinfo in "${PACKAGES_DIR:-$root/packages}"/*/.SRCINFO; do
+for srcinfo in "$source_dir"/*/.SRCINFO; do
   names=()
   base=""
   while read -r key equals value; do

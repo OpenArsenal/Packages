@@ -766,3 +766,47 @@ MOCK
     fail 'paccache ran before all published symlinks were validated'
   )
 }
+
+@test "Prune retention options parse as named mise flags and reach paccache" {
+  command -v mise >/dev/null 2>&1 || skip 'mise required for parser-level regression'
+  (
+  local tmp
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/bin" "$tmp/served repo"
+  export PKGBUILDS_ROOT="$root" REPO_DIR="$tmp/served repo"
+  export REPO_DB="$REPO_DIR/test.db" TEST_TMP="$tmp" PATH="$tmp/bin:$PATH"
+  touch "$REPO_DB"
+
+  cat >"$tmp/bin/bsdtar" <<'MOCK'
+#!/usr/bin/env bash
+case "$1" in
+  -tf) printf 'demo/desc\n' ;;
+  -xOf) printf '%%NAME%%\ndemo\n%%VERSION%%\n1-1\n%%FILENAME%%\ndemo-1-1-any.pkg.tar.zst\n' ;;
+  *) exit 22 ;;
+esac
+MOCK
+  cat >"$tmp/bin/paccache" <<'MOCK'
+#!/usr/bin/env bash
+printf '%s\n' "$@" >"$TEST_TMP/paccache-args"
+MOCK
+  chmod +x "$tmp/bin/"*
+
+  (cd "$root" && mise run repo:prune --keep 5 --min-atime 7d --dry-run) >"$tmp/log" 2>&1 ||
+    fail "mise rejected named prune retention flags: $(cat "$tmp/log")"
+  [[ -f "$tmp/paccache-args" ]] || fail 'prune parser never invoked paccache'
+  grep -Fxq -- '-k' "$tmp/paccache-args" || fail 'paccache missing -k flag'
+  grep -Fxq -- '5' "$tmp/paccache-args" || fail 'paccache missing requested retention count'
+  grep -Fxq -- '--min-atime' "$tmp/paccache-args" || fail 'paccache missing --min-atime'
+  grep -Fxq -- '7d' "$tmp/paccache-args" || fail 'paccache missing requested minimum access age'
+
+  rm -f "$tmp/paccache-args"
+  (cd "$root" && mise run repo:prune --dry-run) >"$tmp/log" 2>&1 ||
+    fail "default prune CLI invocation failed: $(cat "$tmp/log")"
+  grep -Fxq -- '2' "$tmp/paccache-args" ||
+    fail 'default retention count no longer reaches paccache'
+  if grep -Fxq -- '--min-atime' "$tmp/paccache-args"; then
+    fail 'unset optional min-atime was unexpectedly passed to paccache'
+  fi
+  )
+}

@@ -147,11 +147,26 @@ if [[ "${usage_list_outdated:-false}" == "true" ]]; then
   status_log="$(mktemp)"
   trap 'rm -f "$status_log"' EXIT
 
+  # Both pipeline statuses matter: a successful pkgctl must not hide
+  # a failed tee that left an incomplete log. Capture PIPESTATUS immediately
+  # after the pipeline, before any subsequent shell command overwrites it.
   if pkgctl "${args[@]}" "${package_dirs[@]}" 2>&1 >/dev/null |
     tee "$status_log" >&2; then
-    rc=0
+    pipeline_rc=(0 0)
   else
-    rc="${PIPESTATUS[0]}"
+    pipeline_rc=("${PIPESTATUS[@]}")
+  fi
+  pkgctl_rc="${pipeline_rc[0]}"
+  tee_rc="${pipeline_rc[1]}"
+
+  if (( tee_rc != 0 )); then
+    echo "error: unable to capture full pkgctl output (tee exited $tee_rc)" >&2
+    exit "$tee_rc"
+  fi
+  # pkgctl status 2 only indicates outdated packages. Other failures must
+  # stop before we parse or emit a potentially incomplete list.
+  if (( pkgctl_rc != 0 && pkgctl_rc != 2 )); then
+    exit "$pkgctl_rc"
   fi
 
   python3 - "$status_log" <<'PY'
@@ -169,8 +184,7 @@ with open(sys.argv[1], encoding="utf-8", errors="replace") as stream:
             print(match.group(1))
 PY
 
-  [[ "$rc" -eq 2 ]] && exit 0
-  exit "$rc"
+  exit 0
 fi
 
 if pkgctl "${args[@]}" "${package_dirs[@]}"; then
