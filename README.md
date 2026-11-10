@@ -248,14 +248,33 @@ mise run test:all           # Shared and package-specific suites
 Shared unit and integration tests live in `tests/bats/` and cover dependency
 logic, package planning, metadata, selection, and repository workflows.
 Application-specific suites live in `tests/packages/`, separated by package
-family (Flutter, Wayland, Figma, FFmpeg, and so on). Run an individual suite
-with `bats tests/packages/flutter.bats`, or filter a shared test with
+family (Flutter, Wayland, Figma, FFmpeg, and so on).
+
+**Each package with dedicated coverage defines a local `packages/<name>/mise.toml`.**
+The nearest task wins: when you're in a covered package directory, the same
+`mise run test` command runs *that package's* suite instead of the shared suite.
+
+```sh
+cd packages/flutter
+mise run test             # Flutter checks only
+
+cd ../figma-linux
+mise run test             # Figma checks only
+
+cd ../..
+mise run test             # Shared packaging tests only
+mise run test:packages    # Explicitly run all package suites
+```
+
+A package without a local test task inherits the repository's shared `test`
+task. You can also invoke an individual suite directly with
+`bats tests/packages/flutter.bats`, or filter a shared test using
 `bats --filter 'description' tests/bats/build-planning.bats`.
 
-CI runs **shared tests** and **package-specific tests** in separate jobs so the
-results and failures do not get mixed together. Every Bats case uses
-temporary fixtures and mocked external tools rather than modifying installed
-applications.
+CI runs **shared tests** and **package-specific tests** in separate jobs; the
+package job invokes `mise run test` from each covered package directory to
+validate the directory-specific routing. Every Bats case uses temporary
+fixtures and mocked external tools rather than modifying installed applications.
 
 `tests/check-srcinfo.sh` remains a standalone package metadata validation
 script, used by the test suite and available for checking real PKGBUILDs:
