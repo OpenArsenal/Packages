@@ -108,3 +108,72 @@ MOCK
     fail 'missing installation hook did not identify the expected file'
   )
 }
+
+@test "Wayland patch never replaces the original launcher after backup failures" {
+  (
+  local tmp target backup launcher script failure
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/bin" "$tmp/app"
+  target="$tmp/app/executable"
+  backup="$tmp/backups/executable"
+  launcher="$tmp/launcher.sh"
+  script="$tmp/patch.sh"
+
+  printf 'original application executable\n' >"$target"
+  cp "$target" "$tmp/expected"
+  printf '#!/bin/bash\nexit 0\n' >"$launcher"
+  chmod +x "$target" "$launcher"
+
+  # Render the real shipped patch template for disposable paths only.
+  sed -e "s#{{launcher}}#$launcher#g" \
+      -e "s#{{target}}#$target#g" \
+      -e "s#{{backup}}#$backup#g" \
+    "$root/packages/1password-wayland/electron-wayland-patch.sh" >"$script"
+
+  cat >"$tmp/bin/mkdir" <<'MOCK'
+#!/usr/bin/env bash
+printf 'mkdir\n' >>"$WAYLAND_BACKUP_LOG"
+if [[ "$WAYLAND_FAIL_STEP" == mkdir ]]; then exit 91; fi
+exec /usr/bin/mkdir "$@"
+MOCK
+  cat >"$tmp/bin/mv" <<'MOCK'
+#!/usr/bin/env bash
+printf 'mv\n' >>"$WAYLAND_BACKUP_LOG"
+if [[ "$WAYLAND_FAIL_STEP" == mv ]]; then exit 92; fi
+exec /usr/bin/mv "$@"
+MOCK
+  cat >"$tmp/bin/ln" <<'MOCK'
+#!/usr/bin/env bash
+printf 'ln\n' >>"$WAYLAND_BACKUP_LOG"
+exec /usr/bin/ln "$@"
+MOCK
+  chmod +x "$tmp/bin/"*
+
+  for failure in mkdir mv; do
+    : >"$tmp/calls"
+    if PATH="$tmp/bin:$PATH" WAYLAND_FAIL_STEP="$failure" WAYLAND_BACKUP_LOG="$tmp/calls" \
+        bash "$script" >"$tmp/output" 2>&1; then
+      fail "Wayland patch succeeded after failed $failure"
+    fi
+    [[ -f "$target" && ! -L "$target" ]] ||
+      fail "failed $failure replaced the original launcher"
+    cmp -s "$target" "$tmp/expected" ||
+      fail "failed $failure modified the original executable"
+    [[ ! -e "$backup" ]] ||
+      fail "failed $failure unexpectedly wrote a backup"
+    if grep -Fxq ln "$tmp/calls"; then
+      fail "failed $failure still invoked ln to replace the launcher"
+    fi
+  done
+
+  : >"$tmp/calls"
+  PATH="$tmp/bin:$PATH" WAYLAND_FAIL_STEP=none WAYLAND_BACKUP_LOG="$tmp/calls" \
+    bash "$script" >"$tmp/output" 2>&1 ||
+    fail "Wayland patch failed with a writable backup: $(cat "$tmp/output")"
+  [[ -L "$target" && "$(readlink "$target")" == "$launcher" ]] ||
+    fail 'successful backup did not install the Wayland launcher symlink'
+  cmp -s "$backup" "$tmp/expected" ||
+    fail 'successful patch did not preserve the original executable in the backup'
+  )
+}
