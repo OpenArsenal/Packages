@@ -20,6 +20,8 @@ jobs:
           set -o pipefail
           bash -n tests/check-srcinfo.sh tests/bats/test_helper/common.bash
           find .mise/lib .mise/tasks -type f -print0 | xargs -0 -r -n1 bash -n
+      - name: Verify local package source checksums
+        run: python3 tests/check-local-source-checksums.py
       - name: Unit tests
         run: mise run test:unit
       - name: Workflow integration tests (mocked external tools)
