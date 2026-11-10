@@ -3,17 +3,26 @@
 This directory establishes **shared expectations**, not a common implementation
 for every PKGBUILD. Tests are split by the lowest useful level:
 
-| Layer | Scope | Command |
+| Layer | Scope | Direct command from repository root |
 | --- | --- | --- |
 | Universal | Every recipe: .SRCINFO fields, PKGBUILD/install-hook Bash syntax, declared install files and local-source hashes | `python3 tests/contracts/check.py universal` |
 | Capability | Configured launcher families: flags from XDG paths containing spaces, equals-style flags, CLI arguments, and comments | `python3 tests/contracts/check.py launchers` |
 | Manifest | All `*-flags-wrapper.sh` and known update scripts are registered; mapped updater and hook regressions still exist | `python3 tests/contracts/check.py registry` |
-| Specific | Real mock-backed updater, install-hook, source ordering and restoration behavior that cannot safely be inferred from file names | `mise run test:packages` |
+| Specific | Mock-backed updater, install-hook, source ordering and restoration behavior that cannot safely be inferred from file names | `bats tests/packages` |
 
-`mise run test:contracts` runs the contract harness unit tests and all of the
-universal/capability checks. `mise run test:all` includes this, the shared Bats
-suite, and the package-specific Bats suites. Root `mise run test` continues to
-run only the shared Bats tests. CI runs the three groups independently.
+Run the package testing tasks from the top-level `packages/` directory:
+
+```sh
+cd packages
+mise run test:contracts     # Contract harness unit tests + universal/capability checks
+mise run test:regressions   # All specialized package Bats tests
+mise run test               # Both package groups
+```
+
+The sole package `mise.toml` is `packages/mise.toml`; its tasks also apply
+in package subdirectories. From the **repository root**, `mise run test` runs
+only shared Bats tests, while `mise run test:all` explicitly runs the shared
+and package-root test groups. CI runs all three categories as independent jobs.
 
 The existing `tests/check-local-source-checksums.py` is **reused**, not
 reimplemented: it validates source files against `.SRCINFO` checksums and
