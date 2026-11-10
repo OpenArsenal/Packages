@@ -285,3 +285,105 @@ MOCK
     fail 'valid version comparison no longer classified outdated packages'
   )
 }
+
+@test "Outdated listing fails closed if tee fails even when pkgctl exits normally" {
+  (
+  local tmp mode rc
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/bin" "$tmp/packages/demo"
+  export PKGBUILDS_ROOT="$root" PACKAGES_DIR="$tmp/packages"
+  export PACKAGES_FILE="$tmp/missing-selection" PATH="$tmp/bin:$PATH"
+  touch "$PACKAGES_DIR/demo/PKGBUILD" "$PACKAGES_DIR/demo/.nvchecker.toml"
+
+  cat >"$tmp/bin/pkgctl" <<'MOCK'
+#!/usr/bin/env bash
+[[ "$1" == version && "$2" == check ]] || exit 81
+printf ' ! demo: upgrade from version 1 to 2\n' >&2
+exit "${PKGCTL_STATUS:-0}"
+MOCK
+  cat >"$tmp/bin/tee" <<'MOCK'
+#!/usr/bin/env bash
+if [[ "${TEE_MODE:-pass}" == fail ]]; then
+  printf 'partial output\n' >"$1"
+  exit 43
+fi
+exec /usr/bin/tee "$@"
+MOCK
+  chmod +x "$tmp/bin/"*
+
+  for mode in 0 2; do
+    if PKGCTL_STATUS="$mode" TEE_MODE=fail usage_list_outdated=true usage_package=demo \
+      bash "$root/.mise/tasks/pkg/update" >"$tmp/out" 2>"$tmp/err"; then
+      fail "outdated list succeeded despite tee failure (pkgctl=$mode)"
+    else
+      rc=$?
+      [[ "$rc" -eq 43 ]] || fail "tee failure status lost (pkgctl=$mode, status=$rc)"
+    fi
+    [[ ! -s "$tmp/out" ]] || fail "partial outdated list was printed (pkgctl=$mode)"
+    grep -Fq 'tee exited 43' "$tmp/err" ||
+      fail "tee failure diagnostic missing (pkgctl=$mode)"
+  done
+
+  for mode in 0 2; do
+    PKGCTL_STATUS="$mode" TEE_MODE=pass usage_list_outdated=true usage_package=demo \
+      bash "$root/.mise/tasks/pkg/update" >"$tmp/out" 2>"$tmp/err" ||
+      fail "valid outdated listing rejected pkgctl status $mode: $(cat "$tmp/err")"
+    [[ "$(cat "$tmp/out")" == demo ]] ||
+      fail "outdated package lost with valid capture (pkgctl=$mode)"
+  done
+
+  if PKGCTL_STATUS=7 TEE_MODE=pass usage_list_outdated=true usage_package=demo \
+    bash "$root/.mise/tasks/pkg/update" >"$tmp/out" 2>"$tmp/err"; then
+    fail 'unexpected pkgctl failure was normalized to success'
+  else
+    [[ "$?" -eq 7 ]] || fail 'unexpected pkgctl failure exit status was lost'
+  fi
+  [[ ! -s "$tmp/out" ]] || fail 'pkgctl failure produced an incomplete outdated list'
+  )
+}
+
+@test "Installed-version checker rejects missing package sources in strict and regular modes" {
+  (
+  local tmp sources mode rc
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/bin" "$tmp/empty sources"
+  printf 'not a directory\n' >"$tmp/not-a-directory"
+  export PKGBUILDS_ROOT="$root" PATH="$tmp/bin:$PATH" TEST_TMP="$tmp"
+
+  for tool in nvchecker jq vercmp timeout; do
+    printf '#!/usr/bin/env bash\nexit 99\n' >"$tmp/bin/$tool"
+  done
+  cat >"$tmp/bin/pacman" <<'MOCK'
+#!/usr/bin/env bash
+touch "$TEST_TMP/pacman-called"
+[[ "$1" == -Q ]] || exit 2
+printf 'demo 1-1\n'
+MOCK
+  chmod +x "$tmp/bin/"*
+
+  for sources in "$tmp/missing sources" "$tmp/not-a-directory"; do
+    for mode in false true; do
+      rm -f "$tmp/pacman-called"
+      if PACKAGES_DIR="$sources" usage_strict="$mode" \
+        bash "$root/.mise/tasks/check-installed" >"$tmp/log" 2>&1; then
+        fail "check-installed accepted invalid sources (strict=$mode): $sources"
+      else
+        rc=$?
+        [[ "$rc" -eq 1 ]] || fail "invalid source path returned $rc, not 1"
+      fi
+      grep -Fq 'package source directory does not exist or is inaccessible' "$tmp/log" ||
+        fail "missing source directory diagnostic for: $sources"
+      [[ ! -e "$tmp/pacman-called" ]] ||
+        fail 'check-installed enumerated installed packages before source validation'
+    done
+  done
+
+  PACKAGES_DIR="$tmp/empty sources" usage_strict=true \
+    bash "$root/.mise/tasks/check-installed" >"$tmp/log" 2>&1 ||
+    fail "valid empty source directory was rejected: $(cat "$tmp/log")"
+  grep -Fq 'Checked 0 installed local package(s).' "$tmp/log" ||
+    fail 'valid empty source directory no longer reports zero checked packages'
+  )
+}
