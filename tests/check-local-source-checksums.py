@@ -54,6 +54,13 @@ def check_package(directory: Path) -> tuple[int, list[str]]:
         return 0, [f"{directory}: missing .SRCINFO"]
 
     fields = read_metadata(metadata_path)
+
+    # Pacman lifecycle files are not listed in source=, but must exist beside
+    # PKGBUILD for makepkg to embed them in the package.
+    for install_script in fields.get("install", []):
+        if not (directory / install_script).is_file():
+            errors.append(f"{directory}: missing install script: {install_script}")
+
     for key, sources in fields.items():
         if key != "source" and not key.startswith("source_"):
             continue
