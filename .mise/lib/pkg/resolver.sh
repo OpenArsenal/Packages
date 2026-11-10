@@ -4,6 +4,9 @@ declare -Ag PKG_PROVIDER_DIR=()
 declare -Ag PKG_PROVIDER_CANDIDATES=()
 declare -Ag PKG_STATE=()
 declare -Ag PKG_FORCE_DIR=()
+# Consumer/provider edges actually resolved during the first traversal.
+# Kept separately from the actual-output replacement edges in finalize_plan.
+declare -Ag PKG_RESOLVED_EDGES=()
 declare -ag PKG_PLAN=()
 
 pkg::resolver_reset() {
@@ -11,6 +14,7 @@ pkg::resolver_reset() {
   PKG_PROVIDER_CANDIDATES=()
   PKG_STATE=()
   PKG_FORCE_DIR=()
+  PKG_RESOLVED_EDGES=()
   PKG_PLAN=()
 }
 
@@ -288,6 +292,7 @@ pkg::plan_deps() {
     if provider_dir="$(pkg::find_forced_local_provider "$dep" "$op" "$ver")"; then
       if [[ "$provider_dir" != "$pkg_dir" ]]; then
         pkg::plan_dir "$provider_dir" || return 1
+        PKG_RESOLVED_EDGES["$pkg_dir"$'\x1f'"$provider_dir"]=1
       fi
       continue
     else
@@ -322,6 +327,7 @@ pkg::plan_deps() {
       # incompatible output already exists in the repository.
       PKG_FORCE_DIR["$provider_dir"]="true"
       pkg::plan_dir "$provider_dir" || return 1
+      PKG_RESOLVED_EDGES["$pkg_dir"$'\x1f'"$provider_dir"]=1
       continue
     fi
 
@@ -384,8 +390,8 @@ pkg::plan_dir() {
 # and order their consumers after their replacement providers.
 pkg::finalize_plan() {
   local i j pkg_dir output outputs version raw dep op ver dependencies provider_index
-  local ready progress
-  local -A output_provider=() output_version=() prerequisites=() placed=()
+  local edge consumer_path provider_path ready progress
+  local -A output_provider=() output_version=() prerequisites=() placed=() plan_indexes=()
   local -a ordered=() required=()
 
   # Index actual package outputs, not virtual provides= aliases: publishing an
@@ -393,6 +399,7 @@ pkg::finalize_plan() {
   # a virtual capability can coexist.
   for i in "${!PKG_PLAN[@]}"; do
     pkg_dir="${PKG_PLAN[$i]}"
+    plan_indexes["$pkg_dir"]="$i"
     version="$(pkg::metadata_version "$pkg_dir")" || {
       echo "error: unable to read planned package version: $pkg_dir" >&2
       return 1
@@ -438,6 +445,19 @@ pkg::finalize_plan() {
       # Store numeric plan indexes, never whitespace-separated paths.
       prerequisites["$i"]+="$provider_index "
     done <<<"$dependencies"
+  done
+
+  # Retain dependencies resolved via provides= aliases in the initial
+  # traversal. Recomputing only from actual pkgname outputs would discard
+  # these edges and can reorder a consumer ahead of its selected provider.
+  # Use numeric plan indexes so directory paths containing spaces stay intact.
+  for edge in "${!PKG_RESOLVED_EDGES[@]}"; do
+    consumer_path="${edge%%$'\x1f'*}"
+    provider_path="${edge#*$'\x1f'}"
+    i="${plan_indexes[$consumer_path]-}"
+    j="${plan_indexes[$provider_path]-}"
+    [[ -n "$i" && -n "$j" && "$i" != "$j" ]] || continue
+    prerequisites["$i"]+="$j "
   done
 
   # Stable topological ordering: preserve the original order wherever there
