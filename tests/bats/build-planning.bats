@@ -587,6 +587,18 @@ MOCK
         fail "forced dependency built after its consumer for $selection ($requirement): ${PKG_PLAN[*]}"
     done
 
+    # The same selected library is scheduled for an ordinary build:
+    # its newer local version must come before the app in either order.
+    for selection in 'app libdemo' 'libdemo app'; do
+      read -r -a requested <<<"$selection"
+      pkg::plan_selected "$packages" false "${requested[@]}" >"$tmp/log" 2>&1 ||
+        fail "ordinary planning failed for $selection ($requirement): $(cat "$tmp/log")"
+      [[ "${#PKG_PLAN[@]}" -eq 2 &&
+         "${PKG_PLAN[0]}" == "$packages/libdemo" &&
+         "${PKG_PLAN[1]}" == "$packages/app" ]] ||
+        fail "ordinary build ordered library after app for $selection ($requirement): ${PKG_PLAN[*]}"
+    done
+
     pkg::plan_selected "$packages" false app >"$tmp/log" 2>&1 ||
       fail "normal planning failed ($requirement): $(cat "$tmp/log")"
     [[ "${#PKG_PLAN[@]}" -eq 1 && "${PKG_PLAN[0]}" == "$packages/app" ]] ||
@@ -625,6 +637,45 @@ MOCK
     fi
     [[ ! -e "$tmp/build-started" ]] ||
       fail "build started before rejecting incompatible replacement for $selection"
+  done
+
+  # An ordinary build of the newer local libdemo must also invalidate the
+  # older published libdemo=1, before anything is built or published.
+  for selection in 'app libdemo' 'libdemo app'; do
+    read -r -a requested <<<"$selection"
+    rm -f "$tmp/build-started"
+
+    if pkg::plan_selected "$packages" false "${requested[@]}" >"$tmp/log" 2>&1; then
+      fail "ordinary planner accepted incompatible replacement for $selection"
+    fi
+    grep -Fq "planned replacement of 'libdemo'" "$tmp/log" ||
+      fail "missing ordinary replacement diagnostic for $selection: $(cat "$tmp/log")"
+
+    if pkg::build_selected "$packages" false "${requested[@]}" >"$tmp/log" 2>&1; then
+      fail "ordinary build accepted incompatible replacement for $selection"
+    fi
+    [[ ! -e "$tmp/build-started" ]] ||
+      fail "ordinary build started before rejecting incompatible replacement for $selection"
+  done
+
+  # The replacement can enter the plan transitively, not just through an
+  # explicit selection. Either order must still fail before build_plan.
+  mkdir -p "$packages/needsnew"
+  touch "$packages/needsnew/PKGBUILD"
+  printf 'pkgbase = needsnew\n\tpkgver = 1\n\tpkgrel = 1\n\tdepends = libdemo>=2\npkgname = needsnew\n' \
+    >"$packages/needsnew/.SRCINFO"
+  pkg::metadata_cache_reset
+
+  for selection in 'app needsnew' 'needsnew app'; do
+    read -r -a requested <<<"$selection"
+    rm -f "$tmp/build-started"
+    if pkg::build_selected "$packages" false "${requested[@]}" >"$tmp/log" 2>&1; then
+      fail "transitive incompatible replacement was accepted for $selection"
+    fi
+    [[ ! -e "$tmp/build-started" ]] ||
+      fail "transitive incompatible replacement reached build_plan for $selection"
+    grep -Fq "replacement of 'libdemo'" "$tmp/log" ||
+      fail "missing transitive replacement diagnostic for $selection: $(cat "$tmp/log")"
   done
   )
 }
