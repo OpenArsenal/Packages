@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 #MISE description="Build packages from PACKAGES_FILE and their local dependencies"
-#MISE depends=["repo:create", "chroot:create"]
 #USAGE flag "--force" help="Rebuild explicitly selected packages even if the same version is already published"
 
 source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
@@ -19,4 +18,14 @@ pkg::load_requested "$PACKAGES_FILE" requested
   exit 1
 }
 
-pkg::build_selected "$PACKAGES_DIR" "${usage_force:-false}" "${requested[@]}"
+# Planning can fail on an invalid selection or dependency before any
+# setup; empty plans must not invoke privileged provisioning either.
+pkg::plan_selected "$PACKAGES_DIR" "${usage_force:-false}" "${requested[@]}"
+if (( ${#PKG_PLAN[@]} == 0 )); then
+  echo "No packages need building."
+  exit 0
+fi
+
+mise run repo:create
+mise run chroot:create
+pkg::build_plan

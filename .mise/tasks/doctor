@@ -13,6 +13,7 @@ tools=(
   findmnt
   git
   gpg
+  jq
   makechrootpkg
   makepkg
   mkarchroot
@@ -24,6 +25,7 @@ tools=(
   python3
   repo-add
   repo-remove
+  timeout
   updpkgsums
   vercmp
 )
