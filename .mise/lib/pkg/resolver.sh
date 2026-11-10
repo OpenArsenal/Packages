@@ -184,6 +184,45 @@ pkg::find_forced_local_provider() {
   return 1
 }
 
+# A forced local package with an actual output matching this dependency
+# replaces the published version during this build run. It must satisfy the
+# consumer's constraint even when the *old* published version currently does.
+# Do not treat provides= aliases as replacements: another package may remain
+# installed and continue to satisfy a virtual dependency independently.
+pkg::check_forced_output_replacements() {
+  local dep="$1" op="$2" ver="$3"
+  local candidate replacement_version rc
+  local -A checked=()
+
+  [[ -n "$op" && -n "$ver" ]] || return 0
+
+  while IFS= read -r candidate; do
+    [[ -n "$candidate" ]] || continue
+    [[ "${PKG_FORCE_DIR[$candidate]-false}" == "true" ]] || continue
+    [[ -z "${checked[$candidate]+x}" ]] || continue
+    checked["$candidate"]=1
+
+    if pkg::dir_outputs_name "$candidate" "$dep"; then
+      replacement_version="$(pkg::metadata_version "$candidate")" || {
+        echo "error: unable to inspect forced replacement version for: $dep" >&2
+        return 2
+      }
+      if ! repo::version_satisfies "$replacement_version" "$op" "$ver"; then
+        echo "error: forced replacement of '$dep' by ${candidate##*/} ($replacement_version) is incompatible with dependency '$dep$op$ver'" >&2
+        return 2
+      fi
+    else
+      rc=$?
+      if (( rc != 1 )); then
+        echo "error: unable to inspect forced replacement output: $candidate" >&2
+        return "$rc"
+      fi
+    fi
+  done <<<"${PKG_PROVIDER_CANDIDATES[$dep]-}"
+
+  return 0
+}
+
 pkg::all_outputs_in_repo() {
   local pkg_dir="$1"
   local version output outputs
@@ -237,6 +276,11 @@ pkg::plan_deps() {
         return 1
       fi
     fi
+
+    # A forced local output may replace the version currently satisfying this
+    # dependency in the repository. Reject incompatible plans before any build,
+    # regardless of the order in which recipes were explicitly selected.
+    pkg::check_forced_output_replacements "$dep" "$op" "$ver" || return 1
 
     # All explicit --force selections were marked before dependency traversal.
     # Plan a compatible selected provider first even if the published
