@@ -38,7 +38,7 @@ run = "bats tests/bats/unit.bats"
 
 [tasks."test:integration"]
 description = "Run package workflow integration tests with mocked tools"
-run = "bats tests/bats/build-planning.bats tests/bats/chroot-config.bats tests/bats/file-scans.bats tests/bats/figma-launcher.bats tests/bats/flutter-lifecycle.bats tests/bats/package-metadata.bats tests/bats/package-selection.bats tests/bats/repo-maintenance.bats tests/bats/safe-operations.bats"
+run = "bats tests/bats/build-planning.bats tests/bats/chroot-config.bats tests/bats/file-scans.bats tests/bats/figma-launcher.bats tests/bats/flutter-lifecycle.bats tests/bats/package-metadata.bats tests/bats/package-selection.bats tests/bats/repo-maintenance.bats tests/bats/safe-operations.bats tests/bats/wayland-helper.bats"
 
 [tasks."repo:maintain"]
 description = "Update, reconcile, prune, and refresh the published repository"
