@@ -85,3 +85,50 @@ MOCK
   done
   )
 }
+@test "FFmpeg updaters reject transport, invalid encoding and missing revisions without mutation" {
+  (
+  local tmp variant mode source_pkg
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/bin"
+  cat >"$tmp/bin/curl" <<'MOCK'
+#!/usr/bin/env bash
+set -euo pipefail
+output=""
+while (( $# )); do
+  case "$1" in
+    -o) output="$2"; shift 2 ;;
+    -w) shift 2 ;;
+    -sS|-L) shift ;;
+    *) shift ;;
+  esac
+done
+printf 'called\n' >>"$FFMPEG_CURL_LOG"
+[[ "$FFMPEG_MODE" != transport ]] || exit 7
+case "$FFMPEG_MODE" in
+  invalid) printf 'not valid base64!' >"$output" ;;
+  missing) printf "'other_revision': 'abc',\n" | base64 >"$output" ;;
+  *) exit 91 ;;
+esac
+printf '200'
+MOCK
+  chmod +x "$tmp/bin/curl"
+
+  for variant in chromium-ffmpeg vivaldi-ffmpeg; do
+    source_pkg="$root/packages/$variant/update-ffmpeg-ref.sh"
+    for mode in transport invalid missing; do
+      printf '_chromium_version=old\n_chromium_ffmpeg_ref=old\n_keep=original\n' >"$tmp/PKGBUILD"
+      cp "$tmp/PKGBUILD" "$tmp/original"
+      : >"$tmp/curl.log"
+      if FFMPEG_MODE="$mode" FFMPEG_CURL_LOG="$tmp/curl.log" PATH="$tmp/bin:$PATH" \
+          bash "$source_pkg" 148.0.7778.221 "$tmp/PKGBUILD" >"$tmp/output" 2>&1; then
+        fail "$variant accepted $mode DEPS metadata"
+      fi
+      cmp -s "$tmp/original" "$tmp/PKGBUILD" ||
+        fail "$variant changed PKGBUILD on $mode DEPS metadata"
+      [[ "$(wc -l <"$tmp/curl.log")" -eq 1 ]] ||
+        fail "$variant retried another tag after $mode failure"
+    done
+  done
+  )
+}
