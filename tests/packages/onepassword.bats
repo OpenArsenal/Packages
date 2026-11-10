@@ -82,7 +82,7 @@ RECIPE
     expected="${expected%% *}"
     grep -Fxq "sha256sums_${arch}=('${expected}')" "$tmp/pkg/PKGBUILD" ||
       fail "incorrect archive checksum or architecture mapping: $arch"
-  donee
+  done
   [[ "$(cat "$tmp/pkg/operations-notes.txt")" == precious && "$(cat "$tmp/pkg/op-cache.txt")" == precious2 ]] || fail 'updater deleted unrelated files on success'
   echo 'PASS onepassword_update (failures preserve files; success updates checksums)'
   )
