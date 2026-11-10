@@ -169,6 +169,17 @@ tests = ["FFmpeg updaters fall back on HTTP 404 but stop on other HTTP errors"]
 
 [[behaviors]]
 capability = "updater-fail-closed"
+packages = ["google-chrome-ffmpeg", "google-chrome-canary-ffmpeg"]
+entrypoints = ["update-chrome-ref.sh"]
+suite = "tests/packages/chrome.bats"
+tests = [
+  "Chrome Stable and Canary updaters preserve recipes after failed metadata",
+  "Chrome Stable and Canary updaters update the matching FFmpeg pin",
+  "Chrome updaters fall back only on a missing Chromium tag",
+]
+
+[[behaviors]]
+capability = "updater-fail-closed"
 packages = ["microsoft-edge-stable-bin"]
 entrypoints = ["update_version.sh"]
 suite = "tests/packages/microsoft-edge.bats"
