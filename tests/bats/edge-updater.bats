@@ -37,6 +37,9 @@ cat
 MOCK
   cat >"$tmp/bin/xmllint" <<'MOCK'
 #!/usr/bin/env bash
+# Consume XML before returning a fixture value. Otherwise producers can
+# receive SIGPIPE, and pipefail makes this test nondeterministic.
+cat >/dev/null || exit 2
 case "$2" in
   *'@href'*) printf '%s' "$TEST_FILELISTS" ;;
   *'@ver'*) printf '%s' "$TEST_VER" ;;
@@ -75,6 +78,13 @@ MOCK
     fi
     cmp -s "$tmp/PKGBUILD" "$tmp/original" ||
       fail "Edge updater changed the recipe after $missing upstream metadata"
+    case "$missing" in
+      filelists) diagnostic='missing or invalid Edge filelists' ;;
+      version|invalid-version) diagnostic='missing or invalid Edge version' ;;
+      checksum|invalid-checksum) diagnostic='missing or invalid Edge SHA-256' ;;
+    esac
+    grep -Fq "$diagnostic" "$tmp/log" ||
+      fail "Edge updater did not report the expected error for $missing metadata"
     [[ ! -e "$tmp/build-ran" && ! -e "$tmp/.SRCINFO" ]] ||
       fail "Edge updater started a build after $missing upstream metadata"
   done
