@@ -54,7 +54,26 @@ MOCK
   cat >"$tmp/bin/makepkg" <<'MOCK'
 #!/usr/bin/env bash
 [[ "$1" == --printsrcinfo ]] || exit 2
-printf 'pkgbase = microsoft-edge-stable-bin\n'
+case "${MAKEPKG_MODE:-ok}" in
+  fail)
+    printf 'pkgbase = partial-from-failed-command\n'
+    exit 47
+    ;;
+  empty)
+    exit 0
+    ;;
+  partial)
+    printf 'pkgbase = incomplete-success\n'
+    exit 0
+    ;;
+  ok)
+    printf 'pkgbase = microsoft-edge-stable-bin\n'
+    printf '\tpkgver = 146.0.3856.85\n'
+    printf '\tpkgrel = 1\n'
+    printf 'pkgname = microsoft-edge-stable-bin\n'
+    ;;
+  *) exit 2 ;;
+esac
 MOCK
   chmod +x "$tmp/bin/"*
 
@@ -100,5 +119,22 @@ MOCK
     fail 'valid metadata did not update the checksum'
   [[ -e "$tmp/build-ran" && -f "$tmp/.SRCINFO" ]] ||
     fail 'valid metadata did not complete the update workflow'
+
+  cp "$tmp/.SRCINFO" "$tmp/original-srcinfo"
+  # A generator may exit nonzero after partial output, or succeed with
+  # empty/incomplete output. Neither case may replace existing metadata.
+  local mode
+  for mode in fail empty partial; do
+    if (cd "$tmp" && MAKEPKG_MODE="$mode" bash "$root/packages/microsoft-edge-stable-bin/update_version.sh") >"$tmp/log" 2>&1; then
+      fail "Edge updater accepted $mode .SRCINFO generation"
+    fi
+    cmp -s "$tmp/.SRCINFO" "$tmp/original-srcinfo" ||
+      fail "Edge updater destroyed valid .SRCINFO after $mode generation"
+    grep -Fq 'preserving existing metadata' "$tmp/log" ||
+      fail "Edge updater did not report preserved metadata after $mode generation"
+    if compgen -G "$tmp/.SRCINFO.tmp.*" >/dev/null; then
+      fail "Edge updater left a metadata temporary file after $mode generation"
+    fi
+  done
   )
 }
