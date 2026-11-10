@@ -378,6 +378,100 @@ pkg::plan_dir() {
   PKG_STATE["$key"]="done"
 }
 
+# The initial traversal may accept a dependency from the published repo even
+# though another selected recipe will replace that output later in this run.
+# Reconcile *all* scheduled outputs before building: reject version conflicts
+# and order their consumers after their replacement providers.
+pkg::finalize_plan() {
+  local i j pkg_dir output outputs version raw dep op ver dependencies provider_index
+  local ready progress
+  local -A output_provider=() output_version=() prerequisites=() placed=()
+  local -a ordered=() required=()
+
+  # Index actual package outputs, not virtual provides= aliases: publishing an
+  # output replaces its old repository entry, whereas unrelated providers of
+  # a virtual capability can coexist.
+  for i in "${!PKG_PLAN[@]}"; do
+    pkg_dir="${PKG_PLAN[$i]}"
+    version="$(pkg::metadata_version "$pkg_dir")" || {
+      echo "error: unable to read planned package version: $pkg_dir" >&2
+      return 1
+    }
+    outputs="$(pkg::metadata_outputs "$pkg_dir")" || {
+      echo "error: unable to read planned package outputs: $pkg_dir" >&2
+      return 1
+    }
+
+    while IFS= read -r output; do
+      [[ -n "$output" ]] || continue
+      if [[ -n "${output_provider[$output]+x}" && "${output_provider[$output]}" != "$i" ]]; then
+        echo "error: multiple planned recipes would publish '$output'" >&2
+        return 1
+      fi
+      output_provider["$output"]="$i"
+      output_version["$output"]="$version"
+    done <<<"$outputs"
+  done
+
+  for i in "${!PKG_PLAN[@]}"; do
+    pkg_dir="${PKG_PLAN[$i]}"
+    dependencies="$(pkg::metadata_deps "$pkg_dir")" || {
+      echo "error: unable to read planned dependencies: $pkg_dir" >&2
+      return 1
+    }
+
+    while IFS= read -r raw; do
+      [[ -n "$raw" ]] || continue
+      dep="" op="" ver=""
+      spec::parse "$raw" dep op ver
+      [[ -n "$dep" ]] || continue
+
+      provider_index="${output_provider[$dep]-}"
+      [[ -n "$provider_index" && "$provider_index" != "$i" ]] || continue
+
+      if [[ -n "$op" && -n "$ver" ]] &&
+        ! repo::version_satisfies "${output_version[$dep]}" "$op" "$ver"; then
+        echo "error: planned replacement of '$dep' by ${PKG_PLAN[$provider_index]##*/} (${output_version[$dep]}) is incompatible with dependency '$raw' of ${pkg_dir##*/}" >&2
+        return 1
+      fi
+
+      # Store numeric plan indexes, never whitespace-separated paths.
+      prerequisites["$i"]+="$provider_index "
+    done <<<"$dependencies"
+  done
+
+  # Stable topological ordering: preserve the original order wherever there
+  # is no planned-output dependency. An unresolved cycle stops all builds.
+  while (( ${#ordered[@]} < ${#PKG_PLAN[@]} )); do
+    progress=false
+    for i in "${!PKG_PLAN[@]}"; do
+      [[ -z "${placed[$i]+x}" ]] || continue
+
+      required=()
+      read -r -a required <<<"${prerequisites[$i]-}"
+      ready=true
+      for j in "${required[@]}"; do
+        if [[ -z "${placed[$j]+x}" ]]; then
+          ready=false
+          break
+        fi
+      done
+      [[ "$ready" == "true" ]] || continue
+
+      ordered+=("${PKG_PLAN[$i]}")
+      placed["$i"]=1
+      progress=true
+    done
+
+    if [[ "$progress" != "true" ]]; then
+      echo "error: dependency cycle among planned package replacements" >&2
+      return 1
+    fi
+  done
+
+  PKG_PLAN=("${ordered[@]}")
+}
+
 pkg::plan_selected() {
   local packages_dir="$1"
   local force_selected="$2"
@@ -422,6 +516,8 @@ pkg::plan_selected() {
   for pkg_dir in "${selected_dirs[@]}"; do
     pkg::plan_dir "$pkg_dir" || return 1
   done
+
+  pkg::finalize_plan
 }
 
 pkg::print_plan() {
