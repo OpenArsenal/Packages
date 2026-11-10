@@ -21,6 +21,8 @@ jobs:
           set -o pipefail
           bash -n tests/check-srcinfo.sh tests/bats/test_helper/common.bash
           find .mise/lib .mise/tasks -type f -print0 | xargs -0 -r -n1 bash -n
+      - name: Lint Bash helpers and mise tasks with ShellCheck
+        run: mise run lint:shell
       - name: Root shared tests (unit + integration)
         run: mise run test
 
