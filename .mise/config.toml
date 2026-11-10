@@ -1,10 +1,12 @@
 [tools]
 bats = "1.14.0"
+shellcheck = "0.11.0"
 
 [env]
 _.file = ".env"
 
 PKGBUILDS_ROOT = "{{ config_root }}"
+BATS_LIB_PATH = "{{ config_root }}/.mise/vendor/bats"
 PACKAGES_DIR = "{{ get_env(name='PACKAGES_DIR', default=env.PKGBUILDS_ROOT ~ '/packages') }}"
 PACKAGES_FILE = "{{ get_env(name='PACKAGES_FILE', default=env.PKGBUILDS_ROOT ~ '/.packages') }}"
 
@@ -23,6 +25,18 @@ CHROOT_PACMAN_CONF = "{{ get_env(name='CHROOT_PACMAN_CONF', default='') }}"
 
 PACKAGER = "{{ get_env(name='PACKAGER', default='OpenArsenal Contributors <arch-packaging-team(at)openarsenal(dot)com>') }}"
 SOURCE_DATE_EPOCH = "{{ exec(command='git log -1 --format=%ct 2>/dev/null || date -u +%s') | trim }}"
+
+[hooks]
+# Install the Bash-only Bats helper libraries after mise installs executable tools.
+postinstall = "bash .mise/lib/install-bats-libs.sh"
+
+[tasks."test:install-libs"]
+description = "Install pinned Bats helper libraries into the ignored mise vendor directory"
+run = "bash .mise/lib/install-bats-libs.sh"
+
+[tasks."lint:shell"]
+description = "Run ShellCheck on packaging Bash helpers and mise task scripts (opt-in)"
+run = "find .mise/lib .mise/tasks -type f -print0 | xargs -0 -r shellcheck -s bash -S warning"
 
 [tasks.default]
 description = "List available tasks"
