@@ -655,3 +655,114 @@ MOCK
     fail 'repo-add did not update the database for the valid archive'
   )
 }
+
+@test "Publishing an archive symlink protects its targets through both pruning passes" {
+  (
+  local tmp archive alias hop stale
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/bin" "$tmp/served repo"
+  export PKGBUILDS_ROOT="$root" REPO_DIR="$tmp/served repo"
+  export REPO_DB="$REPO_DIR/test.db" REPO_NAME=test TEST_TMP="$tmp"
+  export PATH="$tmp/bin:$PATH"
+
+  archive="$REPO_DIR/demo-1-1-any.pkg.tar.gz"
+  alias="$REPO_DIR/alias-1-1-any.pkg.tar.gz"
+  hop="$REPO_DIR/intermediate-1-1-any.pkg.tar.gz"
+  stale="$REPO_DIR/stale-1-1-any.pkg.tar.gz"
+  printf 'published archive bytes\n' >"$archive"
+  cp "$archive" "$tmp/original-archive"
+  printf 'signature\n' >"$archive.sig"
+  printf 'old archive bytes\n' >"$stale"
+  printf 'old signature\n' >"$stale.sig"
+  ln -s "$archive" "$alias"
+
+  # The repo-add mock records its input's basename, just as the real tool
+  # does. The bsdtar mock exposes that entry as parsed repository metadata.
+  cat >"$tmp/bin/repo-add" <<'MOCK'
+#!/usr/bin/env bash
+if [[ "$1" == --help ]]; then printf '%s\n' '--wait-for-lock'; exit 0; fi
+for arg in "$@"; do
+  case "$arg" in
+    *.pkg.tar.*) printf '%s\n' "${arg##*/}" >"$REPO_DB" ;;
+  esac
+done
+[[ -s "$REPO_DB" ]]
+MOCK
+  cat >"$tmp/bin/bsdtar" <<'MOCK'
+#!/usr/bin/env bash
+case "$1" in
+  -tf) [[ -s "$2" ]] || exit 1; printf 'demo/desc\n' ;;
+  -xOf)
+    filename="$(cat "$2")" || exit 1
+    printf '%%NAME%%\ndemo\n%%VERSION%%\n1-1\n%%FILENAME%%\n%s\n' "$filename"
+    ;;
+  *) exit 2 ;;
+esac
+MOCK
+  cat >"$tmp/bin/pacman" <<'MOCK'
+#!/usr/bin/env bash
+[[ "$1" == -Qp && "$2" == -- ]] || exit 2
+case "${3##*/}" in
+  alias-*) printf 'demo 1-1\n' ;;
+  demo-*) printf '%s 1-1\n' "${BACKING_PKG_NAME:-demo}" ;;
+  stale-*) printf 'stale 1-1\n' ;;
+  *) exit 2 ;;
+esac
+MOCK
+  cat >"$tmp/bin/paccache" <<'MOCK'
+#!/usr/bin/env bash
+touch "$TEST_TMP/paccache-called"
+printf 'demo-1-1-any.pkg.tar.gz\n'
+printf 'intermediate-1-1-any.pkg.tar.gz\n'
+MOCK
+  chmod +x "$tmp/bin/"*
+
+  usage_package="$alias" bash "$root/.mise/tasks/repo/update" >"$tmp/log" 2>&1 ||
+    fail "could not publish internal alias: $(cat "$tmp/log")"
+  [[ "$(cat "$REPO_DB")" == "${alias##*/}" ]] ||
+    fail 'published repository database did not record the alias basename'
+
+  # The first removal pass would delete the target if its inspected package
+  # name is no longer indexed. The second uses paccache's candidate list.
+  local name
+  for name in no-longer-indexed demo; do
+    rm -f "$tmp/paccache-called"
+    BACKING_PKG_NAME="$name" usage_keep=0 bash "$root/.mise/tasks/repo/prune" >"$tmp/log" 2>&1 ||
+      fail "prune --keep 0 failed after publication ($name): $(cat "$tmp/log")"
+    [[ -e "$tmp/paccache-called" ]] || fail 'prune did not evaluate candidates'
+    [[ -L "$alias" && -f "$archive" && -f "$archive.sig" ]] ||
+      fail "prune removed published alias backing archive or signature ($name)"
+    cmp -s "$archive" "$tmp/original-archive" ||
+      fail "prune changed published alias backing bytes ($name)"
+    [[ ! -e "$stale" && ! -e "$stale.sig" ]] ||
+      fail 'prune did not remove genuinely unindexed archive and signature'
+  done
+
+  # A published alias can point through another in-repo alias. Neither
+  # intermediary nor its final target may be pruned by paccache.
+  rm -f "$alias"
+  ln -s "$archive" "$hop"
+  ln -s "$hop" "$alias"
+  BACKING_PKG_NAME=demo usage_keep=0 bash "$root/.mise/tasks/repo/prune" >"$tmp/log" 2>&1 ||
+    fail "prune rejected valid multi-hop alias: $(cat "$tmp/log")"
+  [[ -L "$alias" && -L "$hop" && -f "$archive" ]] ||
+    fail 'prune broke a multi-hop published symlink'
+  cmp -s "$archive" "$tmp/original-archive" ||
+    fail 'prune changed the target of a multi-hop published symlink'
+
+  # If a published alias cannot be resolved, pruning must abort before even
+  # asking paccache for candidate removals, not partially delete anything.
+  rm -f "$archive" "$tmp/paccache-called"
+  printf 'must survive failed preflight\n' >"$stale"
+  if usage_keep=0 bash "$root/.mise/tasks/repo/prune" >"$tmp/log" 2>&1; then
+    fail 'prune accepted a broken published symlink'
+  fi
+  grep -Fq 'cannot resolve published archive symlink' "$tmp/log" ||
+    fail 'broken published symlink did not produce a useful diagnostic'
+  [[ -f "$stale" && -L "$alias" && -L "$hop" ]] ||
+    fail 'failed symlink preflight removed repository entries'
+  [[ ! -e "$tmp/paccache-called" ]] ||
+    fail 'paccache ran before all published symlinks were validated'
+  )
+}
