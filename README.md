@@ -265,10 +265,10 @@ and updater scripts to declare their relevant coverage. Universal checks
 include local source checksums, metadata and Bash syntax; behavioral Bats
 tests use temporary fixtures and mocked external tools.
 
-CI exercises the repository-root `mise run test`, the package-root
-`mise run test:contracts`, and the package-root `mise run test` in
-independent jobs. This validates the directory-based task selection as
-well as the test logic.
+CI runs two independent jobs: shared tooling tests from the repository root,
+and the complete package test entrypoint from `packages/` (contracts plus
+regressions). Contracts run only once per CI workflow while directory-based
+task selection remains covered.
 
 `tests/check-srcinfo.sh` remains available for validating a real package's
 generated metadata when Arch's `makepkg` is installed:
