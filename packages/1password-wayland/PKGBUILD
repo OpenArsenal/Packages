@@ -21,7 +21,7 @@ pkgname=(
 )
 
 pkgver=0.1.6
-pkgrel=3
+pkgrel=4
 pkgdesc='Auto-enable Wayland (ozone) for apps that come with a vendored Electron'
 arch=('any')
 url='https://aur.archlinux.org/pkgbase/electron-wayland'
@@ -39,7 +39,7 @@ source=(
 
 sha512sums=('3f932cd8463cfb00637da5656e2cf4380d78501d6644b47a0691ade0a4cbdb2f084175f5d9500f2ff2ee910bc045ea39422d8b7416c4fdb9ebad2c2c3c91d2dd'
             '60100210e5ef956ae420b52b177b7014aef1dde15e89e4d06aa56607ba9ccd8b4601896c31bd9b95d39e2617ca3bf33c80bc0090a39148484f7db2d5ef4e5c86'
-            '03e7d398dd9a4796ca23c2da791d648874102cf43033ca98e52db9ad2ea7451b48ed57f94772cce5e0ea2a3ec9d394981ada0f9ace1d1192c8fb990197ad9560'
+            '09bc9cbaa85252211d1fe6d121395ef132e18bc62020ccd8e81aa6850c2d75a67c697daa0ad629df50b55c84e2b551ff8f278f937f5dd33d2f96203d38373bad'
             'd24eedac69f293f51a23e9d998b880b849554eb150777809c5f041009493aa99282b2c458fff71c9e14e6bd75b34d85c61cee3f3b9b62573faf411be157d0148'
             'fe94d357a5da3333beaa88d1dc9a02b75c6d07ab83d32029f8ac216e783cfc8a90f4bdad2b6e01a10d796228acface0896240528811def3cfee70c13d40807d1')
 
@@ -77,6 +77,7 @@ _package() {
     -e "s#{{executable}}#${_executable}#g" \
     -e "s#{{pkgname}}#${pkgname}#g" \
     -e "s#{{target}}#/usr/bin/${_executable##*/}#g" \
+    -e "s#{{launcher}}#/usr/share/${pkgname}/${_executable##*/}-launcher.sh#g" \
     "${srcdir}/${pkgbase}-unpatch.sh" \
     > "${pkgdir}/usr/share/libalpm/scripts/${pkgname}-unpatch"
 

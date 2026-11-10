@@ -177,3 +177,82 @@ MOCK
     fail 'successful patch did not preserve the original executable in the backup'
   )
 }
+
+@test "Wayland unpatch preserves foreign symlinks and stops if restoring backup fails" {
+  (
+  local tmp target backup launcher foreign script
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/app" "$tmp/demo-wayland/original" "$tmp/bin"
+  target="$tmp/app/executable"
+  backup="$tmp/demo-wayland/original/executable"
+  launcher="$tmp/wayland-launcher"
+  foreign="$tmp/other-application"
+  script="$tmp/unpatch.sh"
+
+  printf 'original executable\n' >"$backup"
+  cp "$backup" "$tmp/expected"
+  printf '#!/bin/bash\nexit 0\n' >"$launcher"
+  printf 'custom executable\n' >"$foreign"
+
+  # Render the real unpatch script against disposable fixture paths.
+  sed -e "s#{{executable}}#$backup#g" \
+      -e 's#{{pkgname}}#demo-wayland#g' \
+      -e "s#{{target}}#$target#g" \
+      -e "s#{{launcher}}#$launcher#g" \
+    "$root/packages/1password-wayland/electron-wayland-unpatch.sh" >"$script"
+
+  ln -s "$foreign" "$target"
+  if bash "$script" >"$tmp/log" 2>&1; then
+    fail 'Wayland unpatch accepted a symlink belonging to another application'
+  fi
+  [[ -L "$target" && "$(readlink "$target")" == "$foreign" ]] ||
+    fail 'Wayland unpatch changed an unrelated symlink'
+  cmp -s "$backup" "$tmp/expected" ||
+    fail 'Wayland unpatch changed the backup after rejecting an unrelated symlink'
+
+  rm "$target"
+  ln -s "$launcher" "$target"
+
+  cat >"$tmp/bin/mv" <<'MOCK'
+#!/usr/bin/env bash
+exit 87
+MOCK
+  cat >"$tmp/bin/rmdir" <<'MOCK'
+#!/usr/bin/env bash
+touch "$WAYLAND_RMDIR_MARKER"
+MOCK
+  chmod +x "$tmp/bin/"*
+
+  if WAYLAND_RMDIR_MARKER="$tmp/rmdir-called" PATH="$tmp/bin:$PATH" bash "$script" >"$tmp/log" 2>&1; then
+    fail 'Wayland unpatch ignored failed backup restoration'
+  fi
+  [[ -L "$target" && "$(readlink "$target")" == "$launcher" ]] ||
+    fail 'Wayland unpatch replaced its symlink despite failed restoration'
+  cmp -s "$backup" "$tmp/expected" ||
+    fail 'Wayland unpatch lost the backup after a failed move'
+  [[ ! -e "$tmp/rmdir-called" ]] ||
+    fail 'Wayland unpatch attempted directory removal after failed restoration'
+
+  bash "$script" >"$tmp/log" 2>&1 ||
+    fail "Wayland unpatch could not restore a valid backup: $(cat "$tmp/log")"
+  [[ -f "$target" && ! -L "$target" ]] ||
+    fail 'successful unpatch did not restore the original executable'
+  cmp -s "$target" "$tmp/expected" ||
+    fail 'successful unpatch changed the original executable'
+
+  # The direct-executable variant also restores only helper-owned links.
+  printf 'direct executable\n' >"$tmp/direct-executable"
+  sed -e "s#{{executable}}#$tmp/direct-executable#g" \
+      -e 's#{{pkgname}}#demo-wayland#g' \
+      -e "s#{{target}}#$target#g" \
+      -e "s#{{launcher}}#$launcher#g" \
+    "$root/packages/1password-wayland/electron-wayland-unpatch.sh" >"$script"
+  rm "$target"
+  ln -s "$launcher" "$target"
+  bash "$script" >"$tmp/log" 2>&1 ||
+    fail "Wayland unpatch could not restore a direct executable: $(cat "$tmp/log")"
+  [[ -L "$target" && "$(readlink "$target")" == "$tmp/direct-executable" ]] ||
+    fail 'successful direct-executable unpatch restored the wrong target'
+  )
+}
