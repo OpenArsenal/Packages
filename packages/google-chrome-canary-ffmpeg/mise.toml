@@ -1,0 +1,4 @@
+# Local test task for the google-chrome-canary-ffmpeg recipe. Inherited repository tasks stay available.
+[tasks.test]
+description = "Run desktop-launchers Bats regressions for google-chrome-canary-ffmpeg"
+run = "bats ../../tests/packages/desktop-launchers.bats"
