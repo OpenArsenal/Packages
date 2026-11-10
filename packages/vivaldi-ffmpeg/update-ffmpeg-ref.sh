@@ -53,6 +53,12 @@ fetch_text() {
     return "$curl_status"
   fi
 
+  # Only a missing tag (404) permits checking an older Chromium patch.
+  # Authentication, throttling, and server failures must abort instead.
+  if [[ "$http_code" == "404" ]]; then
+    rm -f "$tmp"
+    return 44
+  fi
   if [[ ! "$http_code" =~ ^2[0-9][0-9]$ ]]; then
     rm -f "$tmp"
     return 22
@@ -65,7 +71,9 @@ fetch_text() {
 fetch_gitiles_text() {
   # Gitiles returns file ?format=TEXT bodies as base64 encoded text.
   local url=$1
-  fetch_text "$url" | base64_decode
+  local encoded
+  encoded="$(fetch_text "$url")" || return $?
+  printf '%s' "$encoded" | base64_decode
 }
 
 chromium_deps_url() {
@@ -111,10 +119,9 @@ resolve_ffmpeg_ref() {
       return 0
     else
       status=$?
-      # curl uses 22 for HTTP errors. Those are expected when probing missing tags.
-      # Other failures usually mean DNS, TLS, or connectivity problems; do not hide them
-      # behind hundreds of fallback attempts.
-      if (( status != 22 )); then
+      # HTTP 404 means the tag is not public; all other HTTP errors
+      # and transport/decode failures are fatal, not fallback candidates.
+      if (( status != 44 )); then
         err "could not fetch Chromium DEPS for ${candidate}"
         printf 'checked: %s\n' "$deps_url" >&2
         return 1
