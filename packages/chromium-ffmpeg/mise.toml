@@ -1,0 +1,4 @@
+# Local test task for the chromium-ffmpeg recipe. Inherited repository tasks stay available.
+[tasks.test]
+description = "Run ffmpeg Bats regressions for chromium-ffmpeg"
+run = "bats ../../tests/packages/ffmpeg.bats"
