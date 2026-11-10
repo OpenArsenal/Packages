@@ -8,11 +8,11 @@ setup() {
 }
 
 @test "mise makes Bats assertions and filesystem helpers available" {
-  run bash -c 'printf "ready\\n"'
+  run bash -c 'printf "ready\n"'
   assert_success
   assert_output "ready"
 
   local fixture="$BATS_TEST_TMPDIR/fixture"
-  printf 'fixture\\n' >"$fixture"
+  printf 'fixture\n' >"$fixture"
   assert_file_exists "$fixture"
 }
