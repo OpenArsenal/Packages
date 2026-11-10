@@ -72,7 +72,7 @@ MOCK
         fail "Flutter launcher did not execute Dart for $mode"
       [[ "$(cat "$tmp/result")" == "$tmp/sdk" ]] ||
         fail "Flutter launcher derived the wrong SDK root for $mode"
-      [[ "$(wc -l <"$tmp/args")" -eq 1 ]] ||
+      [[ "$(wc -l <"$tmp/args")" -eq 4 ]] ||
         fail "Flutter launcher passed unexpected Dart arguments for $mode"
       grep -Fxq -- '--probe' "$tmp/args" ||
         fail "Flutter launcher lost the CLI argument for $mode"
@@ -89,7 +89,7 @@ MOCK
       fail 'Flutter launcher did not execute Dart with an explicit root'
     [[ "$(cat "$tmp/result")" == "$tmp/explicit" ]] ||
       fail 'Flutter launcher overwrote DART_ROOT'
-    [[ "$(wc -l <"$tmp/args")" -eq 1 ]] && grep -Fxq -- '--probe' "$tmp/args" ||
+    [[ "$(wc -l <"$tmp/args")" -eq 4 ]] && grep -Fxq -- '--probe' "$tmp/args" ||
       fail 'Flutter launcher changed CLI arguments with an explicit root'
   )
 }
