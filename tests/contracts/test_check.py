@@ -42,7 +42,7 @@ class LauncherContractsTest(unittest.TestCase):
             wrapper.write_text(
                 "#!/bin/bash\n"
                 "mapfile -t flags < <(grep -v '^#' \"$XDG_CONFIG_HOME/demo.conf\")\n"
-                "exec @DEMO_EXEC@ \"\${flags[@]}\" \"$@\"\n",
+                "exec @DEMO_EXEC@ \"${flags[@]}\" \"$@\"\n",
                 encoding="utf-8",
             )
             spec = {
