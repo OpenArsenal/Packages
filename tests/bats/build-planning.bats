@@ -592,5 +592,39 @@ MOCK
     [[ "${#PKG_PLAN[@]}" -eq 1 && "${PKG_PLAN[0]}" == "$packages/app" ]] ||
       fail "normal planning rebuilt an already-satisfied published dependency: ${PKG_PLAN[*]}"
   done
+
+  # The currently published libdemo=1 satisfies the upper bound, but the
+  # explicitly forced libdemo=2 would replace it before the app is built.
+  # Reject this selection during planning, regardless of argument order.
+  printf 'pkgbase = app\n\tpkgver = 1\n\tpkgrel = 1\n\tdepends = libdemo<2\npkgname = app\n' \
+    >"$packages/app/.SRCINFO"
+  pkg::metadata_cache_reset
+
+  # Only a forced consumer can still use the compatible published library
+  # when no replacement was explicitly selected.
+  pkg::plan_selected "$packages" true app >"$tmp/log" 2>&1 ||
+    fail "forcing app alone with a published compatible library failed: $(cat "$tmp/log")"
+  [[ "${#PKG_PLAN[@]}" -eq 1 && "${PKG_PLAN[0]}" == "$packages/app" ]] ||
+    fail "force app alone incorrectly rebuilt libdemo: ${PKG_PLAN[*]}"
+
+  # The public build entrypoint must never reach build_plan on an
+  # incompatible selection, even if a dependency was planned first.
+  pkg::build_plan() { touch "$tmp/build-started"; }
+  for selection in 'app libdemo' 'libdemo app'; do
+    read -r -a requested <<<"$selection"
+    rm -f "$tmp/build-started"
+
+    if pkg::plan_selected "$packages" true "${requested[@]}" >"$tmp/log" 2>&1; then
+      fail "planner accepted incompatible forced replacement for $selection"
+    fi
+    grep -Fq "forced replacement of 'libdemo'" "$tmp/log" ||
+      fail "missing incompatible forced replacement diagnostic for $selection: $(cat "$tmp/log")"
+
+    if pkg::build_selected "$packages" true "${requested[@]}" >"$tmp/log" 2>&1; then
+      fail "build entrypoint accepted incompatible forced replacement for $selection"
+    fi
+    [[ ! -e "$tmp/build-started" ]] ||
+      fail "build started before rejecting incompatible replacement for $selection"
+  done
   )
 }
