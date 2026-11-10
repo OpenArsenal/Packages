@@ -56,6 +56,60 @@ if [[ -e "$REPO_DB" ]]; then
   }
 fi
 
+# The database records published archive *names*. When a published archive is
+# a symlink, pruning its unindexed target would leave that published name
+# dangling. Build the complete protected set before selecting or deleting
+# anything, including intermediate symlinks in a multi-hop chain.
+declare -A protected=()
+for filename in "${!published[@]}"; do
+  protected["$filename"]=1
+done
+
+repo_dir_real="$(cd -- "$REPO_DIR" && pwd -P)" || {
+  echo "error: cannot resolve repository directory before pruning: $REPO_DIR" >&2
+  exit 1
+}
+
+for filename in "${!published[@]}"; do
+  link="$repo_dir_real/$filename"
+  [[ -L "$link" ]] || continue
+
+  # Walk each link rather than only protecting realpath's final target:
+  # paccache can independently select an intermediate symlink for deletion.
+  declare -A visited_links=()
+  while [[ -L "$link" ]]; do
+    if [[ -n "${visited_links[$link]+x}" ]]; then
+      echo "error: published archive symlink loop: $repo_dir_real/$filename" >&2
+      exit 1
+    fi
+    visited_links["$link"]=1
+    destination="$(readlink -- "$link")" || {
+      echo "error: cannot read published archive symlink: $link" >&2
+      exit 1
+    }
+    [[ "$destination" == /* ]] || destination="$(dirname -- "$link")/$destination"
+    parent="$(cd -- "$(dirname -- "$destination")" && pwd -P)" || {
+      echo "error: cannot resolve published archive symlink: $link" >&2
+      exit 1
+    }
+    if [[ "$parent" != "$repo_dir_real" ]]; then
+      echo "error: published archive symlink escapes repository: $link" >&2
+      exit 1
+    fi
+    link="$parent/$(basename -- "$destination")"
+    protected["${link##*/}"]=1
+  done
+
+  resolved="$(realpath -e -- "$repo_dir_real/$filename")" || {
+    echo "error: cannot resolve published archive symlink: $repo_dir_real/$filename" >&2
+    exit 1
+  }
+  if [[ ! -f "$resolved" || "${resolved%/*}" != "$repo_dir_real" ]]; then
+    echo "error: published archive symlink has no regular in-repository target: $repo_dir_real/$filename" >&2
+    exit 1
+  fi
+done
+
 args=(-d -v -c "$REPO_DIR" -k "${usage_keep:-2}")
 [[ -n "${usage_min_atime:-}" ]] && args+=(--min-atime "${usage_min_atime}")
 candidates="$(paccache "${args[@]}")" || {
@@ -74,7 +128,7 @@ if [[ -e "$REPO_DB" ]]; then
   fi
 
   while IFS= read -r -d '' archive; do
-    [[ -n "${published[${archive##*/}]+x}" ]] && continue
+    [[ -n "${protected[${archive##*/}]+x}" ]] && continue
 
     meta="$(pacman -Qp -- "$archive" 2>/dev/null)" || {
       echo "warning: unable to inspect package archive: $archive" >&2
@@ -97,7 +151,7 @@ fi
 
 while IFS= read -r filename; do
   [[ "$filename" == *.pkg.tar.* && "$filename" != *.sig && "$filename" != */* ]] || continue
-  [[ -n "${published[$filename]+x}" ]] && continue
+  [[ -n "${protected[$filename]+x}" ]] && continue
   archive="$REPO_DIR/$filename"
   [[ -f "$archive" ]] || continue
 
