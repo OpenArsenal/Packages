@@ -272,6 +272,20 @@ pkg::plan_deps() {
     [[ -n "$dep" ]] || continue
 
     if pkg::dir_outputs_name "$pkg_dir" "$dep"; then
+      # A split recipe builds all of its outputs together. The currently
+      # published version cannot satisfy a dependency on a sibling output
+      # that this very build will replace with an incompatible version.
+      if [[ -n "$op" && -n "$ver" ]]; then
+        local self_version
+        self_version="$(pkg::metadata_version "$pkg_dir")" || {
+          echo "error: unable to inspect split-package version for: $pkg_dir" >&2
+          return 1
+        }
+        if ! repo::version_satisfies "$self_version" "$op" "$ver"; then
+          echo "error: split-package output '$dep' ($self_version) is incompatible with dependency '$raw' in ${pkg_dir##*/}" >&2
+          return 1
+        fi
+      fi
       continue
     else
       local rc=$?
