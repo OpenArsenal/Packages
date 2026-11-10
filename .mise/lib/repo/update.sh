@@ -209,8 +209,10 @@ repo::update_db() {
   # repo-add only records an archive's filename in the database; it does
   # not copy the file to the directory served by the repository. Validate
   # every selected archive *before* any publication (or dry-run output).
-  # Resolve symlinks as well so a link inside REPO_DIR cannot point outside.
-  local repo_dir_real archive archive_real
+  # Check both the supplied path's directory and the symlink target:
+  # an outside alias pointing *into* REPO_DIR is also not downloadable under
+  # its advertised filename, even though realpath(1) resolves inside.
+  local repo_dir_real archive archive_real archive_parent_real
   repo_dir_real="$(cd -- "$repo_dir" && pwd -P)" || {
     echo "error: unable to resolve repository directory: $repo_dir" >&2
     return 1
@@ -220,7 +222,12 @@ repo::update_db() {
       echo "error: selected archive does not exist: $archive" >&2
       return 1
     }
-    if [[ ! -f "$archive_real" || "${archive_real%/*}" != "$repo_dir_real" ]]; then
+    archive_parent_real="$(realpath -e -- "$(dirname -- "$archive")")" || {
+      echo "error: unable to resolve selected archive's parent directory: $archive" >&2
+      return 1
+    }
+    if [[ ! -f "$archive_real" || "$archive_parent_real" != "$repo_dir_real" ||
+          "${archive_real%/*}" != "$repo_dir_real" ]]; then
       echo "error: selected archive is not a regular file inside REPO_DIR: $archive" >&2
       echo "       copy the archive into $repo_dir_real before running repo:update" >&2
       return 1
