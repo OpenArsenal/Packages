@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 #MISE description="Build one package and its local dependencies"
-#MISE depends=["repo:create", "chroot:create"]
 #MISE dir="{{cwd}}"
 #USAGE flag "--force" help="Rebuild the selected package even if the same version is already published"
 #USAGE arg "[package]" help="Package name or directory; defaults to the invocation directory"
@@ -14,4 +13,14 @@ task::bootstrap
 task::require_env PACKAGES_DIR REPO_DIR REPO_DB CHROOT_DIR
 
 target="${usage_package:-$PWD}"
-pkg::build_selected "$PACKAGES_DIR" "${usage_force:-false}" "$target"
+# Validate the requested recipe and resolve the complete build plan before
+# provisioning any repository or privileged chroot resources.
+pkg::plan_selected "$PACKAGES_DIR" "${usage_force:-false}" "$target"
+if (( ${#PKG_PLAN[@]} == 0 )); then
+  echo "No packages need building."
+  exit 0
+fi
+
+mise run repo:create
+mise run chroot:create
+pkg::build_plan
