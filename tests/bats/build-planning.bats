@@ -847,3 +847,56 @@ MOCK
     fail "unrelated published backup caused extra builds: ${PKG_PLAN[*]}"
   )
 }
+
+@test "Split-package internal version dependencies reject incompatible published replacements" {
+  (
+  local tmp package
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  package="$tmp/packages/split-demo"
+  export PKGBUILDS_ROOT="$root" REPO_DIR="$tmp/repo" REPO_DB="$tmp/missing.db"
+  mkdir -p "$package" "$REPO_DIR"
+  touch "$package/PKGBUILD"
+
+  source "$root/.mise/lib/repo.sh"
+  source "$root/.mise/lib/pkg.sh"
+  repo::index_reset
+  REPO_INDEX_DIR="$REPO_DIR"
+  REPO_PACKAGE_VERSION[libdemo]='1-1'
+  pkg::pacman_can_resolve() { return 1; }
+  pkg::build_plan() { touch "$tmp/build-started"; }
+  vercmp() {
+    local a="${1%%-*}" b="${2%%-*}"
+    [[ "$a" =~ ^[0-9]+$ && "$b" =~ ^[0-9]+$ ]] || return 47
+    if (( a < b )); then printf '%s\n' -1
+    elif (( a > b )); then printf '%s\n' 1
+    else printf '%s\n' 0
+    fi
+  }
+
+  # A split recipe publishes libdemo=2 and app=2 in one build. An old
+  # published libdemo=1 must not satisfy app's libdemo<2 requirement.
+  printf 'pkgbase = split-demo\n\tpkgver = 2\n\tpkgrel = 1\npkgname = libdemo\npkgname = app\n\tdepends = libdemo<2\n' \
+    >"$package/.SRCINFO"
+  for force in false true; do
+    rm -f -- "$tmp/build-started"
+    if pkg::build_selected "$tmp/packages" "$force" split-demo >"$tmp/log" 2>&1; then
+      fail "split recipe accepted an incompatible internal version (force=$force)"
+    fi
+    grep -Fq "split-package output 'libdemo' (2-1) is incompatible" "$tmp/log" ||
+      fail "missing split output version diagnostic: $(cat "$tmp/log")"
+    [[ ! -e "$tmp/build-started" ]] ||
+      fail "build started despite incompatible split output (force=$force)"
+  done
+
+  # A version constraint satisfied by the local split-package output is
+  # allowed; the same recipe is scheduled exactly once.
+  printf 'pkgbase = split-demo\n\tpkgver = 2\n\tpkgrel = 1\npkgname = libdemo\npkgname = app\n\tdepends = libdemo>=2\n' \
+    >"$package/.SRCINFO"
+  pkg::metadata_cache_reset
+  pkg::plan_selected "$tmp/packages" false split-demo >"$tmp/log" 2>&1 ||
+    fail "compatible split recipe was rejected: $(cat "$tmp/log")"
+  [[ "${#PKG_PLAN[@]}" -eq 1 && "${PKG_PLAN[0]}" == "$package" ]] ||
+    fail "compatible split recipe generated wrong plan: ${PKG_PLAN[*]}"
+  )
+}
