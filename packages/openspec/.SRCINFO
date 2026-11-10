@@ -6,7 +6,6 @@ pkgbase = openspec
 	arch = x86_64
 	arch = aarch64
 	license = MIT
-	makedepends = git
 	makedepends = nodejs>=22.12.0
 	makedepends = pnpm
 	makedepends = bun
@@ -17,7 +16,8 @@ pkgbase = openspec
 	conflicts = openspec-git
 	options = !strip
 	options = !debug
-	source = OpenSpec::git+https://github.com/Fission-AI/OpenSpec.git#commit=0fa4a9705c20ef1c571fe3ded74435733e4b73a1
-	sha256sums = SKIP
+	source = openspec-1.16.1.tar.gz::https://github.com/Fission-AI/OpenSpec/archive/refs/tags/v1.16.1.tar.gz
+	sha256sums = 5829a3986f107b2ec5a826479bb0185fa7a16aaa4cc7a36260467902bc584605
+	b2sums = 6533b4cbfb4748741a7edaf8f5df73082d1a9eaf3958ea2ccd6b92a3ceee74d9345341295f0d852f8fa8c6ed1755151c656dbfcead4977602f063fa8b9469a24
 
 pkgname = openspec
