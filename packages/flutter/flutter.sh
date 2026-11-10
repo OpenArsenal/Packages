@@ -8,8 +8,27 @@
 set -e
 
 # this is required in case people try to run with `aur/dart-sdk-dev` instead of `extra/dart`
-DART_BINARY=$(readlink $(which dart))
-export DART_ROOT=${DART_ROOT:-${DART_BINARY/\/bin\/dart/}}
+if [[ -z "${DART_ROOT:-}" ]]; then
+  DART_BINARY="$(command -v dart)" || {
+    echo "error: dart executable not found in PATH" >&2
+    exit 1
+  }
+  DART_BINARY="$(readlink -f -- "$DART_BINARY")" || {
+    echo "error: unable to resolve dart executable" >&2
+    exit 1
+  }
+  case "$DART_BINARY" in
+    */bin/dart)
+      DART_ROOT="${DART_BINARY%/bin/dart}"
+      ;;
+    *)
+      echo "error: unexpected Dart executable location: $DART_BINARY" >&2
+      exit 1
+      ;;
+  esac
+  [[ -n "$DART_ROOT" ]] || exit 1
+fi
+export DART_ROOT
 export FLUTTER_ROOT="${FLUTTER_ROOT:-/usr/lib/flutter}"
 
 FLUTTER_TOOLS_DIR="$FLUTTER_ROOT/packages/flutter_tools"
