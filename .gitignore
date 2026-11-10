@@ -6,3 +6,6 @@ node_modules
 .packages
 packages/*/logs/
 repomix-instruction.md
+
+# Mise-managed, locally fetched Bats helper libraries
+.mise/vendor/
