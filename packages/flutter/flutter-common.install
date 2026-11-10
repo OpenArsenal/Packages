@@ -1,21 +1,15 @@
 pre_install() {
-  NEW=$1
-  OLD=$2
+  # /opt/flutter might be a separately installed or locally modified SDK.
+  # Package install hooks must not erase files that pacman does not own.
+  if [ -d "/opt/flutter" ]; then
+    printf '%s\n' 'Notice: Existing Flutter SDK found at /opt/flutter; leaving it untouched.'
+    printf '%s\n' 'If migration is needed, back up and move it manually after reviewing its contents.'
+  fi
 
-  MAJOR=$(echo $OLD | awk -F '.' '{print $1}')
-  MINOR=$(echo $OLD | awk -F '.' '{print $2}')
-  PATCH=$(echo $OLD | awk -F '+' '{print $1}' | awk -F '.' '{print $3}')
-
-  #if [[ $MAJOR == 3 && $MINOR -le 19 && $MINOR -le 4]]; then
-    if [ -d "/opt/flutter" ]; then
-      echo "Removing leftovers of previous Flutter installation in /opt/flutter."
-      rm -rf "/opt/flutter"
-    fi
-    if [ -d "/usr/lib/flutter/.git" ]; then
-      echo "Removing unwanted git-refs in /usr/lib/flutter/.git."
-      rm -rf "/usr/lib/flutter/.git"
-    fi
-  #fi
+  if [ -d "/usr/lib/flutter/.git" ]; then
+    echo "Removing unwanted git-refs in /usr/lib/flutter/.git."
+    rm -rf "/usr/lib/flutter/.git"
+  fi
 }
 
 post_install() {
