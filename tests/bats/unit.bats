@@ -52,12 +52,15 @@ assert_version() {
   assert_version true 1 '=' 1
   assert_version false 2 '=' 1
   assert_version true 2 '>' 1
+  assert_version false 1 '>' 1
   assert_version false 0 '>' 1
   assert_version true 0 '<' 1
+  assert_version false 1 '<' 1
   assert_version false 2 '<' 1
   assert_version true 0 '<=' 1
   assert_version true 1 '<=' 1
   assert_version true 2 '>=' 1
+  assert_version true 1 '>=' 1
   assert_version false 0 '>=' 1
   assert_version false 1 '!=' 1
   VERCMP_MODE=fail assert_version false 1 '=' 1

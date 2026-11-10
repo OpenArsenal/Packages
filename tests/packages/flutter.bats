@@ -63,10 +63,13 @@ MOCK
         regular) binary_dir="$tmp/sdk/bin" ;;
         symlink) binary_dir="$tmp/links" ;;
       esac
+      rm -f -- "$tmp/result" "$tmp/args"
       DART_ROOT="" CI=true FLUTTER_TOOL_ARGS="" PATH="$binary_dir:$PATH" \
         TEST_DART_ROOT_FILE="$tmp/result" TEST_DART_ARGS_FILE="$tmp/args" \
         bash "$root/packages/flutter/flutter.sh" --probe >"$tmp/log" 2>&1 ||
         fail "Flutter launcher rejected a $mode Dart executable: $(cat "$tmp/log")"
+      [[ -f "$tmp/result" && -f "$tmp/args" ]] ||
+        fail "Flutter launcher did not execute Dart in $mode mode"
       [[ "$(cat "$tmp/result")" == "$tmp/sdk" ]] ||
         fail "Flutter launcher derived the wrong SDK root for $mode"
       grep -Fxq -- '--probe' "$tmp/args" ||
@@ -74,11 +77,14 @@ MOCK
     done
 
     # A caller-supplied root must bypass Dart symlink resolution altogether.
+    rm -f -- "$tmp/result" "$tmp/args"
     DART_ROOT="$tmp/explicit" CI=true FLUTTER_TOOL_ARGS="" \
       PATH="$tmp/blocked:$tmp/links:$PATH" \
       TEST_DART_ROOT_FILE="$tmp/result" TEST_DART_ARGS_FILE="$tmp/args" \
       bash "$root/packages/flutter/flutter.sh" --probe >"$tmp/log" 2>&1 ||
       fail "Flutter launcher ignored a supplied DART_ROOT: $(cat "$tmp/log")"
+    [[ -f "$tmp/result" && -f "$tmp/args" ]] ||
+      fail 'Flutter launcher did not execute Dart with explicit DART_ROOT'
     [[ "$(cat "$tmp/result")" == "$tmp/explicit" ]] ||
       fail 'Flutter launcher overwrote DART_ROOT'
   )
