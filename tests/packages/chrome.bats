@@ -30,7 +30,7 @@ done
 printf '%s\n' "$url" >>"$CHROME_CURL_LOG"
 [[ "$CHROME_MODE" != transport ]] || exit 7
 case "$CHROME_MODE" in
-  invalid) printf '%%% not base64' >"$output" ;;
+  invalid) printf '%s' '%%% not base64' >"$output" ;;
   missing) printf "'other_revision': 'abc',\n" | base64 >"$output" ;;
   success) cat "$CHROME_DEPS_B64" >"$output" ;;
   *) exit 93 ;;
