@@ -55,7 +55,7 @@ pkg::installed_selected() {
   local packages_dir="$1"
   local repo_name="$2"
   local outvar_name="$3"
-  local -n outvar="$outvar_name"
+  local -n selected_packages_ref="$outvar_name"
 
   [[ -d "$packages_dir" && -r "$packages_dir" && -x "$packages_dir" ]] || {
     echo "error: package source directory missing or unreadable: $packages_dir" >&2
@@ -178,10 +178,10 @@ pkg::installed_selected() {
     echo "warning: ambiguous installed package '$output'; skipping source selection" >&2
   done
 
-  outvar=()
+  selected_packages_ref=()
   for pkg_dir in "$packages_dir"/*; do
     [[ -n "${selected_dirs[$pkg_dir]+x}" ]] || continue
-    outvar+=("${pkg_dir##*/}")
+    selected_packages_ref+=("${pkg_dir##*/}")
   done
 
   shopt -u nullglob
