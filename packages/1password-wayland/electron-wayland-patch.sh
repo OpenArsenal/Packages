@@ -7,8 +7,8 @@ fi
 
 if [[ ! -L '{{target}}' ]]; then
   echo >&2 'Moving {{target}} out of the way so we can create a symlink.'
-  mkdir -pv "$(dirname '{{backup}}')"
-  mv -fv '{{target}}' '{{backup}}'
+  mkdir -pv "$(dirname '{{backup}}')" || exit 1
+  mv -fv '{{target}}' '{{backup}}' || exit 1
 fi
 
 # Create or modify symlink so it points to the launcher script
