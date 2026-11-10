@@ -241,8 +241,9 @@ Run the shared layers separately, or opt in to the package-specific suites:
 ```sh
 mise run test:unit
 mise run test:integration
+mise run test:contracts    # Universal metadata/source + reusable launcher checks
 mise run test:packages
-mise run test:all           # Shared and package-specific suites
+mise run test:all          # Shared, contract, and package-specific suites
 ```
 
 Shared unit and integration tests live in `tests/bats/` and cover dependency
@@ -271,10 +272,18 @@ task. You can also invoke an individual suite directly with
 `bats tests/packages/flutter.bats`, or filter a shared test using
 `bats --filter 'description' tests/bats/build-planning.bats`.
 
-CI runs **shared tests** and **package-specific tests** in separate jobs; the
-package job invokes `mise run test` from each covered package directory to
-validate the directory-specific routing. Every Bats case uses temporary
-fixtures and mocked external tools rather than modifying installed applications.
+The [contract tests](tests/contracts/README.md) apply consistent metadata,
+Bash syntax, and local-source requirements to every recipe. They also run
+declared launcher families with fake executables and verify that each updater
+and high-impact install-hook capability retains its Bats regression adapter.
+The manifest deliberately requires new `*-flags-wrapper.sh` and updater
+scripts to be registered.
+
+CI runs **shared tests**, **universal/capability contracts**, and
+**package-specific tests** as independent jobs. The package job invokes
+`mise run test` from each covered package directory to validate local routing.
+Bats cases use temporary fixtures and mocked external tools rather than
+modifying installed applications.
 
 `tests/check-srcinfo.sh` remains a standalone package metadata validation
 script, used by the test suite and available for checking real PKGBUILDs:
