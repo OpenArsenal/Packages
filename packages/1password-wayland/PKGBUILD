@@ -77,6 +77,7 @@ _package() {
     -e "s#{{executable}}#${_executable}#g" \
     -e "s#{{pkgname}}#${pkgname}#g" \
     -e "s#{{target}}#/usr/bin/${_executable##*/}#g" \
+    -e "s#{{launcher}}#/usr/share/${pkgname}/${_executable##*/}-launcher.sh#g" \
     "${srcdir}/${pkgbase}-unpatch.sh" \
     > "${pkgdir}/usr/share/libalpm/scripts/${pkgname}-unpatch"
 
