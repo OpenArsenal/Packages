@@ -112,3 +112,39 @@ MOCK
     fail 'import left a staging directory behind'
   )
 }
+
+@test "Doctor checks jq and timeout before declaring the host ready" {
+  (
+  local tmp tool
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/bin"
+  export PKGBUILDS_ROOT="$root"
+
+  # All other doctor requirements are mocked as available. The only missing
+  # commands are jq and timeout, both used by check-installed.
+  for tool in arch-nspawn bash bsdtar curl findmnt git gpg makechrootpkg makepkg \
+    mkarchroot nvchecker paccache pacman pacman-conf pkgctl python3 repo-add \
+    repo-remove updpkgsums vercmp sudo; do
+    ln -s /bin/true "$tmp/bin/$tool"
+  done
+
+  if PATH="$tmp/bin" /bin/bash "$root/.mise/tasks/doctor" >"$tmp/log" 2>&1; then
+    fail 'doctor reported OK without jq or timeout'
+  fi
+  grep -Fxq 'Missing: jq' "$tmp/log" ||
+    fail 'doctor omitted jq from its required-tool check'
+  grep -Fxq 'Missing: timeout' "$tmp/log" ||
+    fail 'doctor omitted timeout from its required-tool check'
+  if grep -Fxq 'OK' "$tmp/log"; then
+    fail 'doctor emitted an OK readiness signal despite missing tools'
+  fi
+
+  ln -s /bin/true "$tmp/bin/jq"
+  ln -s /bin/true "$tmp/bin/timeout"
+  PATH="$tmp/bin" /bin/bash "$root/.mise/tasks/doctor" >"$tmp/log" 2>&1 ||
+    fail "doctor rejected a complete toolchain: $(cat "$tmp/log")"
+  [[ "$(cat "$tmp/log")" == OK ]] ||
+    fail 'doctor did not report a healthy toolchain'
+  )
+}
