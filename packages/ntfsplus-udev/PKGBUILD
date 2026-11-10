@@ -1,7 +1,7 @@
 pkgname=ntfsplus-udev
 epoch=1
 pkgver=1.0.0
-pkgrel=1
+pkgrel=2
 pkgdesc="udev and udisks2 rules for preferring the ntfsplus/new ntfs driver"
 arch=('any')
 license=('GPL-2.0-only')
@@ -16,7 +16,7 @@ source=(
 )
 sha256sums=('5ab94954500a6fd4fe8252ce84c343a3b1b60fd7478c18c14fe9352c6c523d48'
             'adc9493f562e0d85035788917161bac4e920ed7733f7d174207a93577322762f'
-            '2711410ea8ef8d6ad6d2ab46cab1b59f0f982104e74157315eb7a96213d263cc')
+            '88bf857cdf133c6b1addd7b816fe8e4465883e908f6ba27fdff4281e8e559994')
 
 package() {
   install -Dm644 90-udev-prefer-ntfsplus.rules "$pkgdir/usr/lib/udev/rules.d/90-udev-prefer-ntfsplus.rules"

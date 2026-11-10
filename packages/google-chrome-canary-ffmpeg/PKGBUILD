@@ -3,7 +3,7 @@
 
 pkgname=google-chrome-canary-ffmpeg
 pkgver=154.0.8024.0
-pkgrel=1
+pkgrel=2
 pkgdesc="Google Chrome Canary with an expanded Chromium-compatible FFmpeg library"
 arch=('x86_64')
 url="https://www.google.com/chrome"

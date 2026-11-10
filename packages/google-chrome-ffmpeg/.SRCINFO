@@ -1,7 +1,7 @@
 pkgbase = google-chrome-ffmpeg
 	pkgdesc = Google Chrome Stable with an expanded Chromium-compatible FFmpeg library
 	pkgver = 153.0.8010.52
-	pkgrel = 1
+	pkgrel = 2
 	url = https://www.google.com/chrome
 	install = google-chrome-ffmpeg.install
 	arch = x86_64
