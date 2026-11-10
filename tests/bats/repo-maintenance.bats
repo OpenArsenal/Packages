@@ -269,6 +269,7 @@ MOCK
   (
   tmp="$(mktemp -d)"
   trap 'rm -rf -- "$tmp"' EXIT
+  touch "$tmp/demo-1.pkg.tar.zst"
   source "$root/.mise/lib/repo/update.sh"
 
   repo::match_package_archives() {
@@ -304,6 +305,7 @@ MOCK
   (
   tmp="$(mktemp -d)"
   trap 'rm -rf -- "$tmp"' EXIT
+  touch "$tmp/demo-1.pkg.tar.zst" "$tmp/demo-2.pkg.tar.zst"
   source "$root/.mise/lib/repo/update.sh"
 
   repo::match_package_archives() {
@@ -573,5 +575,78 @@ MOCK
     fail "valid repository pruning failed: $(cat "$tmp/log")"
   [[ -e "$tmp/paccache-called" && ! -e "$archive" && ! -e "$archive.sig" ]] ||
     fail 'valid pruning did not remove the unindexed archive and signature'
+  )
+}
+
+@test "Repository update refuses unpublished archives without modifying the database" {
+  (
+  local tmp outside local_archive escaped nested
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/bin" "$tmp/served repo/staging" "$tmp/outside"
+  export TEST_TMP="$tmp" PKGBUILDS_ROOT="$root"
+  export REPO_DIR="$tmp/served repo" REPO_DB="$tmp/served repo/demo.db"
+  export PATH="$tmp/bin:$PATH"
+
+  outside="$tmp/outside/demo-1-1-x86_64.pkg.tar.zst"
+  local_archive="$REPO_DIR/demo-1-1-x86_64.pkg.tar.zst"
+  escaped="$REPO_DIR/linked-demo-1-1-x86_64.pkg.tar.zst"
+  nested="$REPO_DIR/staging/demo-1-1-x86_64.pkg.tar.zst"
+  printf 'external archive\n' >"$outside"
+  printf 'nested archive\n' >"$nested"
+  ln -s "$outside" "$escaped"
+  printf 'original indexed metadata\n' >"$REPO_DB"
+  cp "$REPO_DB" "$tmp/original.db"
+
+  cat >"$tmp/bin/pacman" <<'MOCK'
+#!/usr/bin/env bash
+[[ "$1" == -Qp && "$2" == -- && -f "$3" ]] || exit 2
+printf 'demo 1-1\n'
+MOCK
+  cat >"$tmp/bin/repo-add" <<'MOCK'
+#!/usr/bin/env bash
+if [[ "$1" == --help ]]; then
+  printf 'repo-add supports --wait-for-lock\n'
+  exit 0
+fi
+printf '%s\n' "$@" >"$TEST_TMP/repo-add-args"
+printf 'published metadata\n' >>"$REPO_DB"
+MOCK
+  chmod +x "$tmp/bin/"*
+
+  # Absolute paths, symlinks escaping the served directory, and a staging
+  # subdirectory are all unsuitable for an index that records basenames only.
+  for archive in "$outside" "$escaped" "$nested"; do
+    rm -f "$tmp/repo-add-args"
+    if usage_package="$archive" bash "$root/.mise/tasks/repo/update" >"$tmp/log" 2>&1; then
+      fail "repo:update published an unavailable archive: $archive"
+    fi
+    grep -Fq 'copy the archive into' "$tmp/log" ||
+      fail "external archive rejection lacked copy instructions: $(cat "$tmp/log")"
+    cmp -s "$REPO_DB" "$tmp/original.db" ||
+      fail "repo:update modified the database after rejecting $archive"
+    [[ ! -e "$tmp/repo-add-args" ]] ||
+      fail "repo-add was called before rejecting $archive"
+
+    if usage_package="$archive" usage_dry_run=true \
+        bash "$root/.mise/tasks/repo/update" >"$tmp/log" 2>&1; then
+      fail "repo:update dry-run advertised an unavailable archive: $archive"
+    fi
+    cmp -s "$REPO_DB" "$tmp/original.db" ||
+      fail "repo:update dry-run modified the database after rejecting $archive"
+    [[ ! -e "$tmp/repo-add-args" ]] ||
+      fail "repo-add was called after rejected dry-run: $archive"
+  done
+
+  # The normal publishing workflow still succeeds for an archive actually
+  # located alongside the served repository database.
+  printf 'served archive\n' >"$local_archive"
+  usage_package="$local_archive" bash "$root/.mise/tasks/repo/update" >"$tmp/log" 2>&1 ||
+    fail "repo:update rejected an in-repository archive: $(cat "$tmp/log")"
+  [[ -f "$tmp/repo-add-args" ]] || fail 'repo-add did not publish a valid local archive'
+  grep -Fxq -- "$local_archive" "$tmp/repo-add-args" ||
+    fail 'repo-add published the wrong archive'
+  grep -Fq 'published metadata' "$REPO_DB" ||
+    fail 'repo-add did not update the database for the valid archive'
   )
 }
