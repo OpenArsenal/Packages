@@ -7,24 +7,16 @@ pre_install() {
   fi
 
   if [ -d "/usr/lib/flutter/.git" ]; then
-    echo "Removing unwanted git-refs in /usr/lib/flutter/.git."
-    rm -rf "/usr/lib/flutter/.git"
+    printf '%s\n' 'Notice: Existing Flutter Git metadata found in /usr/lib/flutter/.git; leaving it untouched.'
+    printf '%s\n' 'Review and migrate this directory manually if it belongs to an older SDK.'
   fi
 }
 
 post_install() {
-  NEW=$1
-  OLD=$2
-
-  MAJOR=$(echo $OLD | awk -F '.' '{print $1}')
-  MINOR=$(echo $OLD | awk -F '.' '{print $2}')
-  PATCH=$(echo $OLD | awk -F '+' '{print $1}' | awk -F '.' '{print $3}')
-
-  #if [[ $MAJOR == 3 && $MINOR -lt 8 ]]; then
-    if grep -q "flutterusers" /etc/group; then
-      echo "Removing group flutterusers as no longer needed."
-      groupdel "flutterusers"
-    fi
-  #fi
+  # The legacy flutterusers group might still contain user memberships or be
+  # managed by an administrator. Do not delete it from a package hook.
+  if grep -q '^flutterusers:' /etc/group; then
+    printf '%s\n' 'Notice: Legacy flutterusers group exists; it has not been removed.'
+    printf '%s\n' 'Review group memberships before retiring it manually.'
+  fi
 }
-
