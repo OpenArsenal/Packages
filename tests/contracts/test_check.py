@@ -54,6 +54,32 @@ class LauncherContractsTest(unittest.TestCase):
             errors = " ".join(launcher_contract(root, spec, "demo"))
             self.assertIn("contract-config", errors)
 
+    def test_shell_word_splitting_cannot_hide_forwarded_comments(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            directory = root / "packages" / "demo"
+            directory.mkdir(parents=True)
+            wrapper = directory / "demo-flags-wrapper.sh"
+            # Deliberately broken: the comment becomes three separate argv
+            # tokens (#, sentinel, ...), rather than one "# ignored" token.
+            wrapper.write_text(
+                "#!/bin/bash\n"
+                'flags=$(cat "$XDG_CONFIG_HOME/demo.conf")\n'
+                'exec @DEMO_EXEC@ $flags "$@"\n',
+                encoding="utf-8",
+            )
+            spec = {
+                "adapter": "token",
+                "script": wrapper.name,
+                "token": "@DEMO_EXEC@",
+                "configs": ["demo.conf"],
+            }
+            errors = launcher_contract(root, spec, "demo")
+            self.assertTrue(
+                any("comment was forwarded" in error for error in errors),
+                errors,
+            )
+
     def test_new_wrapper_requires_explicit_manifest_entry(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
