@@ -580,7 +580,7 @@ MOCK
 
 @test "Repository update refuses unpublished archives without modifying the database" {
   (
-  local tmp outside local_archive escaped nested
+  local tmp outside local_archive escaped nested inbound
   tmp="$(mktemp -d)"
   trap 'rm -rf -- "$tmp"' EXIT
   mkdir -p "$tmp/bin" "$tmp/served repo/staging" "$tmp/outside"
@@ -592,9 +592,14 @@ MOCK
   local_archive="$REPO_DIR/demo-1-1-x86_64.pkg.tar.zst"
   escaped="$REPO_DIR/linked-demo-1-1-x86_64.pkg.tar.zst"
   nested="$REPO_DIR/staging/demo-1-1-x86_64.pkg.tar.zst"
+  inbound="$tmp/outside/alias-1-1-any.pkg.tar.gz"
   printf 'external archive\n' >"$outside"
   printf 'nested archive\n' >"$nested"
+  printf 'served archive\n' >"$local_archive"
   ln -s "$outside" "$escaped"
+  # The target is served, but the alias filename is not. repo-add would
+  # advertise alias-1-1-any.pkg.tar.gz, which clients cannot download.
+  ln -s "$local_archive" "$inbound"
   printf 'original indexed metadata\n' >"$REPO_DB"
   cp "$REPO_DB" "$tmp/original.db"
 
@@ -614,9 +619,9 @@ printf 'published metadata\n' >>"$REPO_DB"
 MOCK
   chmod +x "$tmp/bin/"*
 
-  # Absolute paths, symlinks escaping the served directory, and a staging
-  # subdirectory are all unsuitable for an index that records basenames only.
-  for archive in "$outside" "$escaped" "$nested"; do
+  # Neither an external path, an escaping link, a nested archive, nor an
+  # outside alias *into* the repository can be advertised by basename.
+  for archive in "$outside" "$escaped" "$nested" "$inbound"; do
     rm -f "$tmp/repo-add-args"
     if usage_package="$archive" bash "$root/.mise/tasks/repo/update" >"$tmp/log" 2>&1; then
       fail "repo:update published an unavailable archive: $archive"
