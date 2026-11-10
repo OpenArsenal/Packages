@@ -22,6 +22,8 @@ import tomllib
 ROOT = Path(__file__).resolve().parents[2]
 REGISTRY = Path(__file__).with_name("capabilities.toml")
 ADAPTERS = {"token", "literal", "electron", "figma", "snap", "cherry-bin"}
+# One unique shell token; unquoted word splitting must not evade detection.
+COMMENT_SENTINEL = "CONTRACT_COMMENT_MUST_NOT_FORWARD_7d2e8b"
 
 FAKE_EXECUTABLE = """#!/usr/bin/env python3
 import json
@@ -241,7 +243,7 @@ def launcher_contract(root: Path, spec: dict, package: str) -> list[str]:
             config = xdg / rel
             config.parent.mkdir(parents=True, exist_ok=True)
             flag = f"--contract-config-{idx}=value"
-            config.write_text(f"# ignored comment\n{flag}\n", encoding="utf-8")
+            config.write_text(f"# {COMMENT_SENTINEL}\n{flag}\n", encoding="utf-8")
             expected_args.append(flag)
         if spec.get("environment_assignment"):
             with (xdg / spec["configs"][0]).open("a", encoding="utf-8") as file:
@@ -280,7 +282,7 @@ def launcher_contract(root: Path, spec: dict, package: str) -> list[str]:
             f"{package}: lost or duplicated argument {arg!r}: {argv!r}"
             for arg in [*expected_args, cli] if argv.count(arg) != 1
         ]
-        if any("# ignored" in arg for arg in argv):
+        if any(COMMENT_SENTINEL in arg for arg in argv):
             errors.append(f"{package}: comment was forwarded to executable")
         if spec.get("environment_assignment") and record.get("contract_env") != "hello=world":
             errors.append(f"{package}: configuration environment assignment not exported")
