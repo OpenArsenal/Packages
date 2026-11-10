@@ -76,3 +76,45 @@ RECIPE
   echo 'PASS onepassword_update (failures preserve files; success updates checksums)'
   )
 }
+
+@test "1Password signature check preserves GPG arguments when srcdir contains spaces" {
+  (
+  local tmp
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/bin" "$tmp/package builds/src"
+  export EXPECTED_SRCDIR="$tmp/package builds/src"
+  export GPG_CAPTURE="$tmp/gpg-arguments" PATH="$tmp/bin:$PATH"
+  printf 'program\n' >"$EXPECTED_SRCDIR/op"
+  printf 'signature\n' >"$EXPECTED_SRCDIR/op.sig"
+
+  cat >"$tmp/bin/gpg" <<'MOCK'
+#!/usr/bin/env bash
+[[ "$#" -eq 3 && "$1" == --verify ]] || exit 41
+[[ "$2" == "$EXPECTED_SRCDIR/op.sig" && "$3" == "$EXPECTED_SRCDIR/op" ]] || exit 42
+[[ -f "$2" && -f "$3" ]] || exit 43
+printf '%s\n' "$@" >"$GPG_CAPTURE"
+MOCK
+  chmod +x "$tmp/bin/gpg"
+
+  # Run the actual PKGBUILD check() function; no keys or external GPG
+  # service are needed because the mock asserts the exact argument boundary.
+  source "$root/packages/1password-cli-bin/PKGBUILD"
+  srcdir="$EXPECTED_SRCDIR"
+  SKIPPGPCHECK=0
+  check || fail 'signature verification rejected a source path containing spaces'
+  [[ -f "$GPG_CAPTURE" ]] || fail 'GPG was not called'
+  local -a arguments=()
+  mapfile -t arguments <"$GPG_CAPTURE"
+  [[ "${#arguments[@]}" -eq 3 &&
+     "${arguments[0]}" == --verify &&
+     "${arguments[1]}" == "$srcdir/op.sig" &&
+     "${arguments[2]}" == "$srcdir/op" ]] ||
+    fail 'GPG did not receive exactly the signature and binary paths'
+
+  rm -f -- "$GPG_CAPTURE"
+  SKIPPGPCHECK=1
+  check || fail 'SKIPPGPCHECK stopped bypassing signature verification'
+  [[ ! -e "$GPG_CAPTURE" ]] || fail 'GPG ran even though signature verification was skipped'
+  )
+}
