@@ -106,10 +106,10 @@ MOCK
   [[ -f "$GPG_CAPTURE" ]] || fail 'GPG was not called'
   local -a arguments=()
   mapfile -t arguments <"$GPG_CAPTURE"
-  [[ "\${#arguments[@]}" -eq 3 &&
-     "\${arguments[0]}" == --verify &&
-     "\${arguments[1]}" == "$srcdir/op.sig" &&
-     "\${arguments[2]}" == "$srcdir/op" ]] ||
+  [[ "${#arguments[@]}" -eq 3 &&
+     "${arguments[0]}" == --verify &&
+     "${arguments[1]}" == "$srcdir/op.sig" &&
+     "${arguments[2]}" == "$srcdir/op" ]] ||
     fail 'GPG did not receive exactly the signature and binary paths'
 
   rm -f -- "$GPG_CAPTURE"
