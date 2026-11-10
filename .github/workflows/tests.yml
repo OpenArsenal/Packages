@@ -24,20 +24,8 @@ jobs:
       - name: Root shared tests (unit + integration)
         run: mise run test
 
-
-  contract-tests:
-    name: Universal and capability contracts
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install pinned bats-core with mise
-        uses: jdx/mise-action@v5
-      - name: Package-wide universal and capability contracts
-        working-directory: packages
-        run: mise run test:contracts
-
   package-tests:
-    name: Package-specific Bats suites
+    name: Package contracts and regressions
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
