@@ -273,6 +273,7 @@ MOCK
   export REPO_DIR="$tmp/repo" REPO_DB="$tmp/repo/db"
   mkdir -p "$REPO_DIR"
   source "$root/.mise/lib/pkg/build.sh"
+  source "$root/.mise/lib/repo/update.sh"
   touch "$tmp/marker"
   touch -t 200001010000.00 "$tmp/marker"
   touch "$REPO_DIR/alpha-1-1-x86_64.pkg.tar.zst" "$REPO_DIR/beta-1-1-x86_64.pkg.tar.zst"
@@ -470,3 +471,60 @@ MOCK
   )
 }
 
+@test "Build publication refuses archives whose symlink targets are outside the served repo" {
+  (
+  local tmp package archive target
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  export REPO_DIR="$tmp/served repo" REPO_DB="$tmp/served repo/test.db"
+  mkdir -p "$REPO_DIR" "$tmp/recipe" "$tmp/outside"
+  package="$tmp/recipe"
+  archive="$REPO_DIR/demo-1-1-any.pkg.tar.zst"
+  target="$tmp/outside/demo-1-1-any.pkg.tar.zst"
+
+  touch "$package/PKGBUILD"
+  printf 'pkgbase = demo\n\tpkgver = 1\n\tpkgrel = 1\npkgname = demo\n' >"$package/.SRCINFO"
+  printf 'original database\n' >"$REPO_DB"
+  cp "$REPO_DB" "$tmp/original.db"
+  touch -t 202001010000.00 "$tmp/marker"
+  printf 'outside package bytes\n' >"$target"
+  ln -s "$target" "$archive"
+
+  source "$root/.mise/lib/pkg/metadata.sh"
+  source "$root/.mise/lib/pkg/build.sh"
+  source "$root/.mise/lib/repo/update.sh"
+
+  pacman() {
+    [[ "$1" == -Qp && "$2" == -- ]] || return 2
+    printf 'demo 1-1\n'
+  }
+  repo-add() {
+    if [[ "$1" == --help ]]; then
+      printf 'Usage: repo-add --wait-for-lock\n'
+      return 0
+    fi
+    printf '%s\n' "$@" >"$tmp/repo-add-called"
+    printf 'published\n' >>"$REPO_DB"
+  }
+
+  if pkg::publish_outputs "$package" "$tmp/marker" >"$tmp/log" 2>&1; then
+    fail 'build publisher accepted a symlink pointing outside REPO_DIR'
+  fi
+  grep -Fq 'copy the archive into' "$tmp/log" ||
+    fail 'build publisher omitted the archive-location diagnostic'
+  [[ ! -e "$tmp/repo-add-called" ]] ||
+    fail 'repo-add ran for a build output outside the served repository'
+  cmp -s "$REPO_DB" "$tmp/original.db" ||
+    fail 'build publisher changed the repository database despite rejection'
+
+  # A real, freshly built archive directly in the repo is still publishable.
+  rm "$archive"
+  printf 'in-repository package bytes\n' >"$archive"
+  pkg::publish_outputs "$package" "$tmp/marker" >"$tmp/log" 2>&1 ||
+    fail "build publisher rejected an in-repository archive: $(cat "$tmp/log")"
+  [[ -e "$tmp/repo-add-called" ]] ||
+    fail 'build publisher did not invoke repo-add for a valid output'
+  grep -Fxq "$archive" "$tmp/repo-add-called" ||
+    fail 'build publisher selected the wrong archive'
+  )
+}

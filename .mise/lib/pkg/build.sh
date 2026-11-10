@@ -136,6 +136,14 @@ pkg::publish_outputs() {
     return 1
   }
 
+  # Builds publish through repo::add_archives directly, bypassing
+  # repo::update_db. Apply the same location/symlink guard before publication
+  # so a freshly changed outside symlink cannot be indexed as a build output.
+  repo::validate_publishable_archives "$REPO_DIR" "${archives[@]}" || {
+    echo "error: unsafe build archives for: ${pkg_dir##*/}" >&2
+    return 1
+  }
+
   if ! repo::add_archives "$REPO_DB" false false false "${archives[@]}"; then
     echo "error: failed to publish package outputs for: ${pkg_dir##*/}" >&2
     return 1
