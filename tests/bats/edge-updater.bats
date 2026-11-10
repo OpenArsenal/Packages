@@ -37,6 +37,9 @@ cat
 MOCK
   cat >"$tmp/bin/xmllint" <<'MOCK'
 #!/usr/bin/env bash
+# Consume XML before returning a fixture value. Otherwise producers can
+# receive SIGPIPE, and pipefail makes this test nondeterministic.
+cat >/dev/null || exit 2
 case "$2" in
   *'@href'*) printf '%s' "$TEST_FILELISTS" ;;
   *'@ver'*) printf '%s' "$TEST_VER" ;;
