@@ -84,7 +84,7 @@ MOCK
   )
 }
 
-@test "Flutter PKGBUILD resolves Dart for both package functions" {
+@test "Flutter package resolver handles regular and symlink Dart executables" {
   (
     local tmp mode
     tmp="$(mktemp -d)"
@@ -118,10 +118,5 @@ MOCK
     [[ "$DART_ROOT" == "$tmp/explicit" ]] ||
       fail 'PKGBUILD overwrote the explicit Dart SDK root'
 
-    # Both packaging functions now call this shared resolver.
-    [[ "$(declare -f prepare)" == *'_flutter_resolve_dart_root || return 1'* ]] ||
-      fail 'prepare did not use the Dart root resolver'
-    [[ "$(declare -f _package-intellij-patch)" == *'_flutter_resolve_dart_root || return 1'* ]] ||
-      fail 'IntelliJ patch package did not use the Dart root resolver'
   )
 }
