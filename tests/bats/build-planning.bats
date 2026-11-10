@@ -679,3 +679,63 @@ MOCK
   done
   )
 }
+
+@test "Final ordering preserves resolved virtual providers across an upgrading dependency" {
+  (
+  local tmp packages selection
+  local -a requested=()
+
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  packages="$tmp/source tree"
+  export PKGBUILDS_ROOT="$root" REPO_DIR="$tmp/repo" REPO_DB="$tmp/missing.db"
+  mkdir -p "$REPO_DIR" "$packages/app" "$packages/provider" "$packages/core"
+  touch "$packages/app/PKGBUILD" "$packages/provider/PKGBUILD" "$packages/core/PKGBUILD"
+
+  # The published core=1 satisfies provider's unversioned requirement during
+  # initial traversal. A selected local core=2 will nevertheless replace it.
+  printf 'pkgbase = core\n\tpkgver = 2\n\tpkgrel = 1\npkgname = core\n' \
+    >"$packages/core/.SRCINFO"
+  printf 'pkgbase = provider\n\tpkgver = 1\n\tpkgrel = 1\n\tdepends = core\npkgname = provider\n\tprovides = virtual-api\n' \
+    >"$packages/provider/.SRCINFO"
+  printf 'pkgbase = app\n\tpkgver = 1\n\tpkgrel = 1\n\tdepends = virtual-api\npkgname = app\n' \
+    >"$packages/app/.SRCINFO"
+
+  source "$root/.mise/lib/repo.sh"
+  source "$root/.mise/lib/pkg.sh"
+  repo::index_reset
+  REPO_INDEX_DIR="$REPO_DIR"
+  REPO_PACKAGE_VERSION[core]='1-1'
+  pkg::pacman_can_resolve() { return 1; }
+  vercmp() {
+    local a="${1%%-*}" b="${2%%-*}"
+    [[ "$a" =~ ^[0-9]+$ && "$b" =~ ^[0-9]+$ ]] || return 47
+    if (( a < b )); then printf '%s\n' -1
+    elif (( a > b )); then printf '%s\n' 1
+    else printf '%s\n' 0
+    fi
+  }
+
+  # When app is selected first, the initial plan is provider, app, core.
+  # Finalization must add core -> provider while retaining the previously
+  # resolved provides= relationship provider -> app.
+  for selection in 'app core' 'core app'; do
+    read -r -a requested <<<"$selection"
+    pkg::plan_selected "$packages" false "${requested[@]}" >"$tmp/log" 2>&1 ||
+      fail "virtual-provider planning failed for $selection: $(cat "$tmp/log")"
+    [[ "${#PKG_PLAN[@]}" -eq 3 &&
+       "${PKG_PLAN[0]}" == "$packages/core" &&
+       "${PKG_PLAN[1]}" == "$packages/provider" &&
+       "${PKG_PLAN[2]}" == "$packages/app" ]] ||
+      fail "provider or core incorrectly ordered for $selection: ${PKG_PLAN[*]}"
+  done
+
+  # The resolved alias edge should also survive a plain app-only selection.
+  pkg::plan_selected "$packages" false app >"$tmp/log" 2>&1 ||
+    fail "app-only alias planning failed: $(cat "$tmp/log")"
+  [[ "${#PKG_PLAN[@]}" -eq 2 &&
+     "${PKG_PLAN[0]}" == "$packages/provider" &&
+     "${PKG_PLAN[1]}" == "$packages/app" ]] ||
+    fail "app-only alias provider was not planned before consumer: ${PKG_PLAN[*]}"
+  )
+}
