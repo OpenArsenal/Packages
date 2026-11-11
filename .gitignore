@@ -9,3 +9,4 @@ repomix-instruction.md
 
 # Mise-managed, locally fetched Bats helper libraries
 .mise/vendor/
+tests/contracts/__pycache__/
