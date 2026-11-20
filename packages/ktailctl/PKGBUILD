@@ -1,5 +1,5 @@
 pkgname=ktailctl
-pkgver=0.22.3
+pkgver=0.22.4
 pkgrel=1
 _upstream_dir="KTailctl-$pkgver"
 
@@ -77,9 +77,9 @@ source=(
   "kirigami-navigation-warnings.patch::https://github.com/ran-dall/KTailctl/commit/1bad83efc785c0523a2dc123b71324dfe4967fe0.patch"
 )
 
-sha256sums=('591931508ccc3ad1b122bd3c9dd3d43d7e4b616d44c559d36f110bd5bc0afe0c'
-            '4890a1e32396e7e6468615b09f95827a3d5761807f4df59e95a6d30b5884860a'
-            '5e89d7af8fc9dbdabde62ee0e49f12287a0846d5216105658c98badc131c8dcc')
+sha256sums=('67fa36166fe457bab4a886a6d4371eb41ef535ed2ac0e1103cc98403dfbae296'
+            'ecf3a6e283c63d961816e8ee864f83eae7ff6fe3328aae402e5f069be8a95a71'
+            'a78e40f1fa98da2b7ddb681f05268e1228256aed3fa20955e620d2d1105349e1')
 
 _prepare_go_env() {
   # Keep all Go build state inside $srcdir. This avoids polluting the builder's
