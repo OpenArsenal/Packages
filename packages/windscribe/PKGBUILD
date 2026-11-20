@@ -1,0 +1,29 @@
+pkgname=windscribe
+pkgver=2.25.8
+pkgrel=1
+pkgdesc='Windscribe VPN graphical desktop client'
+arch=('x86_64')
+url='https://windscribe.com/'
+license=('custom')
+depends=('nftables' 'c-ares' 'freetype2' 'hicolor-icon-theme' 'systemd' 'glibc' 'glib2' 'zlib' 'gcc-libs' 'dbus' 'libglvnd' 'fontconfig' 'libx11' 'libxkbcommon' 'libxcb' 'net-tools' 'xcb-util-cursor' 'xcb-util-wm' 'xcb-util-image' 'xcb-util-keysyms' 'xcb-util-renderutil' 'sudo' 'shadow')
+conflicts=('windscribe-cli' 'windscribe-gui' 'windscribe-v2-bin' 'windscribe-cli-v2-bin')
+replaces=('windscribe-gui')
+makedepends=('zstd')
+options=('!strip' '!debug')
+install=windscribe.install
+
+_archive="${pkgname}-${pkgver}-upstream.pkg.tar.zst"
+source=("${_archive}::https://github.com/Windscribe/Desktop-App/releases/download/v${pkgver}/windscribe_${pkgver}_amd64.pkg.tar.zst")
+noextract=("${_archive}")
+sha256sums=('56ebbf53846d6adf57d071f7ef7903ecba9104a8856d52da636838508c92612f')
+b2sums=('1b7a07f357457e45517354c96c88d2eef27499ab6430e071ef0ec4e4486a019c90562bdaf947c07216d49144a17ce58758735134228c45fdab6c62f62dd64222')
+
+_official_sha256='56ebbf53846d6adf57d071f7ef7903ecba9104a8856d52da636838508c92612f'
+
+package() {
+  local archive="${srcdir}/${_archive}"
+  printf '%s  %s\n' "${_official_sha256}" "$archive" | sha256sum -c --status || return 1
+  tar --zstd -xpf - -C "$pkgdir" < "$archive" || return 1
+  tar --zstd -xOf - .INSTALL < "$archive" > "${startdir}/${install}" || return 1
+  rm -f "$pkgdir"/{.PKGINFO,.BUILDINFO,.MTREE,.INSTALL,.CHANGELOG}
+}
