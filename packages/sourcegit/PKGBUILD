@@ -1,5 +1,5 @@
 pkgname=sourcegit
-pkgver=2026.23
+pkgver=2026.24
 pkgrel=1
 pkgdesc="GUI client for GIT users"
 arch=('x86_64')
@@ -13,9 +13,9 @@ conflicts=('sourcegit-bin' 'sourcegit-git')
 _avaloniaedit_commit=1e6f595ff0da0dc20637322cbab9531892c12cbc
 source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/v${pkgver}.tar.gz"
   "AvaloniaEdit-${_avaloniaedit_commit}.tar.gz::https://github.com/love-linger/AvaloniaEdit/archive/${_avaloniaedit_commit}.tar.gz")
-sha256sums=('43846449a3733c9fd4247daaeb860b753da1fb529c88dacf48f46a78ead70afa'
+sha256sums=('57944b3a2fa852cce087f8be9a26bcbc2d9f0c57a71cfb34e86c343bf9235921'
             '971b4a1a40310f10b197fe42456c24a776f26d0b0edd89efb7d993ab29160f7b')
-b2sums=('8c9cd02012911d22ce9e17750d8a0997e494086fceb47bac9a46db4539cd86d0e2a47f8848356c470981f9bf5b53901bdc00ddd584d54f93027eb5d6a18b0bdd'
+b2sums=('79afc5a113469176f53b3d33bd68fd592170f60f9709589150dc4bf0492f68ab756dc5fd509fb5361b28416004dfc955083ae0450f2e26be5135f72b650e3fc3'
         '2d7336c8b3c1cc93b4d8cb8bab57bd450f52f8b31088cf1f427d1b912ed820f4493b64d3da33c4809130af63d5d0d69eb80d8c67e1b404ebdd81c40df047d95f')
 
 prepare() {
