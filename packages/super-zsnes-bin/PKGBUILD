@@ -1,7 +1,7 @@
 pkgname=super-zsnes-bin
 _pkgname=super-zsnes
 _srcname=SuperZSNES
-pkgver=0.320
+pkgver=0.321
 pkgrel=1
 pkgdesc='GPU-powered Super Nintendo Entertainment System emulator'
 arch=('x86_64')
@@ -23,7 +23,7 @@ provides=("${_pkgname}=${pkgver}")
 conflicts=("${_pkgname}")
 options=('!strip' '!debug')
 source=("${_srcname}_v${pkgver}.tar.gz::https://zsnes.com/files/${_srcname}_v${pkgver}.tar.gz")
-sha256sums=('6ac3586ac6807c5a8bcd9ce8c9d688851a7ddcea0e1fc67f9d06137a2b73aa1f')
+sha256sums=('b3c0c0fd5aaa94e2264ce4a1b5bc449cfe704ddf02f12a2ba8423f26a8bddbae')
 
 package() {
   local _srcroot _exe _icon _license
