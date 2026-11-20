@@ -1,7 +1,7 @@
 # Maintainer: <you>
 
 pkgname=repomix-git
-pkgver=1.19.0.r8.g758c3d7
+pkgver=1.19.0.r35.gf81e70e
 pkgrel=1
 pkgdesc="Pack a repository into a single AI-friendly file (CLI) (git)"
 arch=('any')
