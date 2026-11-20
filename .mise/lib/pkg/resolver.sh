@@ -321,6 +321,11 @@ pkg::plan_deps() {
       continue
     fi
 
+    # Prefer distro packages over unselected local recipes.
+    if pkg::pacman_can_resolve "$raw"; then
+      continue
+    fi
+
     if provider_dir="$(pkg::find_local_provider "$dep" "$op" "$ver")"; then
       :
     else
@@ -342,10 +347,6 @@ pkg::plan_deps() {
       PKG_FORCE_DIR["$provider_dir"]="true"
       pkg::plan_dir "$provider_dir" || return 1
       PKG_RESOLVED_EDGES["$pkg_dir"$'\x1f'"$provider_dir"]=1
-      continue
-    fi
-
-    if pkg::pacman_can_resolve "$raw"; then
       continue
     fi
 
