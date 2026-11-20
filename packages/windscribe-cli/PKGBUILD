@@ -1,0 +1,28 @@
+pkgname=windscribe-cli
+pkgver=2.25.8
+pkgrel=1
+pkgdesc='Windscribe VPN headless command-line client'
+arch=('x86_64')
+url='https://windscribe.com/'
+license=('custom')
+depends=('nftables' 'c-ares' 'systemd' 'glibc' 'glib2' 'zlib' 'gcc-libs' 'dbus' 'net-tools' 'sudo' 'shadow')
+conflicts=('windscribe' 'windscribe-gui' 'windscribe-v2-bin' 'windscribe-cli-v2-bin')
+makedepends=('zstd')
+options=('!strip' '!debug')
+install=windscribe-cli.install
+
+_archive="${pkgname}-${pkgver}-upstream.pkg.tar.zst"
+source=("${_archive}::https://github.com/Windscribe/Desktop-App/releases/download/v${pkgver}/windscribe-cli_${pkgver}_amd64.pkg.tar.zst")
+noextract=("${_archive}")
+sha256sums=('c469f7cff7b747076beecc6fa811ae7de515282af39e34fcda282729ee2919b3')
+b2sums=('592b48a2301e21310be27b39c73c12d0cc9767f712e81013d94ac6f6a9d32b29ab219768be7eb95c88692dc50d36b764232363cfb49904cef146477fa389f2e2')
+
+_official_sha256='c469f7cff7b747076beecc6fa811ae7de515282af39e34fcda282729ee2919b3'
+
+package() {
+  local archive="${srcdir}/${_archive}"
+  printf '%s  %s\n' "${_official_sha256}" "$archive" | sha256sum -c --status || return 1
+  tar --zstd -xpf - -C "$pkgdir" < "$archive" || return 1
+  tar --zstd -xOf - .INSTALL < "$archive" > "${startdir}/${install}" || return 1
+  rm -f "$pkgdir"/{.PKGINFO,.BUILDINFO,.MTREE,.INSTALL,.CHANGELOG}
+}
