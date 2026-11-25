@@ -9,7 +9,9 @@
 #USAGE arg "[package]" var=#true help="Package names to check; defaults to PACKAGES_FILE, then all nvchecker-enabled packages"
 
 source "${PKGBUILDS_ROOT}/.mise/lib/task.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/repo.sh"
 source "${PKGBUILDS_ROOT}/.mise/lib/pkg.sh"
+source "${PKGBUILDS_ROOT}/.mise/lib/pkg/update.sh"
 
 task::bootstrap
 task::require_env PACKAGES_DIR PACKAGES_FILE
@@ -119,41 +121,17 @@ if [[ "${usage_apply:-false}" == "true" ]]; then
   [[ "${usage_verbose:-false}" == "true" ]] && args+=("--verbose")
   [[ "${usage_no_update_checksums:-false}" == "true" ]] && args+=("--no-update-checksums")
 
-  if pkgctl "${args[@]}" "${package_dirs[@]}"; then
-    rc=0
-  else
-    rc=$?
-  fi
-
-  srcinfo_rc=0
+  # An unavailable exact dependency is deferred; a real staging or
+  # metadata failure is reported after processing the other selections.
+  rc=0
   for dir in "${package_dirs[@]}"; do
-    if (
-      cd "$dir" || exit 1
-      # Generate beside the tracked metadata; don't truncate .SRCINFO until
-      # makepkg succeeds and its output has the required package fields.
-      srcinfo_tmp="$(mktemp .SRCINFO.tmp.XXXXXX)" || exit 1
-      trap 'rm -f -- "$srcinfo_tmp"' EXIT
-      makepkg --printsrcinfo >"$srcinfo_tmp" || exit 1
-      for field in pkgbase pkgver pkgrel pkgname; do
-        if ! grep -Eq "^[[:space:]]*${field} = [^[:space:]]+" "$srcinfo_tmp"; then
-          echo "error: invalid generated .SRCINFO (missing $field): ${dir##*/}" >&2
-          exit 1
-        fi
-      done
-      chmod 644 -- "$srcinfo_tmp" || exit 1
-      mv -f -- "$srcinfo_tmp" .SRCINFO || exit 1
-      trap - EXIT
-    ); then
+    if pkg::apply_release_update "$dir" "${args[@]}"; then
       :
     else
-      echo "error: failed to refresh .SRCINFO for: ${dir##*/}; preserving existing metadata" >&2
-      srcinfo_rc=1
+      rc=$?
     fi
   done
-
-  [[ "$rc" -eq 0 ]] || exit "$rc"
-  [[ "$srcinfo_rc" -eq 0 ]] || exit "$srcinfo_rc"
-  exit 0
+  exit "$rc"
 fi
 
 [[ "${usage_no_update_checksums:-false}" != "true" ]] || {
