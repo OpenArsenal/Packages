@@ -1,0 +1,5 @@
+[gam]
+source = "github"
+github = "GAM-team/GAM"
+use_latest_release = true
+prefix = "v"
