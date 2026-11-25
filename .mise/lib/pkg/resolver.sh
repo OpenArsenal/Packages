@@ -241,10 +241,14 @@ pkg::all_outputs_in_repo() {
     return 2
   }
 
+  # A virtual provider may satisfy a dependency, but it does not mean
+  # this recipe's own package has been published. Require real outputs.
+  repo::ensure_index "$REPO_DIR" || return 2
   while IFS= read -r output; do
     [[ -n "$output" ]] || continue
     found=true
-    repo::is_dep_satisfied "$REPO_DIR" "$output" ">=" "$version" || return 1
+    [[ -n "${REPO_PACKAGE_VERSION[$output]-}" ]] || return 1
+    repo::version_satisfies "${REPO_PACKAGE_VERSION[$output]}" ">=" "$version" || return 1
   done <<<"$outputs"
 
   if [[ "$found" != true ]]; then

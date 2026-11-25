@@ -1003,3 +1003,80 @@ MOCK
   done
   )
 }
+
+@test "Virtual providers satisfy dependencies but cannot skip publication of real package outputs" {
+  (
+  local tmp packages mode
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  export PKGBUILDS_ROOT="$root" REPO_DIR="$tmp/repo" REPO_DB="$tmp/missing.db"
+  packages="$tmp/packages"
+  mkdir -p "$REPO_DIR" "$packages/browser" "$packages/consumer"
+  touch "$packages/browser/PKGBUILD" "$packages/consumer/PKGBUILD"
+  printf 'pkgbase = browser\n\tpkgver = 2\n\tpkgrel = 1\npkgname = browser\n' \
+    >"$packages/browser/.SRCINFO"
+  printf 'pkgbase = consumer\n\tpkgver = 1\n\tpkgrel = 1\n\tdepends = browser>=2\npkgname = consumer\n' \
+    >"$packages/consumer/.SRCINFO"
+
+  source "$root/.mise/lib/repo.sh"
+  source "$root/.mise/lib/pkg.sh"
+
+  vercmp() {
+    local a="${1%%-*}" b="${2%%-*}"
+    [[ "$a" =~ ^[0-9]+$ && "$b" =~ ^[0-9]+$ ]] || return 47
+    if (( a < b )); then printf '%s\n' -1
+    elif (( a > b )); then printf '%s\n' 1
+    else printf '%s\n' 0
+    fi
+  }
+
+  for mode in alias-only older current newer; do
+    repo::index_reset
+    REPO_INDEX_DIR="$REPO_DIR"
+    REPO_PACKAGE_VERSION[legacy-browser]='3-1'
+    REPO_PROVIDE_PRESENT[browser]=1
+    REPO_PROVIDE_VERSIONS[browser]=3
+    REPO_PROVIDE_OWNERS[browser]=$'legacy-browser\t3\n'
+    case "$mode" in
+      older) REPO_PACKAGE_VERSION[browser]='1-1' ;;
+      current) REPO_PACKAGE_VERSION[browser]='2-1' ;;
+      newer) REPO_PACKAGE_VERSION[browser]='3-1' ;;
+    esac
+
+    repo::is_dep_satisfied "$REPO_DIR" browser '>=' 2 ||
+      fail "virtual provider no longer satisfies dependencies ($mode)"
+    pkg::plan_selected "$packages" false browser >"$tmp/log" 2>&1 ||
+      fail "browser planning failed ($mode): $(cat "$tmp/log")"
+    case "$mode" in
+      alias-only|older)
+        [[ "${#PKG_PLAN[@]}" -eq 1 && "${PKG_PLAN[0]}" == "$packages/browser" ]] ||
+          fail "virtual provider incorrectly skipped real browser output ($mode)"
+        ;;
+      current|newer)
+        [[ "${#PKG_PLAN[@]}" -eq 0 ]] ||
+          fail "published browser was unnecessarily rebuilt ($mode)"
+        ;;
+    esac
+    pkg::plan_selected "$packages" false consumer >"$tmp/log" 2>&1 ||
+      fail "consumer planning failed ($mode): $(cat "$tmp/log")"
+    [[ "${#PKG_PLAN[@]}" -eq 1 && "${PKG_PLAN[0]}" == "$packages/consumer" ]] ||
+      fail "virtual dependency unexpectedly forced browser to build ($mode)"
+  done
+
+  # Split recipes must publish every actual output, not just an alias.
+  printf 'pkgbase = browser\n\tpkgver = 2\n\tpkgrel = 1\npkgname = browser\npkgname = browser-tools\n' \
+    >"$packages/browser/.SRCINFO"
+  pkg::metadata_cache_reset
+  REPO_PROVIDE_PRESENT[browser-tools]=1
+  REPO_PROVIDE_VERSIONS[browser-tools]=3
+  REPO_PROVIDE_OWNERS[browser-tools]=$'legacy-browser\t3\n'
+  pkg::plan_selected "$packages" false browser >"$tmp/log" 2>&1 ||
+    fail "split recipe planning failed: $(cat "$tmp/log")"
+  [[ "${#PKG_PLAN[@]}" -eq 1 && "${PKG_PLAN[0]}" == "$packages/browser" ]] ||
+    fail 'virtual provider incorrectly skipped missing split output'
+  REPO_PACKAGE_VERSION[browser-tools]='2-1'
+  pkg::plan_selected "$packages" false browser >"$tmp/log" 2>&1 ||
+    fail "published split recipe planning failed: $(cat "$tmp/log")"
+  [[ "${#PKG_PLAN[@]}" -eq 0 ]] || fail 'fully published split recipe was rebuilt'
+  )
+}
