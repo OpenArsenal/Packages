@@ -387,3 +387,116 @@ MOCK
     fail 'valid empty source directory no longer reports zero checked packages'
   )
 }
+
+@test "Git updates compare commit identities and never upgrade to raw hashes" {
+  (
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/bin" "$tmp/packages/current-git" "$tmp/packages/changed-git" "$tmp/packages/release"
+  export PKGBUILDS_ROOT="$root" PACKAGES_DIR="$tmp/packages"
+  export PACKAGES_FILE="$tmp/packages.txt" PATH="$tmp/bin:$PATH" TEST_TMP="$tmp"
+  printf '%s\n' current-git changed-git release >"$PACKAGES_FILE"
+
+  local name
+  for name in current-git changed-git release; do
+    printf 'pkgname=%s\npkgver=1.0.r2.gabcdef1\npkgrel=1\n' "$name" >"$PACKAGES_DIR/$name/PKGBUILD"
+    printf 'pkgbase = %s\n\tpkgver = 1.0.r2.gabcdef1\n\tpkgrel = 1\npkgname = %s\n' "$name" "$name" >"$PACKAGES_DIR/$name/.SRCINFO"
+    if [[ "$name" == release ]]; then
+      printf '[release]\nsource = "github"\n' >"$PACKAGES_DIR/$name/.nvchecker.toml"
+    else
+      printf '[%s]\nsource = "git"\nuse_commit = true\n' "$name" >"$PACKAGES_DIR/$name/.nvchecker.toml"
+    fi
+    cp "$PACKAGES_DIR/$name/PKGBUILD" "$tmp/$name.original"
+    cp "$PACKAGES_DIR/$name/.SRCINFO" "$tmp/$name.srcinfo"
+  done
+
+  cat >"$tmp/bin/pkgctl" <<'MOCK'
+#!/usr/bin/env bash
+[[ "$1" == version ]] || exit 81
+if [[ "$2" == upgrade ]]; then
+  shift 2
+  printf '%s\n' "$@" >"$TEST_TMP/upgrade"
+  [[ "$#" -eq 1 && "$1" == "$PACKAGES_DIR/release" ]] || exit 82
+  exit 0
+fi
+[[ "$2" == check && "$3" == --verbose && "$4" == --json ]] || exit 83
+shift 4
+python3 - "$@" <<'PY'
+import json
+import os
+from pathlib import Path
+import sys
+results = []
+for path in sys.argv[1:]:
+    name = Path(path).name
+    local = "1.0.r2.gabcdef1"
+    if name == "release":
+        local, upstream, outdated, status = "1.0", "2.0", True, "success"
+    elif name == "current-git":
+        upstream, outdated, status = "abcdef1" + "0" * 33, True, "success"
+    else:
+        upstream, outdated, status = "0123456" + "0" * 33, False, "warning"
+    if os.environ.get("CHECK_MODE") == "failure" and name == "changed-git":
+        status, upstream = "failure", None
+    results.append(dict(pkgbase=name, local_version=local, upstream_version=upstream,
+                        status=status, message=None, out_of_date=outdated))
+if os.environ.get("CHECK_MODE") == "incomplete":
+    results.pop()
+print(json.dumps(results))
+PY
+MOCK
+  cat >"$tmp/bin/makepkg" <<'MOCK'
+#!/usr/bin/env bash
+[[ "$1" == --printsrcinfo && "$(basename "$PWD")" == release ]] || exit 84
+printf 'pkgbase = release\n\tpkgver = 2.0\n\tpkgrel = 1\npkgname = release\n'
+MOCK
+  chmod +x "$tmp/bin/"*
+
+  usage_list_outdated=true bash "$root/.mise/tasks/pkg/update" >"$tmp/out" 2>"$tmp/err" ||
+    fail "commit-aware list failed: $(cat "$tmp/err")"
+  [[ "$(cat "$tmp/out")" == $'changed-git\nrelease' ]] ||
+    fail 'commit-aware list included current hash or missed changed hash/release'
+  usage_json=true usage_verbose=true bash "$root/.mise/tasks/pkg/update" >"$tmp/out" 2>"$tmp/err" ||
+    fail "commit-aware JSON failed: $(cat "$tmp/err")"
+  python3 - "$tmp/out" <<'PY'
+import json
+import sys
+with open(sys.argv[1]) as stream:
+    results = {row["pkgbase"]: row for row in json.load(stream)}
+assert results["current-git"]["out_of_date"] is False
+assert results["changed-git"]["out_of_date"] is True
+assert results["release"]["out_of_date"] is True
+PY
+
+  usage_apply=true bash "$root/.mise/tasks/pkg/update" >"$tmp/out" 2>"$tmp/err" ||
+    fail "mixed apply failed: $(cat "$tmp/err")"
+  [[ "$(cat "$tmp/upgrade")" == "$PACKAGES_DIR/release" ]] ||
+    fail 'apply passed a Git recipe to pkgctl upgrade'
+  grep -Fq 'mise run pkg:build changed-git --force' "$tmp/out" ||
+    fail 'apply omitted the Git rebuild instruction'
+  for name in current-git changed-git; do
+    cmp -s "$tmp/$name.original" "$PACKAGES_DIR/$name/PKGBUILD" ||
+      fail "apply changed Git PKGBUILD: $name"
+    cmp -s "$tmp/$name.srcinfo" "$PACKAGES_DIR/$name/.SRCINFO" ||
+      fail "apply changed Git SRCINFO: $name"
+  done
+  grep -Fq 'pkgver = 2.0' "$PACKAGES_DIR/release/.SRCINFO" ||
+    fail 'release metadata was not refreshed'
+
+  rm -f "$tmp/upgrade"
+  usage_apply=true usage_package=changed-git bash "$root/.mise/tasks/pkg/update" >"$tmp/out" 2>"$tmp/err" ||
+    fail "Git-only apply failed: $(cat "$tmp/err")"
+  [[ ! -e "$tmp/upgrade" ]] || fail 'Git-only apply invoked pkgctl upgrade'
+
+  for mode in failure incomplete; do
+    if CHECK_MODE="$mode" usage_list_outdated=true bash "$root/.mise/tasks/pkg/update" >"$tmp/out" 2>"$tmp/err"; then
+      fail "outdated list accepted $mode JSON"
+    fi
+    [[ ! -s "$tmp/out" ]] || fail "outdated list emitted partial results after $mode"
+    if CHECK_MODE="$mode" usage_apply=true bash "$root/.mise/tasks/pkg/update" >"$tmp/out" 2>"$tmp/err"; then
+      fail "apply accepted $mode Git checks"
+    fi
+    [[ ! -e "$tmp/upgrade" ]] || fail "apply ran after $mode Git checks"
+  done
+  )
+}
