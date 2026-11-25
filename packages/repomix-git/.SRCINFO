@@ -1,6 +1,6 @@
 pkgbase = repomix-git
 	pkgdesc = Pack a repository into a single AI-friendly file (CLI) (git)
-	pkgver = 1.19.0.r35.gf81e70e
+	pkgver = 1.19.0.r47.g7bde93e
 	pkgrel = 1
 	url = https://repomix.com/
 	arch = any
