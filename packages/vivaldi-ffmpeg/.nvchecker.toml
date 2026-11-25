@@ -1,0 +1,16 @@
+["vivaldi-ffmpeg:ffmpeg"]
+source = "archpkg"
+archpkg = "ffmpeg"
+strip_release = true
+from_pattern = '^[0-9]+:'
+to_pattern = ""
+
+["vivaldi-ffmpeg:chromium"]
+source = "archpkg"
+archpkg = "vivaldi-ffmpeg-codecs"
+strip_release = true
+
+[vivaldi-ffmpeg]
+source = "combiner"
+from = ["vivaldi-ffmpeg:ffmpeg", "vivaldi-ffmpeg:chromium"]
+format = "$1_$2"
