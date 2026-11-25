@@ -1,0 +1,5 @@
+[windscribe]
+source = "github"
+github = "Windscribe/Desktop-App"
+use_latest_release = true
+prefix = "v"
