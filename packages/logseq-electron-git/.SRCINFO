@@ -1,6 +1,6 @@
 pkgbase = logseq-electron-git
 	pkgdesc = Privacy-first knowledge management (system Electron; git)
-	pkgver = 2.0.2.r25954.gd3b4ea8f51
+	pkgver = 2.0.2.r26094.ga94a536f3b
 	pkgrel = 1
 	url = https://github.com/logseq/logseq
 	install = logseq.install

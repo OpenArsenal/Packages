@@ -4,7 +4,7 @@ _nodeversion=24
 _electron_version=42
 
 pkgname=logseq-electron-git
-pkgver=2.0.2.r25954.gd3b4ea8f51
+pkgver=2.0.2.r26094.ga94a536f3b
 pkgrel=1
 pkgdesc="Privacy-first knowledge management (system Electron; git)"
 arch=('x86_64')
