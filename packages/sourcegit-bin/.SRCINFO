@@ -1,6 +1,6 @@
 pkgbase = sourcegit-bin
 	pkgdesc = GUI client for GIT users (prebuilt release)
-	pkgver = 2026.14
+	pkgver = 2026.24
 	pkgrel = 1
 	url = https://github.com/sourcegit-scm/sourcegit
 	arch = x86_64
@@ -10,18 +10,15 @@ pkgbase = sourcegit-bin
 	depends = git
 	depends = xdg-utils
 	optdepends = git-credential-manager: third-party authentication support
-	provides = sourcegit=2026.14
+	provides = sourcegit=2026.24
 	conflicts = sourcegit
 	conflicts = sourcegit-git
 	options = !strip
-	source = sourcegit_2026.14.LICENSE::https://github.com/sourcegit-scm/sourcegit/raw/refs/tags/v2026.14/LICENSE
+	source = sourcegit_2026.24.LICENSE::https://github.com/sourcegit-scm/sourcegit/raw/refs/tags/v2026.24/LICENSE
 	sha256sums = ec746490472d7ae4317d257df27ea8077f68c6079b07f8ff32ac6ae12db9f32f
-	b2sums = 6ab18c3f004b400902c4cd4cb4471f00373187feff420a20cd2a6466dd0ca57f227771f0137cedfb82ee027d5d2d3ef52b6df10e21aca2b6f106cd44c36e6eaf
-	source_x86_64 = sourcegit-2026.14-1.x86_64.rpm::https://github.com/sourcegit-scm/sourcegit/releases/download/v2026.14/sourcegit-2026.14-1.x86_64.rpm
-	sha256sums_x86_64 = 7e086a8eb9471686c7e2ea69ac56e7b414b1b4b0d755c9a24a2b1888685c5f66
-	b2sums_x86_64 = 230772d44f49d4d57b76ac796c73e10e9f3d66834883565cfa33529a0ba7f51a42370bae31299fe40c5dd36f187984f8609a140bec63e8f8c75b5aa5b57ae69a
-	source_aarch64 = sourcegit-2026.14-1.aarch64.rpm::https://github.com/sourcegit-scm/sourcegit/releases/download/v2026.14/sourcegit-2026.14-1.aarch64.rpm
-	sha256sums_aarch64 = 325ad801a547c4f71239fee2619358034932318096fa51ab5e3fd89ec6d3bdbb
-	b2sums_aarch64 = 7b93589b263ac0d75a815c855718df6747ad5fcecf2b3bbfa81a06f02777a8ad96ce88a4367417fcb4ed5da6fccbd470d10f874c8b819ca0b9ac523e7249b3f2
+	source_x86_64 = sourcegit-2026.24-1.x86_64.rpm::https://github.com/sourcegit-scm/sourcegit/releases/download/v2026.24/sourcegit-2026.24-1.x86_64.rpm
+	sha256sums_x86_64 = db80bb753498b4797a8adaf323914caa310b8d6740a9d96711470de8f12a6a74
+	source_aarch64 = sourcegit-2026.24-1.aarch64.rpm::https://github.com/sourcegit-scm/sourcegit/releases/download/v2026.24/sourcegit-2026.24-1.aarch64.rpm
+	sha256sums_aarch64 = 27593352502ebf7f8f527b20f2b01b50f998fb85a8944f5a7ddeaf7b262b6fdb
 
 pkgname = sourcegit-bin
