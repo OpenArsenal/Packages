@@ -1,0 +1,5 @@
+[vesktop-git]
+source = "git"
+git = "https://github.com/Vencord/Vesktop.git"
+branch = "main"
+use_commit = true
