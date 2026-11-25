@@ -15,7 +15,7 @@ codec_fixture() {
   cp "$root/packages/$name/$script" "$dir/"
   cp "$root/packages/$name/.nvchecker.toml" "$dir/"
   export PATH="$fixture/bin:$PATH" TARGET_VERSION="$target"
-  export VIVALDI_VERSION=8.3.4191.47
+  export VIVALDI_VERSION=8.3 CODEC_SERIES=8.3
   export CODEC_MODE=success
   export CODEC_REF=0123456789abcdef0123456789abcdef01234567
   export CODEC_NAME="$name"
@@ -30,6 +30,7 @@ printf 'nvchecker\n' >>"$CODEC_LOG"
 printf '{"event":"updated","name":"%s","version":"%s"}\n' "$CODEC_NAME" "$TARGET_VERSION"
 if [[ "$CODEC_NAME" == vivaldi-ffmpeg ]]; then
   printf '{"event":"updated","name":"%s:vivaldi","version":"%s"}\n' "$CODEC_NAME" "$VIVALDI_VERSION"
+  printf '{"event":"updated","name":"%s:codec-series","version":"%s"}\n' "$CODEC_NAME" "$CODEC_SERIES"
 fi
 MOCK
 
@@ -96,24 +97,27 @@ source=("sigs.base64::https://example.invalid/${_chromium_ffmpeg_ref}")
 sha256sums=('old')
 RECIPE
   sed -i "s/^pkgname=.*/pkgname=$name/" "$dir/PKGBUILD"
+  if [[ "$name" == vivaldi-ffmpeg ]]; then
+    sed -i '/^pkgver=/s/$/_${_vivaldi_major_version}/' "$dir/PKGBUILD"
+  fi
   (cd "$dir" && makepkg --printsrcinfo) >"$dir/.SRCINFO"
   cp "$dir/PKGBUILD" "$fixture/original-build"
   cp "$dir/.SRCINFO" "$fixture/original-info"
 }
 
 @test "Vivaldi codec latest synchronizes FFmpeg Chromium and browser installation version" {
-  codec_fixture vivaldi-ffmpeg 8.1.2_156.0.8078.99 update-ffmpeg-ref.sh
+  codec_fixture vivaldi-ffmpeg 8.1.2_156.0.8078.99_8.3 update-ffmpeg-ref.sh
   run bash "$dir/update-ffmpeg-ref.sh" --latest
   [[ "$status" -eq 0 ]] || fail "$output"
   grep -Fxq '_ffmpeg_pkgver=8.1.2' "$dir/PKGBUILD" || fail 'FFmpeg version not updated'
   grep -Fxq '_chromium_version=156.0.8078.99' "$dir/PKGBUILD" || fail 'Chromium version not updated'
   grep -Fxq '_vivaldi_major_version=8.3' "$dir/PKGBUILD" || fail 'Vivaldi install suffix not updated'
   grep -Fxq "_chromium_ffmpeg_ref=$CODEC_REF" "$dir/PKGBUILD" || fail 'Vivaldi ref not updated'
-  grep -Fq 'pkgver = 8.1.2_156.0.8078.99' "$dir/.SRCINFO" || fail 'combined version not updated'
+  grep -Fq 'pkgver = 8.1.2_156.0.8078.99_8.3' "$dir/.SRCINFO" || fail 'combined version not updated'
 }
 
 @test "Codec synchronization preserves recipe files after upstream or generation failures" {
-  codec_fixture vivaldi-ffmpeg 8.1.2_156.0.8078.99 update-ffmpeg-ref.sh
+  codec_fixture vivaldi-ffmpeg 8.1.2_156.0.8078.99_8.3 update-ffmpeg-ref.sh
   local mode
   for mode in query-fail ref-fail checksum-fail metadata-fail wrong-metadata; do
     export CODEC_MODE="$mode"
@@ -122,12 +126,12 @@ RECIPE
     cmp -s "$fixture/original-build" "$dir/PKGBUILD" || fail "PKGBUILD changed after $mode"
     cmp -s "$fixture/original-info" "$dir/.SRCINFO" || fail "SRCINFO changed after $mode"
   done
-  export CODEC_MODE=success TARGET_VERSION=8.1.2_155.0.8000.1
+  export CODEC_MODE=success TARGET_VERSION=8.1.2_155.0.8000.1_8.3
   run bash "$dir/update-ffmpeg-ref.sh" --latest
   [[ "$status" -ne 0 && "$output" == *'refusing to downgrade'* ]] || fail "accepted Chromium downgrade: $output"
   cmp -s "$fixture/original-build" "$dir/PKGBUILD" || fail 'downgrade modified recipe'
   cmp -s "$fixture/original-info" "$dir/.SRCINFO" || fail 'downgrade modified metadata'
-  export TARGET_VERSION=9.0_156.0.8078.99
+  export TARGET_VERSION=9.0_156.0.8078.99_8.3
   run bash "$dir/update-ffmpeg-ref.sh" --latest
   [[ "$status" -ne 0 && "$output" == *'FFmpeg major changed'* ]] || fail "accepted ABI change: $output"
   cmp -s "$fixture/original-build" "$dir/PKGBUILD" || fail 'ABI change modified recipe'
@@ -146,4 +150,19 @@ RECIPE
   [[ "$status" -eq 0 ]] || fail "$output"
   cmp -s "$fixture/repaired-build" "$dir/PKGBUILD" || fail 'unchanged recipe was modified'
   cmp -s "$fixture/repaired-info" "$dir/.SRCINFO" || fail 'unchanged metadata was modified'
+}
+
+@test "Vivaldi codec series changes are detected and mismatched Arch releases are refused" {
+  codec_fixture vivaldi-ffmpeg 8.1.1_156.0.8078.91_8.3 update-ffmpeg-ref.sh
+  export CODEC_SERIES=8.2
+  run bash "$dir/update-ffmpeg-ref.sh" --latest
+  [[ "$status" -ne 0 && "$output" == *'are not synchronized'* ]] || fail "accepted mismatched codec series: $output"
+  cmp -s "$fixture/original-build" "$dir/PKGBUILD" || fail 'mismatched codec changed recipe'
+  cmp -s "$fixture/original-info" "$dir/.SRCINFO" || fail 'mismatched codec changed metadata'
+  export CODEC_SERIES=8.3
+  run bash "$dir/update-ffmpeg-ref.sh" --latest
+  [[ "$status" -eq 0 ]] || fail "$output"
+  grep -Fxq '_vivaldi_major_version=8.3' "$dir/PKGBUILD" || fail 'series not updated'
+  grep -Fxq 'pkgrel=1' "$dir/PKGBUILD" || fail 'release not reset for series change'
+  grep -Fq 'pkgver = 8.1.1_156.0.8078.91_8.3' "$dir/.SRCINFO" || fail 'series absent from package version'
 }

@@ -15,8 +15,17 @@ strip_release = true
 source = "archpkg"
 archpkg = "vivaldi"
 strip_release = true
+from_pattern = '^([0-9]+\.[0-9]+)\.[0-9]+\.[0-9]+$'
+to_pattern = '\1'
+
+# The packaged codec's filename confirms which Vivaldi series it targets.
+# Never infer the codec series from the browser release alone.
+["vivaldi-ffmpeg:codec-series"]
+source = "regex"
+url = "https://archlinux.org/packages/extra/x86_64/vivaldi-ffmpeg-codecs/files/"
+regex = 'opt/vivaldi/libffmpeg\.so\.([0-9]+\.[0-9]+)(?=[<\s]|$)'
 
 [vivaldi-ffmpeg]
 source = "combiner"
-from = ["vivaldi-ffmpeg:ffmpeg", "vivaldi-ffmpeg:chromium"]
-format = "$1_$2"
+from = ["vivaldi-ffmpeg:ffmpeg", "vivaldi-ffmpeg:chromium", "vivaldi-ffmpeg:vivaldi"]
+format = "$1_$2_$3"

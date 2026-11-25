@@ -141,7 +141,7 @@ def sync(directory):
     original = [path.read_bytes() if path.exists() else None for path in files]
     names = {name}
     if name == "vivaldi-ffmpeg":
-        names.add(name + ":vivaldi")
+        names.update({name + ":vivaldi", name + ":codec-series"})
     with tempfile.TemporaryDirectory(prefix="codec-sync-") as work:
         work = Path(work)
         stage = work / name
@@ -150,9 +150,10 @@ def sync(directory):
         recipe = stage / "PKGBUILD"
         versions = latest(stage, names)
         target = versions[name]
-        if not isinstance(target, str) or target.count("_") != 1:
+        expected_parts = 3 if name == "vivaldi-ffmpeg" else 2
+        if not isinstance(target, str) or len(target.split("_")) != expected_parts:
             raise ValueError(f"invalid combined version: {target!r}")
-        ffmpeg, chromium = target.split("_")
+        ffmpeg, chromium, *series = target.split("_")
         ffmpeg = validate(ffmpeg, FFMPEG_VERSION, "FFmpeg")
         chromium = validate(chromium, BROWSER_VERSION, "Chromium")
         old_ffmpeg = validate(field(recipe, "_ffmpeg_pkgver"), FFMPEG_VERSION, "local FFmpeg")
@@ -165,17 +166,25 @@ def sync(directory):
         old = old_ffmpeg + "_" + old_chromium
         args = ["bash", str(directory / "update-ffmpeg-ref.sh"), chromium, str(recipe)]
         if name == "vivaldi-ffmpeg":
-            browser = validate(versions[name + ":vivaldi"], BROWSER_VERSION, "Vivaldi")
-            major = ".".join(browser.split(".")[:2])
-            compare(major, validate(field(recipe, "_vivaldi_major_version"),
-                                    r"[0-9]+\.[0-9]+", "local Vivaldi"), "Vivaldi")
+            major = validate(series[0], r"[0-9]+\.[0-9]+", "Vivaldi series")
+            browser_series = validate(versions[name + ":vivaldi"], r"[0-9]+\.[0-9]+", "Vivaldi")
+            codec_series = validate(versions[name + ":codec-series"], r"[0-9]+\.[0-9]+", "Arch codec series")
+            if major != browser_series or major != codec_series:
+                raise ValueError(
+                    f"Vivaldi {browser_series} and Arch codecs for {codec_series} are not synchronized; "
+                    "refusing to change the recipe"
+                )
+            old_major = validate(field(recipe, "_vivaldi_major_version"),
+                                 r"[0-9]+\.[0-9]+", "local Vivaldi")
+            order = max(order, compare(major, old_major, "Vivaldi"))
+            old += "_" + old_major
             args.append(major)
         run(args)
         set_field(recipe, "_ffmpeg_pkgver", ffmpeg)
         ref = validate(field(recipe, "_chromium_ffmpeg_ref"), r"[0-9a-f]{40}", "FFmpeg source revision")
 
-        # The fixed-name sigs.base64 source must not be reused from an older
-        # shared source cache. Never alter the original recipe on a failed sum.
+        # Isolate source downloads from shared caches (including the fixed-name
+        # Chromium signatures source). Never publish a partial checksum update.
         sources = work / "sources"
         sources.mkdir()
         env = dict(os.environ, SRCDEST=str(sources))

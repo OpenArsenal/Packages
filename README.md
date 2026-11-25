@@ -157,6 +157,27 @@ user profile is outside the package payload and is not removed by this
 migration; back it up before switching. Canary has the equivalent migration
 from `google-chrome-canary-ffmpeg` to `google-chrome-canary`.
 
+### Vivaldi media codecs
+
+`vivaldi-ffmpeg` remains a separate expanded-codec library. It provides and
+conflicts with Arch's `vivaldi-ffmpeg-codecs`, without replacing any
+browser-owned executable or the browser's unversioned library. Its package
+version records the FFmpeg release, Chromium tag and Vivaldi major/minor
+series; the last component matches the versioned library filename.
+
+```sh
+mise run pkg:update --verbose vivaldi-ffmpeg
+bash packages/vivaldi-ffmpeg/update-ffmpeg-ref.sh --latest
+mise run pkg:build vivaldi-ffmpeg
+```
+
+The synchronized updater reads the Arch FFmpeg, browser and codec trackers.
+It refuses mismatched browser/codec series, component downgrades, and FFmpeg
+major-version changes pending an ABI and patch review. A failed update leaves
+the original PKGBUILD and .SRCINFO unchanged. Test playback after installing
+the built package and restarting Vivaldi. The original source pins are not
+changed merely by switching to the new package-version format.
+
 ### Maintain the published repository
 
 Preview potentially destructive changes first:
