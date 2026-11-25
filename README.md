@@ -171,9 +171,13 @@ bash packages/vivaldi-ffmpeg/update-ffmpeg-ref.sh --latest
 mise run pkg:build vivaldi-ffmpeg
 ```
 
-The synchronized updater reads the Arch FFmpeg, browser and codec trackers.
-It refuses mismatched browser/codec series, component downgrades, and FFmpeg
-major-version changes pending an ABI and patch review. A failed update leaves
+The synchronized updater tracks Arch's browser/codec packages and the
+upstream FFmpeg 8.1 maintenance series independently of system FFmpeg.
+The Arch Chromium patch stays pinned to its original packaging tag
+across FFmpeg point releases; the build must successfully apply that patch.
+Both Chromium and Vivaldi codec recipes use the same maintenance policy.
+The updater refuses mismatched browser/codec series, component downgrades,
+and FFmpeg major/minor series changes pending an ABI and patch review. A failed update leaves
 the original PKGBUILD and .SRCINFO unchanged. Test playback after installing
 the built package and restarting Vivaldi. The original source pins are not
 changed merely by switching to the new package-version format.

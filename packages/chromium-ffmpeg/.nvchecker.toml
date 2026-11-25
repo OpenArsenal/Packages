@@ -1,9 +1,9 @@
 ["chromium-ffmpeg:ffmpeg"]
-source = "archpkg"
-archpkg = "ffmpeg"
-strip_release = true
-from_pattern = '^[0-9]+:'
-to_pattern = ""
+# Follow the maintained 8.1 series, not the system FFmpeg ABI.
+source = "regex"
+url = "https://ffmpeg.org/releases/"
+regex = 'href="ffmpeg-(8\.1\.[0-9]+)\.tar\.xz"'
+sort_version_key = "parse_version"
 
 ["chromium-ffmpeg:chromium"]
 source = "archpkg"

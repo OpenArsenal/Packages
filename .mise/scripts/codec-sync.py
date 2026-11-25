@@ -162,6 +162,8 @@ def sync(directory):
         chromium_order = compare(chromium, old_chromium, "Chromium")
         if ffmpeg.split(".")[0] != old_ffmpeg.split(".")[0]:
             raise ValueError("FFmpeg major changed; review codec ABI and patches manually")
+        if ffmpeg.split(".")[:2] != old_ffmpeg.split(".")[:2]:
+            raise ValueError("FFmpeg maintenance series changed; review the Chromium patches manually")
         order = max(ffmpeg_order, chromium_order)
         old = old_ffmpeg + "_" + old_chromium
         args = ["bash", str(directory / "update-ffmpeg-ref.sh"), chromium, str(recipe)]
@@ -183,8 +185,8 @@ def sync(directory):
         set_field(recipe, "_ffmpeg_pkgver", ffmpeg)
         ref = validate(field(recipe, "_chromium_ffmpeg_ref"), r"[0-9a-f]{40}", "FFmpeg source revision")
 
-        # Isolate source downloads from shared caches (including the fixed-name
-        # Chromium signatures source). Never publish a partial checksum update.
+        # Isolate source downloads from shared caches. Never publish a partial
+        # checksum update.
         sources = work / "sources"
         sources.mkdir()
         env = dict(os.environ, SRCDEST=str(sources))

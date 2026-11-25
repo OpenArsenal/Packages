@@ -136,6 +136,11 @@ RECIPE
   [[ "$status" -ne 0 && "$output" == *'FFmpeg major changed'* ]] || fail "accepted ABI change: $output"
   cmp -s "$fixture/original-build" "$dir/PKGBUILD" || fail 'ABI change modified recipe'
   cmp -s "$fixture/original-info" "$dir/.SRCINFO" || fail 'ABI change modified metadata'
+  export TARGET_VERSION=8.2.0_156.0.8078.99_8.3
+  run bash "$dir/update-ffmpeg-ref.sh" --latest
+  [[ "$status" -ne 0 && "$output" == *'FFmpeg maintenance series changed'* ]] || fail "accepted unreviewed patch series: $output"
+  cmp -s "$fixture/original-build" "$dir/PKGBUILD" || fail 'series change modified recipe'
+  cmp -s "$fixture/original-info" "$dir/.SRCINFO" || fail 'series change modified metadata'
 }
 
 @test "Codec synchronization increments pkgrel when repairing an unchanged version" {

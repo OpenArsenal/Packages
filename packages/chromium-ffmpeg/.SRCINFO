@@ -11,8 +11,8 @@ pkgbase = chromium-ffmpeg
 	conflicts = chromium-ffmpeg-git
 	options = !lto
 	source = https://ffmpeg.org/releases/ffmpeg-8.1.1.tar.xz
-	source = sigs.base64::https://chromium.googlesource.com/chromium/third_party/ffmpeg/+/9db86ce5b5b454dfc96c435f9f0723012980c37f/chromium/ffmpeg.sigs?format=TEXT
-	source = https://gitlab.archlinux.org/archlinux/packaging/packages/ffmpeg/-/raw/2-8.1.1-1/0001-Add-av_stream_get_first_dts-for-Chromium.patch
+	source = sigs-9db86ce5b5b454dfc96c435f9f0723012980c37f.base64::https://chromium.googlesource.com/chromium/third_party/ffmpeg/+/9db86ce5b5b454dfc96c435f9f0723012980c37f/chromium/ffmpeg.sigs?format=TEXT
+	source = chromium-dts-8.1.1.patch::https://gitlab.archlinux.org/archlinux/packaging/packages/ffmpeg/-/raw/2-8.1.1-1/0001-Add-av_stream_get_first_dts-for-Chromium.patch
 	sha256sums = b6863adde98898f42602017462871b5f6333e65aec803fdd7a6308639c52edf3
 	sha256sums = 9aa34221682c13cf5c55b3ceabf8c26c887d95569f51fb73fed0691fec08b56f
 	sha256sums = f865d677f8ad39c79dde69186629cb6468c2b289c4156dbb8dec8e68b0131b40
