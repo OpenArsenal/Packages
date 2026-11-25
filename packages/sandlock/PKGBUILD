@@ -1,5 +1,5 @@
 pkgname=sandlock
-pkgver=0.9.1
+pkgver=0.9.2
 pkgrel=1
 pkgdesc='Lightweight process sandbox for Linux using Landlock and seccomp'
 arch=('x86_64' 'aarch64' 'riscv64')
@@ -19,8 +19,8 @@ _set_cargo_env() {
 # Replace SKIP before submitting to the AUR:
 #   updpkgsums
 source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/v${pkgver}.tar.gz")
-sha256sums=('3f60bce8e265851333ecc1162b31b42bb16f4169516dbe3118b194f03ce01830')
-b2sums=('0f87c42459e513be8b957a68874e4c47566d3ddeb89c2ce473ee057046ea6d06a02197210f046ae12a371bb68bea4f0a8d1611b4e718223419957a1d12ece8e2')
+sha256sums=('fd5308bdf54e38052b21de5b0f2812c72840e02f42c023148b76bb1483dc9db8')
+b2sums=('820b2b0b6749759007220b46a5beeb5d12b86be872fd9b1dedd28dee387180faa484f6b535d492402cd46494f751f5950f4a2bb3d28733d43ce960148cffceeb')
 
 prepare() {
   cd "${pkgname}-${pkgver}"
