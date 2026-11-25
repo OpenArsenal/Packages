@@ -1,6 +1,6 @@
 pkgname=rgitui-git
 _pkgname=${pkgname%-git}
-pkgver=0.5.1.r0.gc0663e4
+pkgver=0.5.1.r5.ge72718e
 pkgrel=1
 pkgdesc="A GPU-accelerated desktop Git client built in Rust with GPUI (git version)"
 arch=('x86_64')
