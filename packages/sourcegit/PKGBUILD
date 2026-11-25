@@ -41,6 +41,7 @@ build() {
   export NUGET_PACKAGES="${srcdir}/${pkgname}-${pkgver}/nuget"
 
   dotnet publish src/SourceGit.csproj -c Release -r linux-x64 -o publish \
+    --self-contained false \
     -p:DisableAot=true \
     -p:DisableUpdateDetection=true \
     -p:DebugType=None \
