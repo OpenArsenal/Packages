@@ -25,9 +25,10 @@ def normalize(result, commits):
         return
     local = result["local_version"] or ""
     remote = result["upstream_version"] or ""
-    # git describe versions end in .g<abbreviated commit>; require at least
-    # seven hex digits. A full hash is not a valid generated package version.
-    match = re.search(r"\.g([0-9a-f]{7,64})$", local, re.IGNORECASE)
+    # Git describe uses .g<commit>; DKMS recipes may instead use
+    # YYYY.MM.DD+<commit>. Preserve both package version schemes.
+    match = re.search(r"(?:\.g|^\d{4}\.\d{2}\.\d{2}\+)([0-9a-f]{7,64})$",
+                      local, re.IGNORECASE)
     if not match or not re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", remote, re.IGNORECASE):
         result.update(status="failure", out_of_date=False,
                       message="cannot compare Git commits; rebuild manually to refresh pkgver")
