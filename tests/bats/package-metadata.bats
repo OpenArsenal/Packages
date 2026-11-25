@@ -416,7 +416,7 @@ MOCK
 if [[ "$2" == upgrade ]]; then
   shift 2
   printf '%s\n' "$@" >"$TEST_TMP/upgrade"
-  [[ "$#" -eq 1 && "$1" == "$PACKAGES_DIR/release" ]] || exit 82
+  [[ "$#" -eq 1 && "$(basename "$1")" == release && "$1" != "$PACKAGES_DIR/release" ]] || exit 82
   exit 0
 fi
 [[ "$2" == check && "$3" == --verbose && "$4" == --json ]] || exit 83
@@ -470,7 +470,7 @@ PY
 
   usage_apply=true bash "$root/.mise/tasks/pkg/update" >"$tmp/out" 2>"$tmp/err" ||
     fail "mixed apply failed: $(cat "$tmp/err")"
-  [[ "$(cat "$tmp/upgrade")" == "$PACKAGES_DIR/release" ]] ||
+  [[ "$(basename "$(cat "$tmp/upgrade")")" == release && "$(cat "$tmp/upgrade")" != "$PACKAGES_DIR/release" ]] ||
     fail 'apply passed a Git recipe to pkgctl upgrade'
   grep -Fq 'mise run pkg:build changed-git --force' "$tmp/out" ||
     fail 'apply omitted the Git rebuild instruction'
