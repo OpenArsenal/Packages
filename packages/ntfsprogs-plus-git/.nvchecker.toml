@@ -1,0 +1,5 @@
+[ntfsprogs-plus-git]
+source = "git"
+git = "https://github.com/ntfsprogs-plus/ntfsprogs-plus.git"
+branch = "ntfs-next"
+use_commit = true
