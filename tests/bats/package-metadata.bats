@@ -500,3 +500,97 @@ PY
   done
   )
 }
+
+@test "Release apply defers unavailable exact dependencies without modifying the recipe" {
+  (
+  local tmp name
+  tmp="$(mktemp -d)"
+  trap 'rm -rf -- "$tmp"' EXIT
+  mkdir -p "$tmp/bin" "$tmp/packages" "$tmp/repo"
+  export PKGBUILDS_ROOT="$root" PACKAGES_DIR="$tmp/packages"
+  export PACKAGES_FILE="$tmp/selection" REPO_DIR="$tmp/repo" REPO_DB="$tmp/missing.db"
+  export PATH="$tmp/bin:$PATH" TEST_TMP="$tmp" usage_apply=true
+  printf '%s\n' blocked independent ready local-consumer >"$PACKAGES_FILE"
+
+  for name in blocked independent ready local-consumer local-base; do
+    mkdir -p "$PACKAGES_DIR/$name"
+    printf 'pkgname=%s\npkgver=1\npkgrel=1\n' "$name" >"$PACKAGES_DIR/$name/PKGBUILD"
+    printf '[%s]\nsource = "github"\n' "$name" >"$PACKAGES_DIR/$name/.nvchecker.toml"
+    case "$name" in
+      blocked) printf '%s\n' 'depends=("ollama=$pkgver")' >>"$PACKAGES_DIR/$name/PKGBUILD" ;;
+      ready) printf '%s\n' 'depends=("available=$pkgver")' >>"$PACKAGES_DIR/$name/PKGBUILD" ;;
+      local-consumer) printf '%s\n' 'depends=("local-base=$pkgver")' >>"$PACKAGES_DIR/$name/PKGBUILD" ;;
+      local-base) sed -i 's/pkgver=1/pkgver=2/' "$PACKAGES_DIR/$name/PKGBUILD" ;;
+    esac
+    printf 'local source patch\n' >"$PACKAGES_DIR/$name/source.patch"
+  done
+
+  cat >"$tmp/bin/pkgctl" <<'MOCK'
+#!/usr/bin/env bash
+[[ "$1" == version && "$2" == upgrade ]] || exit 81
+stage="${@: -1}"
+name="${stage##*/}"
+[[ "$stage" != "$PACKAGES_DIR/$name" && -f "$stage/source.patch" ]] || exit 82
+sed -i 's/^pkgver=1$/pkgver=2/' "$stage/PKGBUILD"
+printf '%s\n' '# generated checksums' >>"$stage/PKGBUILD"
+MOCK
+
+  cat >"$tmp/bin/makepkg" <<'MOCK'
+#!/usr/bin/env bash
+[[ "$1" == --printsrcinfo ]] || exit 83
+source ./PKGBUILD
+printf 'pkgbase = %s\n\tpkgver = %s\n\tpkgrel = %s\n' "$pkgname" "$pkgver" "$pkgrel"
+for dep in "${depends[@]}"; do
+  printf '\tdepends = %s\n' "$dep"
+done
+printf 'pkgname = %s\n' "$pkgname"
+MOCK
+
+  cat >"$tmp/bin/pacman" <<'MOCK'
+#!/usr/bin/env bash
+[[ "$1" == --sync && "$2" == --print ]] || exit 84
+target="${@: -1}"
+printf '%s\n' "$target" >>"$TEST_TMP/checked"
+case "$target" in
+  available=2) exit 0 ;;
+  ollama=2) [[ "${OLLAMA_AVAILABLE:-false}" == true ]] ;;
+  *) exit 1 ;;
+esac
+MOCK
+  cat >"$tmp/bin/vercmp" <<'MOCK'
+#!/usr/bin/env bash
+if [[ "${1%-*}" == "$2" ]]; then echo 0; else echo -1; fi
+MOCK
+  chmod +x "$tmp/bin/"*
+  for name in blocked independent ready local-consumer local-base; do
+    (cd "$PACKAGES_DIR/$name" && makepkg --printsrcinfo >.SRCINFO)
+    cp "$PACKAGES_DIR/$name/PKGBUILD" "$tmp/$name.build"
+    cp "$PACKAGES_DIR/$name/.SRCINFO" "$tmp/$name.info"
+  done
+
+  bash "$root/.mise/tasks/pkg/update" >"$tmp/out" 2>"$tmp/err" ||
+    fail "apply failed instead of deferring: $(cat "$tmp/err")"
+  grep -Fq 'Deferred blocked: exact dependency unavailable: ollama=2' "$tmp/err" ||
+    fail 'missing exact dependency deferral diagnostic'
+  cmp -s "$tmp/blocked.build" "$PACKAGES_DIR/blocked/PKGBUILD" ||
+    fail 'deferred PKGBUILD changed'
+  cmp -s "$tmp/blocked.info" "$PACKAGES_DIR/blocked/.SRCINFO" ||
+    fail 'deferred SRCINFO changed'
+  for name in independent ready local-consumer; do
+    grep -Fxq 'pkgver=2' "$PACKAGES_DIR/$name/PKGBUILD" ||
+      fail "available update was not applied: $name"
+    grep -Fq 'generated checksums' "$PACKAGES_DIR/$name/PKGBUILD" ||
+      fail "candidate checksum changes were lost: $name"
+    grep -Fq 'pkgver = 2' "$PACKAGES_DIR/$name/.SRCINFO" ||
+      fail "candidate metadata was not applied: $name"
+  done
+  grep -Fxq 'ollama=2' "$tmp/checked" || fail 'proposed dependency was not checked'
+  grep -Fxq 'available=2' "$tmp/checked" || fail 'available dependency was not checked'
+  grep -Fxq 'local-base=2' "$tmp/checked" || fail 'local dependency was not checked'
+
+  OLLAMA_AVAILABLE=true usage_package=blocked bash "$root/.mise/tasks/pkg/update" >"$tmp/out" 2>"$tmp/err" ||
+    fail "available exact dependency did not unblock update: $(cat "$tmp/err")"
+  grep -Fxq 'pkgver=2' "$PACKAGES_DIR/blocked/PKGBUILD" || fail 'unblocked recipe not updated'
+  grep -Fq 'depends = ollama=2' "$PACKAGES_DIR/blocked/.SRCINFO" || fail 'exact dependency was weakened or lost'
+  )
+}
