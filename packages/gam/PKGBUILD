@@ -1,0 +1,28 @@
+# Maintainer: OpenArensel package maintainers
+pkgname=gam
+pkgver=7.52.05
+pkgrel=1
+pkgdesc='Command-line administration tool for Google Workspace (GAM7)'
+arch=('x86_64' 'aarch64')
+url='https://github.com/GAM-team/GAM'
+license=('Apache-2.0')
+depends=('glibc>=2.35' 'gcc-libs' 'zlib' 'ca-certificates' 'pcsclite' 'libusb')
+# The official distribution is a PyInstaller bundle; keep its files intact.
+options=('!strip' '!debug' '!purge' 'emptydirs')
+source_x86_64=("${url}/releases/download/v${pkgver}/gam-${pkgver}-linux-x86_64-glibc2.35.tar.xz")
+source_aarch64=("${url}/releases/download/v${pkgver}/gam-${pkgver}-linux-arm64-glibc2.35.tar.xz")
+sha256sums_x86_64=('87a532cafecbf592e141d0dd7fc2a06827f7e40df311790e171447d47ddce85c')
+sha256sums_aarch64=('e93d12bf39a6bf9d33d799f4d946d522d052b29d49f04ec69d08c6e95fa50e31')
+
+package() {
+  cd "${srcdir}/gam7"
+
+  # Copy the complete bundle, including its private shared libraries and data.
+  test -x gam
+  test -f LICENSE
+  install -dm755 "${pkgdir}/usr/lib/${pkgname}" "${pkgdir}/usr/bin"
+  cp -a --no-preserve=ownership -- . "${pkgdir}/usr/lib/${pkgname}/"
+  ln -s "../lib/${pkgname}/gam" "${pkgdir}/usr/bin/gam"
+
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

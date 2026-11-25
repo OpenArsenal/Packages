@@ -1,0 +1,24 @@
+pkgbase = gam
+	pkgdesc = Command-line administration tool for Google Workspace (GAM7)
+	pkgver = 7.52.05
+	pkgrel = 1
+	url = https://github.com/GAM-team/GAM
+	arch = x86_64
+	arch = aarch64
+	license = Apache-2.0
+	depends = glibc>=2.35
+	depends = gcc-libs
+	depends = zlib
+	depends = ca-certificates
+	depends = pcsclite
+	depends = libusb
+	options = !strip
+	options = !debug
+	options = !purge
+	options = emptydirs
+	source_x86_64 = https://github.com/GAM-team/GAM/releases/download/v7.52.05/gam-7.52.05-linux-x86_64-glibc2.35.tar.xz
+	sha256sums_x86_64 = 87a532cafecbf592e141d0dd7fc2a06827f7e40df311790e171447d47ddce85c
+	source_aarch64 = https://github.com/GAM-team/GAM/releases/download/v7.52.05/gam-7.52.05-linux-arm64-glibc2.35.tar.xz
+	sha256sums_aarch64 = e93d12bf39a6bf9d33d799f4d946d522d052b29d49f04ec69d08c6e95fa50e31
+
+pkgname = gam
