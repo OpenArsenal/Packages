@@ -110,7 +110,8 @@ pkg::apply_release_update() (
     fi
     if (( rc == 2 )); then
       printf 'Manual update required: %s\n' "${dir##*/}"
-      printf 'Use %s; review source pins, checksums and .SRCINFO.\n' "$dir/$helper"
+      printf '  Run: bash %q --latest\n' "$dir/$helper"
+      printf '  This synchronizes the tracked version, source revision, checksums and .SRCINFO.\n'
       exit 0
     fi
     exit "$rc"
