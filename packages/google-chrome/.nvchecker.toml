@@ -1,0 +1,4 @@
+[google-chrome]
+source = "regex"
+url = "https://dl.google.com/linux/chrome/deb/dists/stable/main/binary-amd64/Packages"
+regex = '(?m)^Package: google-chrome-stable\r?\nVersion: ([0-9]+(?:\.[0-9]+){3})-1\r?$'
