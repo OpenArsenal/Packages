@@ -1,0 +1,67 @@
+# Maintainer: OpenArsenal Contributors <arch-packaging-team(at)openarsenal(dot)com>
+# Repackage Google's versioned Linux binary; pacman owns updates.
+# Initial archive hashes are seeded from the corresponding reviewed AUR recipe.
+pkgname=google-chrome-canary
+pkgver=160.0.8182.0
+pkgrel=1
+pkgdesc='Google Chrome Canary browser (official Google binaries, OpenArsenal packaging)'
+arch=('x86_64')
+url='https://www.google.com/chrome'
+license=('custom:chrome')
+depends=('alsa-lib' 'gtk3' 'libcups' 'libxss' 'libxtst' 'nss' 'ttf-liberation' 'xdg-utils')
+optdepends=(
+  'pipewire: WebRTC desktop sharing under Wayland'
+  'kdialog: file dialogs in KDE'
+  'gnome-keyring: password storage in GNOME Keyring'
+  'kwallet: password storage in KWallet'
+)
+options=('!emptydirs' '!strip' '!debug')
+conflicts=('google-chrome-canary-ffmpeg')
+replaces=('google-chrome-canary-ffmpeg')
+_channel=canary
+_appdir=/opt/google/chrome-canary
+_icon_suffix='_canary'
+_deb_base='https://dl.google.com/linux/chrome/deb/pool/main/g'
+source=('eula_text.html' "google-chrome-${_channel}.sh")
+source_x86_64=("${_deb_base}/google-chrome-${_channel}/google-chrome-${_channel}_${pkgver}-1_amd64.deb")
+sha512sums=('a225555c06b7c32f9f2657004558e3f996c981481dbb0d3cd79b1d59fa3f05d591af88399422d3ab29d9446c103e98d567aeafe061d9550817ab6e7eb0498396'
+            'beafb83810aed31e4b866a5150a1f6cbe37a485ed1b4008aaea3d7d9ad17088f57358dcfc97054e32980034d350856c358de5d982fde30b1ecc13d424b295e74')
+sha512sums_x86_64=('d5f972e58ddf8a3f47f59eef38ed6bfe523e37d5bb03c51f2efeea3cf8b0c1397161585dd762170db3e6b268320d8e88abb671b112266914de9242f0da6928f2')
+
+package() {
+  bsdtar -xf "$srcdir/data.tar.xz" -C "$pkgdir" || return 1
+  local payload="$pkgdir$_appdir"
+  [[ -x "$payload/chrome" && -f "$payload/google-chrome-canary" ]] || {
+    printf 'error: missing Google Chrome browser payload\n' >&2
+    return 1
+  }
+
+  # Replace only this channel's launcher, never another installed browser.
+  rm -f -- "$pkgdir/usr/bin/google-chrome-${_channel}"
+  install -Dm755 "$srcdir/google-chrome-${_channel}.sh" \
+    "$pkgdir/usr/bin/google-chrome-${_channel}"
+
+  local size icon
+  for size in 16 24 32 48 64 128 256; do
+    icon="$payload/product_logo_${size}${_icon_suffix}.png"
+    [[ -f "$icon" ]] || continue
+    install -Dm644 "$icon" "$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps/google-chrome-${_channel}.png"
+    rm -f -- "$icon"
+  done
+
+  install -Dm644 "$srcdir/eula_text.html" "$pkgdir/usr/share/licenses/$pkgname/eula_text.html"
+  if [[ -f "$payload/WidevineCdm/LICENSE" ]]; then
+    install -Dm644 "$payload/WidevineCdm/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/WidevineCdm-LICENSE.txt"
+  fi
+
+  local desktop="$pkgdir/usr/share/applications/google-chrome-${_channel}.desktop"
+  [[ -f "$desktop" ]] || { printf 'error: missing Chrome desktop entry\n' >&2; return 1; }
+  if ! grep -q '^StartupWMClass=' "$desktop"; then
+    sed -i "0,/^Exec=/s/^Exec=/StartupWMClass=Google-chrome-${_channel}\nExec=/" "$desktop"
+  fi
+  sed -i 's@x-scheme-handler/ftp;\?@@g' "$desktop"
+
+  # Do not install Debian's APT update machinery.
+  rm -rf -- "$pkgdir/etc/cron.daily" "$pkgdir/etc/apt" \
+    "$pkgdir/usr/share/menu" "$payload/cron"
+}
