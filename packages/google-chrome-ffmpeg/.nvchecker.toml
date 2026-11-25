@@ -1,4 +1,0 @@
-[google-chrome-ffmpeg]
-source = "aur"
-aur = "google-chrome"
-strip_release = true

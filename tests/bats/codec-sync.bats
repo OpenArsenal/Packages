@@ -10,7 +10,7 @@ codec_fixture() {
   fixture="$BATS_TEST_TMPDIR/fixture"
   dir="$fixture/packages/$name"
   mkdir -p "$dir" "$fixture/.mise/lib/pkg" "$fixture/.mise/scripts" "$fixture/bin"
-  cp "$root/.mise/lib/pkg/"{update,chrome-ref}.sh "$fixture/.mise/lib/pkg/"
+  cp "$root/.mise/lib/pkg/update.sh" "$fixture/.mise/lib/pkg/"
   cp "$root/.mise/scripts/codec-sync.py" "$fixture/.mise/scripts/"
   cp "$root/packages/$name/$script" "$dir/"
   cp "$root/packages/$name/.nvchecker.toml" "$dir/"
@@ -83,8 +83,7 @@ printf 'pkgbase = %s\n\tpkgver = %s\n\tpkgrel = %s\n\tsource = %s\n\tsha256sums 
 MOCK
   chmod +x "$fixture/bin/"*
 
-  if [[ "$name" == vivaldi-ffmpeg || "$name" == chromium-ffmpeg ]]; then
-    cat >"$dir/PKGBUILD" <<'RECIPE'
+  cat >"$dir/PKGBUILD" <<'RECIPE'
 pkgname=vivaldi-ffmpeg
 _ffmpeg_pkgver=8.1.1
 _chromium_version=156.0.8078.91
@@ -96,34 +95,10 @@ _chromium_ffmpeg_ref=0000000000000000000000000000000000000000
 source=("sigs.base64::https://example.invalid/${_chromium_ffmpeg_ref}")
 sha256sums=('old')
 RECIPE
-    sed -i "s/^pkgname=.*/pkgname=$name/" "$dir/PKGBUILD"
-  else
-    cat >"$dir/PKGBUILD" <<'RECIPE'
-pkgname=google-chrome-ffmpeg
-pkgver=158.0.8127.36
-pkgrel=3
-_channel=stable
-# Chromium 158.0.8127.36 third_party/ffmpeg revision.
-_chromium_ffmpeg_ref=0000000000000000000000000000000000000000
-source=("https://example.invalid/${_chromium_ffmpeg_ref}.tar.gz")
-sha256sums=('old')
-RECIPE
-  fi
+  sed -i "s/^pkgname=.*/pkgname=$name/" "$dir/PKGBUILD"
   (cd "$dir" && makepkg --printsrcinfo) >"$dir/.SRCINFO"
   cp "$dir/PKGBUILD" "$fixture/original-build"
   cp "$dir/.SRCINFO" "$fixture/original-info"
-}
-
-@test "Chrome codec latest synchronizes version source checksums and metadata" {
-  codec_fixture google-chrome-ffmpeg 158.0.8127.88 update-chrome-ref.sh
-  run bash "$dir/update-chrome-ref.sh" --latest
-  [[ "$status" -eq 0 ]] || fail "$output"
-  grep -Fxq 'pkgver=158.0.8127.88' "$dir/PKGBUILD" || fail 'Chrome version not updated'
-  grep -Fxq "_chromium_ffmpeg_ref=$CODEC_REF" "$dir/PKGBUILD" || fail 'Chrome ref not updated'
-  grep -Fxq 'pkgrel=1' "$dir/PKGBUILD" || fail 'pkgrel not reset'
-  grep -Fq "sha256sums=('refreshed')" "$dir/PKGBUILD" || fail 'checksums not updated'
-  grep -Fq 'pkgver = 158.0.8127.88' "$dir/.SRCINFO" || fail 'SRCINFO version not updated'
-  grep -Fq "$CODEC_REF" "$dir/.SRCINFO" || fail 'SRCINFO ref not updated'
 }
 
 @test "Vivaldi codec latest synchronizes FFmpeg Chromium and browser installation version" {
@@ -160,14 +135,14 @@ RECIPE
 }
 
 @test "Codec synchronization increments pkgrel when repairing an unchanged version" {
-  codec_fixture google-chrome-ffmpeg 158.0.8127.36 update-chrome-ref.sh
-  run bash "$dir/update-chrome-ref.sh" --latest
+  codec_fixture chromium-ffmpeg 8.1.1_156.0.8078.91 update-ffmpeg-ref.sh
+  run bash "$dir/update-ffmpeg-ref.sh" --latest
   [[ "$status" -eq 0 ]] || fail "$output"
   grep -Fxq 'pkgrel=4' "$dir/PKGBUILD" || fail 'pkgrel not incremented after pin repair'
   grep -Fq 'pkgrel = 4' "$dir/.SRCINFO" || fail 'pkgrel metadata not updated'
   cp "$dir/PKGBUILD" "$fixture/repaired-build"
   cp "$dir/.SRCINFO" "$fixture/repaired-info"
-  run bash "$dir/update-chrome-ref.sh" --latest
+  run bash "$dir/update-ffmpeg-ref.sh" --latest
   [[ "$status" -eq 0 ]] || fail "$output"
   cmp -s "$fixture/repaired-build" "$dir/PKGBUILD" || fail 'unchanged recipe was modified'
   cmp -s "$fixture/repaired-info" "$dir/.SRCINFO" || fail 'unchanged metadata was modified'

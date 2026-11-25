@@ -15,7 +15,6 @@ import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
-CHROME = {"google-chrome-ffmpeg", "google-chrome-canary-ffmpeg"}
 COMPOSITE = {"chromium-ffmpeg", "vivaldi-ffmpeg"}
 BROWSER_VERSION = r"[0-9]+(?:\.[0-9]+){3}"
 FFMPEG_VERSION = r"[0-9]+(?:\.[0-9]+){1,2}"
@@ -132,7 +131,7 @@ def install_pair(directory, recipe, info, original):
 
 def sync(directory):
     name = directory.name
-    if name not in CHROME | COMPOSITE:
+    if name not in COMPOSITE:
         raise ValueError(f"unsupported codec recipe: {name}")
     if not (directory / "PKGBUILD").is_file():
         raise ValueError("missing PKGBUILD")
@@ -151,34 +150,28 @@ def sync(directory):
         recipe = stage / "PKGBUILD"
         versions = latest(stage, names)
         target = versions[name]
-        if name in CHROME:
-            target = validate(target, BROWSER_VERSION, name)
-            old = validate(field(recipe, "pkgver"), BROWSER_VERSION, name)
-            order = compare(target, old, name)
-            run(["bash", str(directory / "update-chrome-ref.sh"), target, str(recipe)])
-        else:
-            if not isinstance(target, str) or target.count("_") != 1:
-                raise ValueError(f"invalid combined version: {target!r}")
-            ffmpeg, chromium = target.split("_")
-            ffmpeg = validate(ffmpeg, FFMPEG_VERSION, "FFmpeg")
-            chromium = validate(chromium, BROWSER_VERSION, "Chromium")
-            old_ffmpeg = validate(field(recipe, "_ffmpeg_pkgver"), FFMPEG_VERSION, "local FFmpeg")
-            old_chromium = validate(field(recipe, "_chromium_version"), BROWSER_VERSION, "local Chromium")
-            ffmpeg_order = compare(ffmpeg, old_ffmpeg, "FFmpeg")
-            chromium_order = compare(chromium, old_chromium, "Chromium")
-            if ffmpeg.split(".")[0] != old_ffmpeg.split(".")[0]:
-                raise ValueError("FFmpeg major changed; review codec ABI and patches manually")
-            order = max(ffmpeg_order, chromium_order)
-            old = old_ffmpeg + "_" + old_chromium
-            args = ["bash", str(directory / "update-ffmpeg-ref.sh"), chromium, str(recipe)]
-            if name == "vivaldi-ffmpeg":
-                browser = validate(versions[name + ":vivaldi"], BROWSER_VERSION, "Vivaldi")
-                major = ".".join(browser.split(".")[:2])
-                compare(major, validate(field(recipe, "_vivaldi_major_version"),
-                                        r"[0-9]+\.[0-9]+", "local Vivaldi"), "Vivaldi")
-                args.append(major)
-            run(args)
-            set_field(recipe, "_ffmpeg_pkgver", ffmpeg)
+        if not isinstance(target, str) or target.count("_") != 1:
+            raise ValueError(f"invalid combined version: {target!r}")
+        ffmpeg, chromium = target.split("_")
+        ffmpeg = validate(ffmpeg, FFMPEG_VERSION, "FFmpeg")
+        chromium = validate(chromium, BROWSER_VERSION, "Chromium")
+        old_ffmpeg = validate(field(recipe, "_ffmpeg_pkgver"), FFMPEG_VERSION, "local FFmpeg")
+        old_chromium = validate(field(recipe, "_chromium_version"), BROWSER_VERSION, "local Chromium")
+        ffmpeg_order = compare(ffmpeg, old_ffmpeg, "FFmpeg")
+        chromium_order = compare(chromium, old_chromium, "Chromium")
+        if ffmpeg.split(".")[0] != old_ffmpeg.split(".")[0]:
+            raise ValueError("FFmpeg major changed; review codec ABI and patches manually")
+        order = max(ffmpeg_order, chromium_order)
+        old = old_ffmpeg + "_" + old_chromium
+        args = ["bash", str(directory / "update-ffmpeg-ref.sh"), chromium, str(recipe)]
+        if name == "vivaldi-ffmpeg":
+            browser = validate(versions[name + ":vivaldi"], BROWSER_VERSION, "Vivaldi")
+            major = ".".join(browser.split(".")[:2])
+            compare(major, validate(field(recipe, "_vivaldi_major_version"),
+                                    r"[0-9]+\.[0-9]+", "local Vivaldi"), "Vivaldi")
+            args.append(major)
+        run(args)
+        set_field(recipe, "_ffmpeg_pkgver", ffmpeg)
         ref = validate(field(recipe, "_chromium_ffmpeg_ref"), r"[0-9a-f]{40}", "FFmpeg source revision")
 
         # The fixed-name sigs.base64 source must not be reused from an older

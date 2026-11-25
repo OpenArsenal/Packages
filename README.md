@@ -132,11 +132,13 @@ mise run pkg:build google-chrome
 ```
 
 The older `google-chrome-ffmpeg` and `google-chrome-canary-ffmpeg` recipes
-bundle the browser itself, despite their names. They are superseded by the
-standalone browser recipes and retained for inspection during migration.
-Do not select them for new builds. Do not install a custom shared FFmpeg
-library over a browser-owned path: a codec-only companion requires evidence
-that the official browser actually loads that library.
+bundled the browser itself, despite their names. They have been retired in
+favor of the standalone browser recipes. Chrome ships its own media support;
+do not install a replacement shared library without evidence that the
+official browser loads it. The standalone browser recipes retain their
+legacy conflict/replacement declarations for migration. After migrating,
+refresh the package selection and preview stale published entries with
+`mise run repo:clean --dry-run` before cleaning the repository.
 
 To migrate Stable, build and publish `google-chrome`, close Chrome, then
 install the new package from the configured local repository. For the

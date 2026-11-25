@@ -101,7 +101,7 @@ pkg::apply_release_update() (
 
   # These recipes pin Chromium source revisions as well as pkgver.
   local helper
-  for helper in update-chrome-ref.sh update-ffmpeg-ref.sh; do
+  for helper in update-ffmpeg-ref.sh; do
     [[ -f "$dir/$helper" ]] || continue
     if pkgctl version check --verbose "$dir"; then
       exit 0

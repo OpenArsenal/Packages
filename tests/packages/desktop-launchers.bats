@@ -28,12 +28,12 @@ MOCK
         config_name=code-flags.conf
         ;;
       stable)
-        script="$root/packages/google-chrome-ffmpeg/google-chrome-stable.sh"
+        script="$root/packages/google-chrome/google-chrome-stable.sh"
         executable="/opt/google/chrome/google-chrome"
         config_name=chrome-flags.conf
         ;;
       canary)
-        script="$root/packages/google-chrome-canary-ffmpeg/google-chrome-canary.sh"
+        script="$root/packages/google-chrome-canary/google-chrome-canary.sh"
         executable="/opt/google/chrome-canary/google-chrome-canary"
         config_name=chrome-canary-flags.conf
         ;;
