@@ -111,7 +111,7 @@ mise run pkg:update arch-mcp
 mise run pkg:update --apply arch-mcp
 ```
 
-Without package arguments, `pkg:update` checks entries in `.packages` **if that file selects packages**; otherwise it checks all recipes with `.nvchecker.toml`. `--apply` modifies the recipe and regenerates `.SRCINFO`, so review the resulting diff before committing.
+Without package arguments, `pkg:update` checks entries in `.packages` **if that file selects packages**; otherwise it checks all recipes with `.nvchecker.toml`. `--apply` modifies release-based recipes and regenerates `.SRCINFO`, so review the resulting diff before committing. For Git recipes configured with `source = "git"` and `use_commit = true`, the checker compares the upstream commit with the abbreviated commit in `pkgver` rather than ordering hashes as versions. `--apply` reports changed Git recipes with a `mise run pkg:build <package> --force` command instead of overwriting their generated versions with raw commit hashes. Run that command to rebuild and publish the Git package; its `pkgver()` computes the new version during the build. `--list-outdated` and `--json` also use the commit-aware comparison.
 
 ### Maintain the published repository
 
