@@ -82,7 +82,7 @@ fi
 # pkgctl treats upstream commit hashes as conventional versions. Keep
 # commit-based recipes out of its upgrade path and compare Git identities
 # using the structured version check results instead.
-version_helper="${PKGBUILDS_ROOT}/.mise/lib/pkg/version.py"
+version_helper="${PKGBUILDS_ROOT}/.mise/scripts/pkg-version.py"
 classification="$(python3 "$version_helper" classify "${package_dirs[@]}")" || exit 1
 mapfile -t kinds <<<"$classification"
 [[ "${#kinds[@]}" -eq "${#package_dirs[@]}" ]] || {
