@@ -1,6 +1,6 @@
 pkgbase = vesktop-git
 	pkgdesc = A standalone Electron-based Discord app with Vencord & improved Linux support (git version; bundled Electron)
-	pkgver = 1.7.0.r640.gdd83178
+	pkgver = 1.7.1.r649.gff9d233
 	pkgrel = 1
 	url = https://github.com/Vencord/Vesktop
 	install = vesktop.install
