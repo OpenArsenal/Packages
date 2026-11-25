@@ -112,7 +112,7 @@ configs = ["code-flags.conf"]
 
 [[launchers]]
 family = "chrome-stable"
-packages = ["google-chrome-ffmpeg"]
+packages = ["google-chrome-ffmpeg", "google-chrome"]
 script = "google-chrome-stable.sh"
 adapter = "literal"
 executable = "/opt/google/chrome/google-chrome"
@@ -120,11 +120,27 @@ configs = ["chrome-flags.conf"]
 
 [[launchers]]
 family = "chrome-canary"
-packages = ["google-chrome-canary-ffmpeg"]
+packages = ["google-chrome-canary-ffmpeg", "google-chrome-canary"]
 script = "google-chrome-canary.sh"
 adapter = "literal"
 executable = "/opt/google/chrome-canary/google-chrome-canary"
 configs = ["chrome-canary-flags.conf"]
+
+[[launchers]]
+family = "chrome-beta"
+packages = ["google-chrome-beta"]
+script = "google-chrome-beta.sh"
+adapter = "literal"
+executable = "/opt/google/chrome-beta/google-chrome-beta"
+configs = ["chrome-beta-flags.conf"]
+
+[[launchers]]
+family = "chrome-dev"
+packages = ["google-chrome-dev"]
+script = "google-chrome-unstable.sh"
+adapter = "literal"
+executable = "/opt/google/chrome-unstable/google-chrome-unstable"
+configs = ["chrome-dev-flags.conf"]
 
 [[launchers]]
 family = "cherry-studio"
