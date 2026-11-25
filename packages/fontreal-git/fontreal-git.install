@@ -1,0 +1,13 @@
+post_install() {
+  printf '%s\n' \
+    'Fontreal: Log out and back in to Plasma to activate.' \
+    'Select the correct subpixel layout in Plasma System Settings > Fonts.'
+}
+
+post_upgrade() {
+  post_install
+}
+
+post_remove() {
+  printf '%s\n' 'Fontreal: Log out and back in to restore stock Qt rendering.'
+}
