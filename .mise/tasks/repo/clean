@@ -67,7 +67,11 @@ fi
 
 echo "Removing stale repository entries:"
 printf '  %s\n' "${stale[@]}"
-repo-remove --wait-for-lock "$REPO_DB" "${stale[@]}"
+# Older pacman versions interpret unknown options as the database path.
+remove_help="$(repo-remove --help 2>&1 || true)"
+remove_args=()
+[[ "$remove_help" == *"--wait-for-lock"* ]] && remove_args+=(--wait-for-lock)
+repo-remove "${remove_args[@]}" "$REPO_DB" "${stale[@]}"
 repo::index_reset
 
 if [[ "${usage_refresh_sync:-false}" == "true" ]]; then
