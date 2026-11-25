@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Use the same upstream version sources as pkg:update. Explicit versions
+# retain the existing reference-only maintenance interface.
+if [[ "${1:-}" == --latest ]]; then
+  (( $# == 1 )) || { echo 'usage: updater --latest' >&2; exit 2; }
+  here="$(cd -- "$(dirname -- "$0")" && pwd -P)"
+  exec python3 "$here/../../.mise/scripts/codec-sync.py" "$here"
+fi
+
 usage() {
   cat >&2 <<'USAGE'
 usage: update-ffmpeg-ref.sh <chromium-version> [PKGBUILD] [vivaldi-major-version]
