@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 #MISE description="Check or apply package updates with pkgctl"
 #MISE alias="update"
-#USAGE flag "-a --apply" help="Update PKGBUILDs to the latest upstream versions"
+#USAGE flag "-a --apply" help="Update release PKGBUILDs and report Git packages requiring a rebuild"
 #USAGE flag "--no-update-checksums" help="Do not update checksums when applying"
 #USAGE flag "-v --verbose" help="Show up-to-date packages too"
-#USAGE flag "--json" help="Print pkgctl JSON output"
+#USAGE flag "--json" help="Print version check results as JSON"
 #USAGE flag "--list-outdated" help="Print only out-of-date package names"
 #USAGE arg "[package]" var=#true help="Package names to check; defaults to PACKAGES_FILE, then all nvchecker-enabled packages"
 
@@ -79,6 +79,25 @@ if [[ "${#package_dirs[@]}" -eq 0 ]]; then
   exit 1
 fi
 
+# pkgctl treats upstream commit hashes as conventional versions. Keep
+# commit-based recipes out of its upgrade path and compare Git identities
+# using the structured version check results instead.
+version_helper="${PKGBUILDS_ROOT}/.mise/lib/pkg/version.py"
+classification="$(python3 "$version_helper" classify "${package_dirs[@]}")" || exit 1
+mapfile -t kinds <<<"$classification"
+[[ "${#kinds[@]}" -eq "${#package_dirs[@]}" ]] || {
+  echo "error: incomplete package update classification" >&2
+  exit 1
+}
+declare -a commit_dirs=() release_dirs=()
+for i in "${!package_dirs[@]}"; do
+  case "${kinds[$i]}" in
+    commit) commit_dirs+=("${package_dirs[$i]}") ;;
+    release) release_dirs+=("${package_dirs[$i]}") ;;
+    *) echo "error: invalid package update classification" >&2; exit 1 ;;
+  esac
+done
+
 if [[ "${usage_apply:-false}" == "true" ]]; then
   [[ "${usage_json:-false}" != "true" ]] || {
     echo "error: --json cannot be combined with --apply" >&2
@@ -89,6 +108,12 @@ if [[ "${usage_apply:-false}" == "true" ]]; then
     echo "error: --list-outdated cannot be combined with --apply" >&2
     exit 2
   }
+
+  if (( ${#commit_dirs[@]} > 0 )); then
+    python3 "$version_helper" apply "${usage_verbose:-false}" "${commit_dirs[@]}" || exit $?
+    package_dirs=("${release_dirs[@]}")
+    (( ${#package_dirs[@]} > 0 )) || exit 0
+  fi
 
   args=(version upgrade)
   [[ "${usage_verbose:-false}" == "true" ]] && args+=("--verbose")
@@ -135,6 +160,16 @@ fi
   echo "error: --no-update-checksums requires --apply" >&2
   exit 2
 }
+
+if (( ${#commit_dirs[@]} > 0 )); then
+  mode=pretty
+  if [[ "${usage_json:-false}" == "true" ]]; then
+    mode=json
+  elif [[ "${usage_list_outdated:-false}" == "true" ]]; then
+    mode=list
+  fi
+  exec python3 "$version_helper" "$mode" "${usage_verbose:-false}" "${package_dirs[@]}"
+fi
 
 args=(version check)
 [[ "${usage_verbose:-false}" == "true" ]] && args+=("--verbose")
