@@ -113,6 +113,48 @@ mise run pkg:update --apply arch-mcp
 
 Without package arguments, `pkg:update` checks entries in `.packages` **if that file selects packages**; otherwise it checks all recipes with `.nvchecker.toml`. `--apply` modifies release-based recipes and regenerates `.SRCINFO`, so review the resulting diff before committing. For Git recipes configured with `source = "git"` and `use_commit = true`, the checker compares the upstream commit with the abbreviated commit in `pkgver` rather than ordering hashes as versions. `--apply` reports changed Git recipes with a `mise run pkg:build <package> --force` command instead of overwriting their generated versions with raw commit hashes. Run that command to rebuild and publish the Git package; its `pkgver()` computes the new version during the build. `--list-outdated` and `--json` also use the commit-aware comparison.
 
+### Google Chrome release channels
+
+OpenArsenal maintains independent `google-chrome`, `google-chrome-beta`,
+`google-chrome-dev` (Google's Debian `unstable` channel), and
+`google-chrome-canary` recipes. Each downloads Google's versioned Linux
+archives directly and tracks its corresponding entry in Google's Debian
+package index. These recipes do not import AUR changes during updates.
+Initial archive hashes and the locally vendored Google terms snapshot were
+seeded from the corresponding AUR packaging; makepkg checks the pinned
+hashes at build time. Stable, Beta, and Dev declare x86_64 and aarch64;
+Canary currently declares x86_64 only.
+
+```sh
+mise run pkg:update --verbose google-chrome google-chrome-beta google-chrome-dev google-chrome-canary
+mise run pkg:update --apply google-chrome
+mise run pkg:build google-chrome
+```
+
+The older `google-chrome-ffmpeg` and `google-chrome-canary-ffmpeg` recipes
+bundle the browser itself, despite their names. They are superseded by the
+standalone browser recipes and retained for inspection during migration.
+Do not select them for new builds. Do not install a custom shared FFmpeg
+library over a browser-owned path: a codec-only companion requires evidence
+that the official browser actually loads that library.
+
+To migrate Stable, build and publish `google-chrome`, close Chrome, then
+install the new package from the configured local repository. For the
+default repository name:
+
+```sh
+mise run pkg:build google-chrome
+sudo pacman -S openarsenal/google-chrome
+pacman -Qo /usr/bin/google-chrome-stable
+mise run pkg:select-installed
+```
+
+The new browser declares a conflict and replacement for its matching legacy
+bundled package. Review pacman's transaction before accepting it. Chrome's
+user profile is outside the package payload and is not removed by this
+migration; back it up before switching. Canary has the equivalent migration
+from `google-chrome-canary-ffmpeg` to `google-chrome-canary`.
+
 ### Maintain the published repository
 
 Preview potentially destructive changes first:
