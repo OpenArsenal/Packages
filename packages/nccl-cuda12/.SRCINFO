@@ -1,6 +1,6 @@
 pkgbase = nccl-cuda12
 	pkgdesc = Library for NVIDIA multi-GPU and multi-node collective communication primitives (built against cuda12)
-	pkgver = 2.32.3
+	pkgver = 2.32.7_1
 	pkgrel = 1
 	url = https://developer.nvidia.com/nccl/
 	arch = x86_64
@@ -14,9 +14,9 @@ pkgbase = nccl-cuda12
 	depends = libstdc++
 	depends = cuda12
 	optdepends = nccl-tests-cuda12: NCCL validation and performance tests
-	provides = nccl=2.32.3
+	provides = nccl=2.32.7
 	conflicts = nccl
-	source = git+https://github.com/NVIDIA/nccl.git#tag=v2.32.3-1
-	sha256sums = ec2ff2ff71a38f3f50f38d8d808ab3ddebd4efd4c41c2e388c48d0c338907bf9
+	source = git+https://github.com/NVIDIA/nccl.git#tag=v2.32.7-1
+	sha256sums = 9b85f81dd8c1cb8eb1ad446df901843a16cd6a8037820e4c0e691f47ba63efef
 
 pkgname = nccl-cuda12

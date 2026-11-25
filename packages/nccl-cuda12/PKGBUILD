@@ -1,7 +1,8 @@
 pkgname=nccl-cuda12
 _pkgname=nccl
-pkgver=2.32.3
-_upstr_pkgrel=1
+pkgver=2.32.7_1
+_upstr_pkgver=${pkgver%_*}
+_upstr_pkgrel=${pkgver##*_}
 pkgrel=1
 pkgdesc='Library for NVIDIA multi-GPU and multi-node collective communication primitives (built against cuda12)'
 arch=(x86_64)
@@ -13,7 +14,7 @@ _cuda_root=/opt/cuda
 # Set this to 14 or 13 depending on which compiler you want NCCL to use.
 _gcc_major=14
 
-provides=("nccl=${pkgver}")
+provides=("nccl=${_upstr_pkgver}")
 conflicts=(nccl)
 depends=(
   glibc
@@ -28,8 +29,8 @@ makedepends=(
   "${_cuda_pkg}"
 )
 optdepends=('nccl-tests-cuda12: NCCL validation and performance tests')
-source=("git+https://github.com/NVIDIA/nccl.git#tag=v${pkgver}-${_upstr_pkgrel}")
-sha256sums=('ec2ff2ff71a38f3f50f38d8d808ab3ddebd4efd4c41c2e388c48d0c338907bf9')
+source=("git+https://github.com/NVIDIA/nccl.git#tag=v${_upstr_pkgver}-${_upstr_pkgrel}")
+sha256sums=('9b85f81dd8c1cb8eb1ad446df901843a16cd6a8037820e4c0e691f47ba63efef')
 
 prepare() {
   cd "${srcdir}/${_pkgname}"
