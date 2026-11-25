@@ -10,6 +10,12 @@ source = "archpkg"
 archpkg = "vivaldi-ffmpeg-codecs"
 strip_release = true
 
+# Track the actual browser version for the codec installation filename.
+["vivaldi-ffmpeg:vivaldi"]
+source = "archpkg"
+archpkg = "vivaldi"
+strip_release = true
+
 [vivaldi-ffmpeg]
 source = "combiner"
 from = ["vivaldi-ffmpeg:ffmpeg", "vivaldi-ffmpeg:chromium"]
