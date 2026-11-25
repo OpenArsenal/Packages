@@ -1,5 +1,5 @@
 pkgname=ryubing-git
-pkgver=1.3.3.r332.g6af327bdd
+pkgver=1.3.3.r334.geaff2d332
 pkgrel=1
 pkgdesc='Experimental Nintendo Switch emulator written in C# (Ryubing fork of Ryujinx, git build)'
 arch=('x86_64' 'aarch64')
