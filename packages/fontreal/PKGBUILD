@@ -1,0 +1,113 @@
+pkgname=fontreal
+pkgver=3.0.0
+pkgrel=1
+pkgdesc='Pixel-aligned font rendering for Qt 6 applications and KDE Plasma'
+arch=('x86_64')
+url='https://github.com/calculatetech/fontreal'
+license=('MIT')
+depends=('gcc-libs' 'glibc' 'qt6-base' 'qt6-declarative' 'qt6-wayland' 'fontconfig' 'freetype2')
+makedepends=('binutils' 'pkgconf' 'qt6-shadertools' 'xxd')
+conflicts=('fontreal-git')
+options=('!strip' '!debug')
+install=fontreal.install
+
+source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/v${pkgver}.tar.gz")
+# SECURITY: replace with the archive's SHA-256 using updpkgsums before publishing.
+# The all-zero placeholder intentionally FAILS source validation.
+sha256sums=('074d8acd4f8c51dfe8db9d60e2470f9ebf1493affeb063974da07c1591c5252e')
+
+_source_dir="${pkgname}-${pkgver}"
+
+prepare() {
+  if [[ $(< "${srcdir}/${_source_dir}/VERSION") != "${pkgver}" ]]; then
+    printf 'Tagged source does not match version %s\n' "${pkgver}" >&2
+    return 1
+  fi
+}
+
+_provider_dir() {
+  local _providers=("${srcdir}/fontreal-providers/"*)
+  if (( ${#_providers[@]} != 1 )) || [[ ! -d ${_providers[0]} ]]; then
+    printf 'Expected exactly one Qt provider directory\n' >&2
+    return 1
+  fi
+  printf '%s\n' "${_providers[0]}"
+}
+
+_build_loader() {
+  local _provider=$1
+  local _name=$2
+  shift 2
+
+  local _loader_dir="${srcdir}/fontreal-loaders"
+  local _src="${srcdir}/${_source_dir}/integrations/qt-stock"
+  local _note="${_loader_dir}/${_name}.note"
+
+  # Each Qt loader must advertise its own provider's plugin metadata.
+  rm -f "${_note}"
+  objcopy \
+    --dump-section ".note.qt.metadata=${_note}" \
+    "${_provider}/${_name}" \
+    "${_loader_dir}/${_name}.copy"
+  [[ -s ${_note} ]] || return 1
+
+  cc -O2 -fPIC -shared -fvisibility=hidden \
+    -I "${_loader_dir}" \
+    "-DFONTREAL_METADATA=\"${_note}\"" \
+    "-DMETADATA_SIZE=$(stat -c %s "${_note}")" \
+    "-DPROVIDER_FILE=\"${_name}\"" \
+    "$@" "${_src}/loader.c" "${_src}/metadata.S" -ldl \
+    -o "${_loader_dir}/${_name}"
+}
+
+build() {
+  cd "${srcdir}/${_source_dir}"
+  tools/build-qt-stock-helper.sh "${srcdir}/fontreal-providers"
+
+  local _provider _key _gui_id _quick_id
+  local _loader_dir="${srcdir}/fontreal-loaders"
+  _provider="$(_provider_dir)" || return 1
+  _key=${_provider##*/}
+
+  if [[ ! ${_key} =~ ^([0-9a-f]{40})-([0-9a-f]{40})$ ]]; then
+    printf 'Invalid Qt provider identifier: %s\n' "${_key}" >&2
+    return 1
+  fi
+  _gui_id=${BASH_REMATCH[1]}
+  _quick_id=${BASH_REMATCH[2]}
+
+  mkdir -p "${_loader_dir}"
+  printf '    {{%s}, {%s}, "%s"},\n' \
+    "$(sed -E 's/(..)/0x\1,/g' <<< "${_gui_id}")" \
+    "$(sed -E 's/(..)/0x\1,/g' <<< "${_quick_id}")" \
+    "${_key}" > "${_loader_dir}/providers.inc"
+
+  _build_loader "${_provider}" libfontreal-cached-probe.so
+  _build_loader "${_provider}" libfontreal_quick_default_probe.so -DFONTREAL_QUICK_LOADER
+}
+
+package() {
+  local _provider _key
+  local _plugins="${pkgdir}/usr/lib/fontreal/qt6/plugins/generic"
+  local _loaders="${srcdir}/fontreal-loaders"
+  local _source="${srcdir}/${_source_dir}"
+
+  _provider="$(_provider_dir)" || return 1
+  _key=${_provider##*/}
+
+  install -Dm644 "${_loaders}/libfontreal-cached-probe.so" \
+    "${_plugins}/libfontreal-cached-probe.so"
+  install -Dm644 "${_loaders}/libfontreal_quick_default_probe.so" \
+    "${_plugins}/libfontreal_quick_default_probe.so"
+  install -Dm644 "${_provider}/libfontreal-cached-probe.so" \
+    "${_plugins}/providers/${_key}/libfontreal-cached-probe.so"
+  install -Dm644 "${_provider}/libfontreal_quick_default_probe.so" \
+    "${_plugins}/providers/${_key}/libfontreal_quick_default_probe.so"
+
+  install -Dm644 "${_source}/integrations/qt-stock/plasma-env.sh" \
+    "${pkgdir}/etc/xdg/plasma-workspace/env/fontreal.sh"
+  install -Dm644 "${_source}/LICENSE" \
+    "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+  install -Dm644 "${_source}/THIRD_PARTY_NOTICES.md" \
+    "${pkgdir}/usr/share/doc/${pkgname}/THIRD_PARTY_NOTICES.md"
+}

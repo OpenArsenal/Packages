@@ -1,0 +1,5 @@
+[fontreal]
+source = "github"
+github = "calculatetech/fontreal"
+use_latest_release = true
+prefix = "v"

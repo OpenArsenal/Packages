@@ -1,0 +1,26 @@
+pkgbase = fontreal
+	pkgdesc = Pixel-aligned font rendering for Qt 6 applications and KDE Plasma
+	pkgver = 3.0.0
+	pkgrel = 1
+	url = https://github.com/calculatetech/fontreal
+	install = fontreal.install
+	arch = x86_64
+	license = MIT
+	makedepends = binutils
+	makedepends = pkgconf
+	makedepends = qt6-shadertools
+	makedepends = xxd
+	depends = gcc-libs
+	depends = glibc
+	depends = qt6-base
+	depends = qt6-declarative
+	depends = qt6-wayland
+	depends = fontconfig
+	depends = freetype2
+	conflicts = fontreal-git
+	options = !strip
+	options = !debug
+	source = fontreal-3.0.0.tar.gz::https://github.com/calculatetech/fontreal/archive/refs/tags/v3.0.0.tar.gz
+	sha256sums = 074d8acd4f8c51dfe8db9d60e2470f9ebf1493affeb063974da07c1591c5252e
+
+pkgname = fontreal
