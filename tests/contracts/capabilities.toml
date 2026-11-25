@@ -14,6 +14,7 @@ environment_assignment = true
 
 [[launchers]]
 family = "affine"
+unterminated_last_config = true
 packages = ["affine", "affine-bin", "affine-git"]
 script = "affine-flags-wrapper.sh"
 adapter = "token"
@@ -80,6 +81,7 @@ configs = ["singularityapp-flags.conf"]
 
 [[launchers]]
 family = "vesktop"
+unterminated_last_config = true
 packages = ["vesktop", "vesktop-git"]
 script = "vesktop-flags-wrapper.sh"
 adapter = "token"
@@ -97,6 +99,7 @@ configs = ["electron-flags.conf", "vesktop-flags.conf"]
 
 [[launchers]]
 family = "figma-linux"
+unterminated_last_config = true
 packages = ["figma-linux", "figma-linux-git"]
 script = "figma-linux.sh"
 adapter = "figma"
@@ -104,6 +107,7 @@ configs = ["figma-linux/figma-linux-flags.conf"]
 
 [[launchers]]
 family = "visual-studio-code"
+strict_arguments = true
 packages = ["visual-studio-code"]
 script = "visual-studio-code.sh"
 adapter = "literal"
@@ -112,6 +116,7 @@ configs = ["code-flags.conf"]
 
 [[launchers]]
 family = "chrome-stable"
+strict_arguments = true
 packages = ["google-chrome-ffmpeg"]
 script = "google-chrome-stable.sh"
 adapter = "literal"
@@ -120,6 +125,7 @@ configs = ["chrome-flags.conf"]
 
 [[launchers]]
 family = "chrome-canary"
+strict_arguments = true
 packages = ["google-chrome-canary-ffmpeg"]
 script = "google-chrome-canary.sh"
 adapter = "literal"

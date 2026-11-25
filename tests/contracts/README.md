@@ -65,8 +65,10 @@ script, relative XDG config paths, and one narrow adapter:
 - `figma`, `snap`, and `cherry-bin` redirect application directories and
   supply a fake executable there.
 
-The runner requires all configuration and CLI flags to arrive exactly once.
-It also checks config comments are not forwarded and, where declared, that
+The runner requires all configuration and CLI flags to arrive exactly once,
+including a CLI argument containing spaces. Selected launcher families also
+reject unexpected extra arguments and test a config file without a final newline.
+It checks that comments are not forwarded and, where declared, that
 environment assignments survive. All paths, fake binaries, HOME, data and
 state directories are temporary. No GUI, root operations, Arch tools, or
 network access is required.

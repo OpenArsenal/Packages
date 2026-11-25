@@ -44,6 +44,7 @@ MOCK
     sed "s#$executable#$tmp/fake-app#g" "$script" >"$wrapper"
     chmod +x "$wrapper"
 
+    rm -f -- "$tmp/args"
     XDG_CONFIG_HOME="$config" FLAG_LOG="$tmp/args" \
       bash "$wrapper" --from-command-line=ok >"$tmp/log" 2>&1 ||
       fail "$variant wrapper failed with an XDG config path containing spaces: $(cat "$tmp/log")"

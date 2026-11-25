@@ -29,13 +29,18 @@ while (( $# )); do
 done
 [[ -n "$output" && -n "$url" ]] || exit 91
 printf '%s\n' "$url" >>"$FFMPEG_CURL_LOG"
+[[ "${FFMPEG_FAILURE_MODE:-}" != transport ]] || exit 56
 if [[ "$url" == *'148.0.7778.221'* ]]; then
   code="${FFMPEG_HTTP_STATUS:-404}"
 else
   code=200
 fi
 if [[ "$code" == 200 ]]; then
-  cat "$FFMPEG_DEPS_B64" >"$output"
+  case "${FFMPEG_FAILURE_MODE:-}" in
+    decode) printf 'not@@base64' >"$output" ;;
+    missing-ref) printf 'no revision here\n' | base64 >"$output" ;;
+    *) cat "$FFMPEG_DEPS_B64" >"$output" ;;
+  esac
 else
   printf 'upstream error page\n' >"$output"
 fi
@@ -62,6 +67,22 @@ MOCK
         fail "$variant probed an older tag after HTTP $mode"
       grep -Fq '148.0.7778.221' "$tmp/curl.log" ||
         fail "$variant did not request the intended Chromium tag"
+    done
+
+    for mode in transport decode missing-ref; do
+      printf '_chromium_version=old\n_chromium_ffmpeg_ref=old\n_keep=original\n' >"$tmp/PKGBUILD"
+      cp "$tmp/PKGBUILD" "$tmp/original"
+      : >"$tmp/curl.log"
+      if FFMPEG_FAILURE_MODE="$mode" FFMPEG_HTTP_STATUS=200 \
+          FFMPEG_CURL_LOG="$tmp/curl.log" FFMPEG_DEPS_B64="$tmp/deps.base64" \
+          PATH="$tmp/bin:$PATH" bash "$source_pkg" 148.0.7778.221 "$tmp/PKGBUILD" \
+          >"$tmp/output" 2>&1; then
+        fail "$variant accepted $mode failure"
+      fi
+      cmp -s "$tmp/original" "$tmp/PKGBUILD" ||
+        fail "$variant changed PKGBUILD after $mode failure"
+      [[ "$(wc -l <"$tmp/curl.log")" -eq 1 ]] ||
+        fail "$variant attempted fallback after $mode failure"
     done
 
     printf '_chromium_version=old\n_chromium_ffmpeg_ref=old\n_keep=original\n' >"$tmp/PKGBUILD"

@@ -25,6 +25,13 @@ setup() {
 
   PKG_PLAN=("$tmp/demo")
   makechrootpkg() {
+    # The mock rejects regressions in chroot options, working directory and
+    # output paths rather than producing an archive unconditionally.
+    [[ "$PWD" == "$tmp/demo" && "${PKGDEST:-}" == "$REPO_DIR" &&
+       "${LOGDEST:-}" == "$tmp/demo/logs" ]] || return 91
+    [[ "$#" -ge 8 && "$1" == -r && "$2" == "$CHROOT_DIR" &&
+       "$3" == -c && "$4" == -u && "$5" == -x && "$6" == failure ]] || return 92
+    [[ "${*: -2}" == "-- --cleanbuild" ]] || return 93
     case "${BUILD_MODE:-new}" in
       new) touch "$REPO_DIR/demo-2-1-x86_64.pkg.tar.zst" ;;
       same) touch "$REPO_DIR/demo-1-1-x86_64.pkg.tar.zst" ;;

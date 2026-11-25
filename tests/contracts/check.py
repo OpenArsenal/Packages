@@ -243,7 +243,10 @@ def launcher_contract(root: Path, spec: dict, package: str) -> list[str]:
             config = xdg / rel
             config.parent.mkdir(parents=True, exist_ok=True)
             flag = f"--contract-config-{idx}=value"
-            config.write_text(f"# {COMMENT_SENTINEL}\n{flag}\n", encoding="utf-8")
+            # Selected wrappers promise to accept a final line with no newline.
+            terminator = "" if (spec.get("unterminated_last_config")
+                                and idx == len(spec["configs"]) - 1) else "\n"
+            config.write_text(f"# {COMMENT_SENTINEL}\n{flag}{terminator}", encoding="utf-8")
             expected_args.append(flag)
         if spec.get("environment_assignment"):
             with (xdg / spec["configs"][0]).open("a", encoding="utf-8") as file:
@@ -264,10 +267,10 @@ def launcher_contract(root: Path, spec: dict, package: str) -> list[str]:
             "GSETTINGS_SCHEMA_DIR": "",
         })
         env.pop("CONTRACT_TEST_ENV", None)
-        cli = "--contract-cli=value"
+        cli = ["--contract-cli=value", "--contract-cli-with-space=two words"]
         try:
             result = subprocess.run(
-                ["bash", str(wrapper), cli], cwd=base, env=env,
+                ["bash", str(wrapper), *cli], cwd=base, env=env,
                 capture_output=True, text=True, timeout=15,
             )
         except (OSError, subprocess.TimeoutExpired) as error:
@@ -280,8 +283,10 @@ def launcher_contract(root: Path, spec: dict, package: str) -> list[str]:
         argv = record["argv"]
         errors = [
             f"{package}: lost or duplicated argument {arg!r}: {argv!r}"
-            for arg in [*expected_args, cli] if argv.count(arg) != 1
+            for arg in [*expected_args, *cli] if argv.count(arg) != 1
         ]
+        if spec.get("strict_arguments") and len(argv) != len(expected_args) + len(cli):
+            errors.append(f"{package}: launcher forwarded unexpected extra arguments: {argv!r}")
         if any(COMMENT_SENTINEL in arg for arg in argv):
             errors.append(f"{package}: comment was forwarded to executable")
         if spec.get("environment_assignment") and record.get("contract_env") != "hello=world":

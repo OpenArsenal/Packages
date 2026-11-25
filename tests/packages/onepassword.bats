@@ -69,8 +69,19 @@ RECIPE
     PATH="$tmp/bin:$PATH" PKGVER=2.43.0 bash "$root/packages/1password-cli-bin/package-update.sh"
   ) || fail 'successful updater run failed'
   grep -qx 'pkgver=2.43.0' "$tmp/pkg/PKGBUILD" || fail 'pkgver not updated'
+  local arch upstream_arch url expected
   for arch in x86_64 i686 arm armv6h aarch64; do
-    grep -Eq "^sha256sums_$arch=\('[0-9a-f]{64}'\)$" "$tmp/pkg/PKGBUILD" || fail "checksum not updated: $arch"
+    case "$arch" in
+      x86_64) upstream_arch=amd64 ;;
+      i686) upstream_arch=386 ;;
+      arm|armv6h) upstream_arch=arm ;;
+      aarch64) upstream_arch=arm64 ;;
+    esac
+    url="https://cache.agilebits.com/dist/1P/op2/pkg/v2.43.0/op_linux_${upstream_arch}_v2.43.0.zip"
+    expected="$(printf 'fake zip data for %s' "$url" | sha256sum)"
+    expected="${expected%% *}"
+    grep -Fxq "sha256sums_${arch}=('${expected}')" "$tmp/pkg/PKGBUILD" ||
+      fail "incorrect archive checksum or architecture mapping: $arch"
   done
   [[ "$(cat "$tmp/pkg/operations-notes.txt")" == precious && "$(cat "$tmp/pkg/op-cache.txt")" == precious2 ]] || fail 'updater deleted unrelated files on success'
   echo 'PASS onepassword_update (failures preserve files; success updates checksums)'
