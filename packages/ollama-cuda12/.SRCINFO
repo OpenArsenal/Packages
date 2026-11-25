@@ -1,6 +1,6 @@
 pkgbase = ollama-cuda12
 	pkgdesc = CUDA 12 backend for Ollama (Pascal-compatible)
-	pkgver = 0.40.16
+	pkgver = 0.40.18
 	pkgrel = 1
 	url = https://github.com/ollama/ollama
 	arch = x86_64
@@ -10,17 +10,17 @@ pkgbase = ollama-cuda12
 	makedepends = git
 	makedepends = gcc14
 	makedepends = patchelf
-	depends = ollama=0.40.16
+	depends = ollama=0.40.18
 	depends = cuda12
 	depends = glibc
 	depends = libgcc
 	depends = libstdc++
-	provides = ollama-cuda=0.40.16
+	provides = ollama-cuda=0.40.18
 	conflicts = ollama-cuda
 	conflicts = ollama-cuda13
 	options = !lto
-	source = git+https://github.com/ollama/ollama#tag=v0.40.16
-	sha256sums = 5ac108dbc16c1919d4cdbb473057b3b43c6d85cddfaa2e0502288f0866337da2
-	b2sums = 9f2e33fa5e6267c8016f265c5d2e237f81bf045765ffe7b0854412fc92838aa79bf86ee76a10bae2ad3f80baa7109210da05455cec4be065433e925914ed1120
+	source = git+https://github.com/ollama/ollama#tag=v0.40.18
+	sha256sums = 82af7918eb75b81a00e40102d2593021017aa558a500ea81d215ac8fedef4705
+	b2sums = 5a01ce425b006b29203f1121415c58a64e4eeac6a774801f2e769c403c0bc628ad4476012cb44d013af5755acce72562d780aa1f50028f4fb43b99008671a9ea
 
 pkgname = ollama-cuda12
