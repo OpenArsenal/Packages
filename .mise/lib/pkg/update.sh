@@ -98,6 +98,24 @@ pkg::apply_release_update() (
   local dir="$1"
   shift
   local tmp stage field rc build_tmp="" info_tmp=""
+
+  # These recipes pin Chromium source revisions as well as pkgver.
+  local helper
+  for helper in update-chrome-ref.sh update-ffmpeg-ref.sh; do
+    [[ -f "$dir/$helper" ]] || continue
+    if pkgctl version check --verbose "$dir"; then
+      exit 0
+    else
+      rc=$?
+    fi
+    if (( rc == 2 )); then
+      printf 'Manual update required: %s\n' "${dir##*/}"
+      printf 'Use %s; review source pins, checksums and .SRCINFO.\n' "$dir/$helper"
+      exit 0
+    fi
+    exit "$rc"
+  done
+
   tmp="$(mktemp -d)" || exit 1
   trap 'rm -rf -- "$tmp"; [[ -z "$build_tmp" ]] || rm -f -- "$build_tmp"; [[ -z "$info_tmp" ]] || rm -f -- "$info_tmp"' EXIT
   stage="$tmp/${dir##*/}"
