@@ -8,6 +8,7 @@ pkgbase = ryubing-git
 	license = MIT
 	makedepends = dotnet-sdk-10.0
 	makedepends = git
+	makedepends = jq
 	depends = dotnet-runtime-10.0
 	depends = ffmpeg
 	depends = glew

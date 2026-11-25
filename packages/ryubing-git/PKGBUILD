@@ -32,6 +32,7 @@ depends=(
 makedepends=(
   'dotnet-sdk-10.0'
   'git'
+  'jq'
 )
 
 optdepends=(
@@ -83,8 +84,17 @@ prepare() {
       nuget.config
   fi
 
-  # Use Arch's installed .NET 10 SDK instead of demanding 10.0.301.
-  sed -i 's/10\.0\.301/10.0.100/' global.json
+  # Select the latest installed .NET 10 SDK feature band without rolling
+  # forward to .NET 11. Preserve unrelated upstream global.json settings.
+  if [[ ! -f global.json ]]; then
+    printf '%s\n' '{}' > global.json
+  fi
+  jq -e '
+    .sdk.version = "10.0.100" |
+    .sdk.rollForward = "latestFeature" |
+    .sdk.allowPrerelease = false
+  ' global.json > global.json.tmp || return 1
+  mv -f global.json.tmp global.json
 
   export DOTNET_CLI_TELEMETRY_OPTOUT=1
   export DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
